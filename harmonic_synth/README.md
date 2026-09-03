@@ -48,6 +48,7 @@ feature is left on, so any allocation in `process()` panics in-host.
 | **Filter Env** | −6 – +6 oct | dedicated filter envelope → cutoff, per-sample per-voice. Bipolar. |
 | **F.Env Attack / Decay / Sustain / Release** | | the filter envelope's own ADSR, independent of the amp envelope. |
 | **Free-Run Phase** | on / off | analog-style: oscillator phase is not reset on note-on. |
+| **HQ Mode** | on / off | 2× oversample the oscillator + Character so drive / fold / grit / FM don't alias. +3 samples latency (reported to the host). |
 | **Unison** | 1–8 | detuned + stereo-spread voices stacked per note (1/√n make-up gain). |
 | **Uni Detune** | 0–50 ct · **Uni Spread** 0–100 % | unison spread in pitch and stereo. |
 | **Bend Range** | 1–24 st | pitch-bend wheel range. |
@@ -56,7 +57,11 @@ feature is left on, so any allocation in `process()` panics in-host.
 | **LFO Vibrato** | 0–100 ct | LFO modulates pitch. |
 
 Drive / Fold / Grit / FM / Feedback push content past Nyquist and alias when
-hard — intentional (see `harmonic_core::character`). Clean at zero.
+hard — intentional (see `harmonic_core::character`), or switch on **HQ Mode**
+for a clean result. Clean at zero regardless.
+
+If the host reports an unsupported sample rate (outside 8 kHz – 768 kHz) the
+plugin rejects `initialize` rather than run at the wrong pitch.
 
 MIDI: Note On/Off, Choke, **Pitch Bend**, CC#123 (all-notes-off). 24 voices
 (unison stacks share the pool). No GUI (host-generic parameter view).
@@ -69,6 +74,10 @@ cargo build --release
 
 # proper VST3 + CLAP bundles
 cargo xtask bundle harmonic_synth --release
+
+# validate with Tracktion pluginval (state recall, block-size / SR changes,
+# allocation checks) — needs pluginval on PATH or in ./tools/
+cargo xtask validate            # or: pwsh scripts/validate.ps1  /  bash scripts/validate.sh
 ```
 
 Output:
@@ -89,13 +98,12 @@ matching CLAP folder.
   `f36931f7`.
 - Bundle structure verified (`clap_entry` export; VST3
   `Contents/x86_64-win/` + `GetPluginFactory`/`InitDll`/`ExitDll`).
-- Engine (voice alloc, stealing, envelope, pitch, saturation) covered by 5
-  unit tests in `harmonic_core::poly`; not yet validated in a live DAW or
-  against `pluginval` from this environment.
+- Engine covered by 49 `harmonic_core` tests. `pluginval` script is in place
+  (`scripts/validate.*`); the actual run is pending a `pluginval` install.
 
 ## Next
 
-- `pluginval` / DAW smoke test.
+- Run `pluginval` for real; DAW smoke test.
 - Stereo detune (two geometric stacks per voice) for width.
-- Optional simple GUI (`nih_plug_vizia`): brightness + envelope + a spectrum
+- Optional simple GUI (`nih_plug_vizia`): brightness + envelopes + a spectrum
   strip.

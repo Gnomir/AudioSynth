@@ -84,14 +84,25 @@ pub struct PolySynth<const VOICES: usize> {
     lfo_to_rolloff: f64,
     lfo_to_pitch: f64,
 
+    hq: bool,
+
     counter: u64,
 }
 
 impl<const VOICES: usize> PolySynth<VOICES> {
+    /// Create. Out-of-range / non-finite `sample_rate` is clamped — see
+    /// [`PolySynth::new_checked`] to also learn what happened.
     pub fn new(sample_rate: f64) -> Self {
-        PolySynth {
-            voices: core::array::from_fn(|_| PolyVoice::new(sample_rate)),
-            sample_rate,
+        Self::new_checked(sample_rate).0
+    }
+
+    /// Like [`PolySynth::new`], and reports whether `sample_rate` was accepted,
+    /// clamped to `[8000, 768000]`, or (if non-finite) defaulted.
+    pub fn new_checked(sample_rate: f64) -> (Self, crate::SampleRateStatus) {
+        let (sr, status) = crate::validate_sample_rate(sample_rate);
+        let s = PolySynth {
+            voices: core::array::from_fn(|_| PolyVoice::new(sr)),
+            sample_rate: sr,
             rolloff: 0.5,
             gain: 0.3,
             amp_a: 0.005,
@@ -119,12 +130,26 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             lfo_shape: LfoShape::Sine,
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
+            hq: false,
             counter: 0,
-        }
+        };
+        (s, status)
     }
 
-    pub fn set_sample_rate(&mut self, sample_rate: f64) {
-        *self = PolySynth::new(sample_rate);
+    /// Rebuild at a new sample rate (host `initialize`). Silences all voices
+    /// and reports whether the rate was accepted, clamped, or defaulted — the
+    /// host should stop feeding audio (or pick a supported rate) on anything
+    /// but [`crate::SampleRateStatus::Ok`].
+    pub fn set_sample_rate(&mut self, sample_rate: f64) -> crate::SampleRateStatus {
+        let (s, status) = PolySynth::new_checked(sample_rate);
+        *self = s;
+        status
+    }
+
+    /// The (validated) sample rate this synth runs at.
+    #[inline]
+    pub fn sample_rate(&self) -> f64 {
+        self.sample_rate
     }
 
     pub fn set_rolloff(&mut self, r: f64) {
@@ -165,6 +190,17 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.free_running = free;
         for v in &mut self.voices {
             v.core.set_free_running(free);
+        }
+    }
+
+    /// HQ mode: 2×-oversample the oscillator + character stage on every voice
+    /// (no aliasing from the nonlinear stages). Adds
+    /// [`crate::Voice::HQ_LATENCY`] samples of latency — the host should report
+    /// it and re-sync when this toggles.
+    pub fn set_hq(&mut self, hq: bool) {
+        self.hq = hq;
+        for v in &mut self.voices {
+            v.core.set_hq(hq);
         }
     }
 
@@ -298,6 +334,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         v.core.set_gain(1.0);
         v.core.set_pan(pan);
         v.core.set_free_running(self.free_running);
+        v.core.set_hq(self.hq);
         v.core.set_pitch_bend(self.bend_ratio);
         v.core.set_character(self.character);
         v.core.set_fm(self.fm_ratio, self.fm_index);
@@ -558,6 +595,21 @@ mod tests {
         assert!(peak(&mut s, 24_000) <= 1.5);
         s.set_pitch_bend(-12.0); // −1 octave
         assert!(peak(&mut s, 24_000) <= 1.5);
+    }
+
+    #[test]
+    fn hq_mode_stays_bounded_and_adds_latency() {
+        let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+        s.set_gain(1.0);
+        s.set_rolloff(0.95);
+        s.set_character(CharParams {
+            drive: 0.7,
+            fold: 0.6,
+            ..CharParams::CLEAN
+        });
+        s.set_hq(true);
+        s.note_on(64, 1.0);
+        assert!(peak(&mut s, 48_000) <= 1.5);
     }
 
     #[test]

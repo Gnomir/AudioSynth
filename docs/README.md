@@ -19,7 +19,7 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 45 тестів, виміряні числа, бенчмарки, що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 49 тестів, виміряні числа, бенчмарки, `pluginval`, що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; відсутність DAW-валідації тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (344 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 
@@ -38,8 +38,10 @@
 cd harmonic_core && cargo doc --no-deps --open
 ```
 
-## Статус (2026-09-03)
+## Статус (2026-09-04)
 
-45 тестів проходять · clippy чистий (stable + `--no-default-features --release`
+49 тестів проходять · clippy чистий (stable + `--no-default-features --release`
 + nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP ·
-**у живому DAW / `pluginval` не валідовано** — перевірено лише структуру бандлів.
+скрипт `pluginval` готовий (`harmonic_synth/scripts/validate.*` /
+`cargo xtask validate`), **фактичний прогін ще не виконано** (бінарник не
+встановлено).

@@ -69,6 +69,19 @@ impl LfoKind {
 struct HarmonicSynth {
     params: Arc<HarmonicSynthParams>,
     engine: PolySynth<MAX_VOICES>,
+    /// Tracks the HQ toggle so we only re-report latency on a real change.
+    last_hq: bool,
+}
+
+impl HarmonicSynth {
+    #[inline]
+    fn hq_latency(&self) -> u32 {
+        if self.params.hq_mode.value() {
+            harmonic_core::Voice::HQ_LATENCY as u32
+        } else {
+            0
+        }
+    }
 }
 
 #[derive(Params)]
@@ -143,6 +156,11 @@ struct HarmonicSynthParams {
     #[id = "freerun"]
     free_running: BoolParam,
 
+    /// 2× oversample the oscillator + Character stage so drive / fold / grit /
+    /// FM don't alias. Adds a few samples of latency; toggling re-syncs the host.
+    #[id = "hqmode"]
+    hq_mode: BoolParam,
+
     // --- unison ---
     #[id = "unicnt"]
     unison_voices: IntParam,
@@ -169,6 +187,7 @@ impl Default for HarmonicSynth {
         Self {
             params: Arc::new(HarmonicSynthParams::default()),
             engine: PolySynth::new(48_000.0),
+            last_hq: false,
         }
     }
 }
@@ -342,6 +361,8 @@ impl Default for HarmonicSynthParams {
 
             free_running: BoolParam::new("Free-Run Phase", false),
 
+            hq_mode: BoolParam::new("HQ Mode", false),
+
             unison_voices: IntParam::new("Unison", 1, IntRange::Linear { min: 1, max: 8 }),
 
             unison_detune: FloatParam::new(
@@ -433,9 +454,21 @@ impl Plugin for HarmonicSynth {
         &mut self,
         _layout: &AudioIOLayout,
         buffer_config: &BufferConfig,
-        _context: &mut impl InitContext<Self>,
+        context: &mut impl InitContext<Self>,
     ) -> bool {
-        self.engine.set_sample_rate(buffer_config.sample_rate as f64);
+        let status = self
+            .engine
+            .set_sample_rate(buffer_config.sample_rate as f64);
+        if status != harmonic_core::SampleRateStatus::Ok {
+            nih_plug::nih_log!(
+                "harmonic_synth: sample rate {} Hz is outside the supported range (8 kHz - 768 kHz); rejecting",
+                buffer_config.sample_rate
+            );
+            return false;
+        }
+        self.engine.set_hq(self.params.hq_mode.value());
+        context.set_latency_samples(self.hq_latency());
+        self.last_hq = self.params.hq_mode.value();
         true
     }
 
@@ -462,6 +495,15 @@ impl Plugin for HarmonicSynth {
         // Voice mode, unison, LFO — per-block.
         self.engine
             .set_free_running(self.params.free_running.value());
+
+        // HQ mode: when it toggles, the character stage's decimation FIR
+        // latency changes — tell the host so it can re-sync.
+        let hq = self.params.hq_mode.value();
+        self.engine.set_hq(hq);
+        if hq != self.last_hq {
+            context.set_latency_samples(self.hq_latency());
+            self.last_hq = hq;
+        }
         self.engine.set_unison(
             self.params.unison_voices.value() as u32,
             self.params.unison_detune.value() as f64,

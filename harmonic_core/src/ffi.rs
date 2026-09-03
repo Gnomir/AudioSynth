@@ -36,15 +36,38 @@ pub extern "C" fn harmonic_voice_align() -> usize {
 
 /// Initialise a voice into caller-owned memory.
 ///
+/// Returns a status code:
+/// * `0` — `sample_rate` accepted as given;
+/// * `1` — was below 8000 Hz, clamped up (pitch/time will be wrong; pick a supported rate);
+/// * `2` — was above 768000 Hz, clamped down (same caveat);
+/// * `3` — was not finite, defaulted to 48000 Hz;
+/// * `-1` — `ptr` was null, nothing written.
+///
+/// Call [`harmonic_voice_sample_rate`] to read the rate actually in use.
+///
 /// # Safety
 /// `ptr` must be non-null, writable, and point to at least
 /// [`harmonic_voice_size`] bytes aligned to [`harmonic_voice_align`].
 #[no_mangle]
-pub unsafe extern "C" fn harmonic_voice_init(ptr: *mut Voice, sample_rate: f64) {
+pub unsafe extern "C" fn harmonic_voice_init(ptr: *mut Voice, sample_rate: f64) -> i32 {
     if ptr.is_null() {
-        return;
+        return -1;
     }
-    unsafe { ptr.write(Voice::new(sample_rate)) }
+    let (v, status) = Voice::new_checked(sample_rate);
+    unsafe { ptr.write(v) }
+    status as i32
+}
+
+/// The sample rate the voice actually runs at (after clamping). 0 on null.
+///
+/// # Safety
+/// `ptr` must come from a successful [`harmonic_voice_init`] or be null.
+#[no_mangle]
+pub unsafe extern "C" fn harmonic_voice_sample_rate(ptr: *const Voice) -> f64 {
+    match unsafe { ptr.as_ref() } {
+        Some(v) => v.sample_rate(),
+        None => 0.0,
+    }
 }
 
 /// # Safety
@@ -145,6 +168,19 @@ pub unsafe extern "C" fn harmonic_voice_set_filter(
         v.set_filter_mode(FilterMode::from_u32(mode));
         v.set_filter_cutoff(cutoff_hz);
         v.set_filter_resonance(resonance);
+    }
+}
+
+/// HQ mode: `!= 0` → 2×-oversample the oscillator + character stage so the
+/// nonlinear stages do not alias. Adds a few samples of latency (see the
+/// crate's `Voice::HQ_LATENCY`); `0` is bit-identical to leaving it off.
+///
+/// # Safety
+/// `ptr` must come from a successful [`harmonic_voice_init`].
+#[no_mangle]
+pub unsafe extern "C" fn harmonic_voice_set_hq(ptr: *mut Voice, hq: u32) {
+    if let Some(v) = unsafe { ptr.as_mut() } {
+        v.set_hq(hq != 0);
     }
 }
 
