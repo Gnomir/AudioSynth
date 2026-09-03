@@ -41,7 +41,8 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_lfo_targets(to_rolloff: f64, to_pitch_cents: f64)` | RT | `[−0.9,0.9]`, `[−1200,1200]` центів |
 | `set_lfo_phase(turns: f64)` | setup | — |
 | `set_character(p: CharParams)` | RT | див. `CharParams` |
-| `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли |
+| `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли; лише для `Waveform::Geometric` |
+| `set_waveform(w: Waveform)` | setup | `Geometric` / `Saw` / `Triangle`; Saw+Triangle — band-limited BLIT, ігнорують `rolloff` та HQ |
 | `set_filter_mode(m: FilterMode)` | setup | — |
 | `set_filter_cutoff(hz: f64)` | RT | `[20, 0.45·f_s]` Hz, згладж. ~1 мс всередині |
 | `set_filter_resonance(r: f64)` | RT | `[0, 1]` → `Q [0.5, 32]` |
@@ -79,6 +80,7 @@ set_feedback(fb: f64)
 ```rust
 set_free_running(free: bool)
 set_hq(hq: bool)                                          // 2× оверсемплінг; +3 семпли латентності
+set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
 set_unison(count: u32, detune_cents: f64, spread: f64)   // count clamp [1,8], spread [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
 set_lfo(rate_hz: f64, shape: LfoShape, to_rolloff: f64, to_pitch_cents: f64)
@@ -130,7 +132,15 @@ impl FilterMode { pub fn from_u32(v: u32) -> Self }   // невідоме → By
 
 #[repr(u32)] pub enum LfoShape { Sine=0, Triangle=1, Saw=2 }
 impl LfoShape { pub fn from_u32(v: u32) -> Self }     // невідоме → Sine
+
+#[repr(u32)] pub enum Waveform { Geometric=0, Saw=1, Triangle=2 }
+impl Waveform { pub fn from_u32(v: u32) -> Self }     // невідоме → Geometric
 ```
+
+`Saw` / `Triangle` — leaky-integrated BLIT (Stilson & Smith 1996), стан на
+голос, скидається в `reset()`. Фіксовані спектри `1/k` / `1/k²`; `rolloff` і
+HQ ігноруються. Трикутник: м'який спад баса нижче ~80 Гц. Деталі —
+`01_MATHEMATICS.md` §7, `04_DSP_COMPONENTS.md` §11.
 
 ### Низькорівневі (експоновані для тестів / офлайн)
 
@@ -169,7 +179,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 344 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 464 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */
@@ -191,6 +201,7 @@ void harmonic_voice_set_filter(HarmonicVoice*, unsigned int mode,        /* 0..4
 void harmonic_voice_set_lfo(HarmonicVoice*, double rate_hz, unsigned int shape, /* 0..2 */
                             double to_rolloff, double to_pitch_cents);
 void harmonic_voice_set_hq(HarmonicVoice*, unsigned int hq);  /* !=0 → 2× OS, +3 семпли латентності */
+void harmonic_voice_set_waveform(HarmonicVoice*, unsigned int waveform); /* 0 geom / 1 saw / 2 tri */
 ```
 
 ### Робота
@@ -232,11 +243,11 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 
 ## 3. Параметри плагіна `harmonic_synth`
 
-28 параметрів (host-generic UI, без власного GUI). Групи:
+29 параметрів (host-generic UI, без власного GUI). Групи:
 
 | Група | Параметри |
 |---|---|
-| Тон | Brightness, Gain |
+| Тон | **Oscillator** (enum Geometric/Saw/Triangle), Brightness, Gain |
 | Амплітудна обгинаюча | Attack, Release |
 | Character | Drive, Fold, Grit |
 | FM | FM Amount, FM Ratio, Feedback |

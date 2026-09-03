@@ -75,7 +75,7 @@ pub use env::Adsr;
 pub use filter::{FilterMode, Svf};
 pub use lfo::{Lfo, LfoShape};
 pub use poly::{midi_to_hz, PolySynth};
-pub use voice::Voice;
+pub use voice::{Voice, Waveform};
 
 /// Supported sample-rate range, in Hz. Outside this the prewarp `tan(π fc/fs)`
 /// and the smoother time constants lose meaning.

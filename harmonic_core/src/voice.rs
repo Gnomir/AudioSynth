@@ -7,7 +7,7 @@
 
 use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
-use crate::kernel::{geometric_partials, geometric_peak};
+use crate::kernel::{dirichlet_blit, geometric_partials, geometric_peak};
 use crate::lfo::{Lfo, LfoShape};
 use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns};
 use crate::{validate_sample_rate, SampleRateStatus};
@@ -17,6 +17,30 @@ pub const MAX_PARTIALS: u32 = 2048;
 
 /// Length of the note-on de-click fade, in samples.
 const DECLICK_LEN: u16 = 16;
+
+/// Oscillator waveform.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u32)]
+pub enum Waveform {
+    /// `Σ rᵏ·cos(2πkp)` — the closed-form additive core (impulse-train → its
+    /// geometric-rolloff "darker" versions). The default.
+    Geometric = 0,
+    /// Band-limited sawtooth — a leaky-integrated BLIT (Stilson & Smith 1996).
+    Saw = 1,
+    /// Band-limited triangle — the sawtooth integrated once more.
+    Triangle = 2,
+}
+
+impl Waveform {
+    /// For the C ABI. Unknown values fall back to `Geometric`.
+    pub fn from_u32(v: u32) -> Self {
+        match v {
+            1 => Waveform::Saw,
+            2 => Waveform::Triangle,
+            _ => Waveform::Geometric,
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -54,6 +78,17 @@ pub struct Voice {
     lfo_to_pitch: f64,   // cents of vibrato
 
     hq: bool, // 2× oversample the oscillator + character stage
+
+    // BLIT saw / triangle: leaky integrators + DC blockers
+    waveform: Waveform,
+    blit_leak: f64,
+    tri_leak: f64,
+    saw_int: f64,
+    saw_dc_x1: f64,
+    saw_dc_y1: f64,
+    tri_int: f64,
+    tri_dc_x1: f64,
+    tri_dc_y1: f64,
 
     character: Character,
     filter: Svf,
@@ -106,6 +141,15 @@ impl Voice {
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
             hq: false,
+            waveform: Waveform::Geometric,
+            blit_leak: 1.0 - dt / 0.5, // saw integrator, ~0.5 s
+            tri_leak: 1.0 - dt / 0.02, // triangle stage-2, ~20 ms
+            saw_int: 0.0,
+            saw_dc_x1: 0.0,
+            saw_dc_y1: 0.0,
+            tri_int: 0.0,
+            tri_dc_x1: 0.0,
+            tri_dc_y1: 0.0,
             character: Character::new(),
             filter: Svf::new(sr),
         };
@@ -206,9 +250,19 @@ impl Voice {
     /// HQ mode: 2×-oversample the oscillator + character stage and decimate,
     /// so the nonlinear stages do not alias. Adds [`Voice::HQ_LATENCY`]
     /// samples of latency; `false` is bit-identical to the previous behaviour.
+    /// Only applies to [`Waveform::Geometric`] (the BLIT waves are already
+    /// band-limited).
     #[inline]
     pub fn set_hq(&mut self, hq: bool) {
         self.hq = hq;
+    }
+
+    /// Oscillator waveform. `Saw` / `Triangle` are leaky-integrated BLITs;
+    /// they ignore the rolloff/brightness control (fixed `1/k` spectra) and
+    /// the HQ path.
+    #[inline]
+    pub fn set_waveform(&mut self, w: Waveform) {
+        self.waveform = w;
     }
 
     #[inline]
@@ -242,9 +296,65 @@ impl Voice {
         self.rolloff_z = self.rolloff;
         self.bend_z = self.bend;
         self.pan_z = self.pan;
+        self.saw_int = 0.0;
+        self.saw_dc_x1 = 0.0;
+        self.saw_dc_y1 = 0.0;
+        self.tri_int = 0.0;
+        self.tri_dc_x1 = 0.0;
+        self.tri_dc_y1 = 0.0;
         self.character.reset();
         self.filter.reset();
         self.lfo.retrigger();
+    }
+
+    /// One band-limited sawtooth sample: leaky-integrated BLIT with per-sample
+    /// DC removal, so the ramp does not run away. Output ≈ `[-1, 1]`.
+    #[inline]
+    fn blit_saw(&mut self, phase: f64, n: u32, f_eff: f64) -> f64 {
+        // `inv_period` = 1 / (samples per period). The full Dirichlet comb
+        // D_n = 1 + 2·Σ_{k=1}^{n} cos(2πkp) (`dirichlet_blit` returns the Σcos)
+        // is a unit-area band-limited impulse per period; scaling by
+        // `inv_period` and subtracting it makes the pulse zero-mean, so the
+        // integrator does not run away.
+        let inv_period = f_eff / self.sample_rate;
+        let blit = (1.0 + 2.0 * dirichlet_blit(phase, n)) * inv_period;
+        self.saw_int = self.blit_leak * self.saw_int + blit - inv_period;
+        // one-pole DC blocker (R = 0.9995)
+        let y = self.saw_int - self.saw_dc_x1 + 0.9995 * self.saw_dc_y1;
+        self.saw_dc_x1 = self.saw_int;
+        self.saw_dc_y1 = y;
+        clamp(y * 2.0, -1.5, 1.5)
+    }
+
+    /// One band-limited triangle sample. Built from a **bipolar** BLIT
+    /// (impulse `+` at phase 0, `−` at phase ½ — a zero-mean comb at `f0`)
+    /// integrated twice; because every stage is zero-mean the integrators do
+    /// not drift, unlike integrating the (slightly DC-biased) sawtooth.
+    /// `saw_int` is reused as the first integrator (Saw and Triangle never run
+    /// on the same voice at once).
+    #[inline]
+    fn blit_triangle(&mut self, phase: f64, n: u32, f_eff: f64) -> f64 {
+        let inv_period = f_eff / self.sample_rate;
+        let comb = |p: f64| 1.0 + 2.0 * dirichlet_blit(p, n); // full Dirichlet comb
+        let blit_bi = (comb(phase) - comb(phase - 0.5)) * inv_period;
+
+        // stage 1: integrate the ±1 impulse train → a band-limited square, then
+        // a tight DC blocker (any residual bias here becomes a runaway ramp in
+        // stage 2).
+        self.saw_int = self.blit_leak * self.saw_int + blit_bi * 2.0;
+        let sq = self.saw_int - self.saw_dc_x1 + 0.997 * self.saw_dc_y1;
+        self.saw_dc_x1 = self.saw_int;
+        self.saw_dc_y1 = sq;
+
+        // stage 2: integrate the square → triangle. The leak (~20 ms, ~8 Hz
+        // corner) plus the two DC blockers keep it bounded at every pitch; the
+        // price is a gentle sub-bass roll-off (≈ −1.5 dB at 55 Hz, −5 dB at
+        // 28 Hz), which is fine for a synth triangle.
+        self.tri_int = self.tri_leak * self.tri_int + sq * (2.5 * inv_period);
+        let y = self.tri_int - self.tri_dc_x1 + 0.997 * self.tri_dc_y1;
+        self.tri_dc_x1 = self.tri_int;
+        self.tri_dc_y1 = y;
+        clamp(y, -1.5, 1.5)
     }
 
     #[inline]
@@ -289,35 +399,37 @@ impl Voice {
         };
 
         // ---- oscillator ----
-        let peak = geometric_peak(roll_eff, n);
         let fb = self.feedback * self.last_osc;
         let step = f_eff / self.sample_rate; // turns per output sample
-
-        let shaped = if self.hq {
-            // 2× oversample: evaluate the analytic oscillator on-grid and at the
-            // half-step, run both through the character stage, decimate.
-            let fm_step = self.fm_ratio * step;
-            let (fm_lo, fm_hi) = if self.fm_index > 0.0 {
-                (
-                    self.fm_index * sin_turns(self.fm_phase),
-                    self.fm_index * sin_turns(self.fm_phase + 0.5 * fm_step),
-                )
-            } else {
-                (0.0, 0.0)
-            };
-            let osc_lo = geometric_partials(self.phase + fm_lo + fb, roll_eff, n) / peak;
-            let osc_hi =
-                geometric_partials(self.phase + 0.5 * step + fm_hi + fb, roll_eff, n) / peak;
-            self.last_osc = osc_lo;
-            self.character
-                .process_hq(osc_lo as f32, osc_hi as f32)
+        let fm_term = if self.fm_index > 0.0 {
+            self.fm_index * sin_turns(self.fm_phase)
         } else {
-            let fm_term = if self.fm_index > 0.0 {
-                self.fm_index * sin_turns(self.fm_phase)
+            0.0
+        };
+
+        let shaped = if self.waveform == Waveform::Geometric && self.hq {
+            // 2× oversample: analytic oscillator on-grid + at the half-step,
+            // both through the character stage, then decimate.
+            let peak = geometric_peak(roll_eff, n);
+            let fm_hi = if self.fm_index > 0.0 {
+                self.fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * step)
             } else {
                 0.0
             };
-            let osc = geometric_partials(self.phase + fm_term + fb, roll_eff, n) / peak;
+            let osc_lo = geometric_partials(self.phase + fm_term + fb, roll_eff, n) / peak;
+            let osc_hi =
+                geometric_partials(self.phase + 0.5 * step + fm_hi + fb, roll_eff, n) / peak;
+            self.last_osc = osc_lo;
+            self.character.process_hq(osc_lo as f32, osc_hi as f32)
+        } else {
+            let osc = match self.waveform {
+                Waveform::Geometric => {
+                    geometric_partials(self.phase + fm_term + fb, roll_eff, n)
+                        / geometric_peak(roll_eff, n)
+                }
+                Waveform::Saw => self.blit_saw(self.phase + fm_term + fb, n, f_eff),
+                Waveform::Triangle => self.blit_triangle(self.phase + fm_term + fb, n, f_eff),
+            };
             self.last_osc = osc;
             self.character.process(osc as f32)
         };
@@ -471,6 +583,70 @@ mod tests {
             later = later.max(l.abs());
         }
         assert!(first < later, "no de-click ramp: first={first} later={later}");
+    }
+
+    #[test]
+    fn blit_saw_and_triangle_are_bounded_and_shaped() {
+        let sr = 48_000.0;
+        for wf in [Waveform::Saw, Waveform::Triangle] {
+            for &f0 in &[55.0_f64, 220.0, 3000.0] {
+                let mut v = Voice::new(sr);
+                v.set_frequency(f0);
+                v.set_gain(1.0);
+                v.set_waveform(wf);
+                v.reset();
+
+                // skip the integrator start-up transient
+                for _ in 0..4000 {
+                    v.render_sample();
+                }
+                let mut buf = [0.0_f32; 8192];
+                for s in buf.iter_mut() {
+                    let [l, _] = v.render_sample();
+                    assert!(
+                        l.is_finite() && l.abs() <= 1.6,
+                        "{:?} out of range: {l}",
+                        wf as u32
+                    );
+                    *s = l;
+                }
+
+                // single-bin DFT magnitude at f
+                let mag = |f: f64| {
+                    let w = core::f64::consts::TAU * f / sr;
+                    let (mut re, mut im) = (0.0, 0.0);
+                    for (k, &x) in buf.iter().enumerate() {
+                        re += x as f64 * (w * k as f64).cos();
+                        im -= x as f64 * (w * k as f64).sin();
+                    }
+                    (re * re + im * im).sqrt() / buf.len() as f64
+                };
+
+                let fund = mag(f0);
+                let h2 = mag(2.0 * f0);
+                let h3 = mag(3.0 * f0);
+                let above = mag(sr * 0.49);
+
+                assert!(fund > 0.04, "{wf:?} f0={f0}: weak fundamental {fund:.4}");
+                assert!(h3 < fund, "{wf:?} f0={f0}: harmonics not rolling off");
+                assert!(
+                    above < fund * 0.02,
+                    "{wf:?} f0={f0}: energy above Nyquist {above:.5}"
+                );
+                if wf == Waveform::Triangle {
+                    // triangle: even harmonics essentially absent, odd ≈ 1/k²
+                    assert!(
+                        h2 < fund * 0.15,
+                        "triangle f0={f0}: 2nd harmonic too strong: {h2:.4}"
+                    );
+                    let h3_ratio = h3 / fund;
+                    assert!(
+                        (0.06..0.22).contains(&h3_ratio),
+                        "triangle f0={f0}: h3/h1 = {h3_ratio:.3}, expected ≈ 1/9"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

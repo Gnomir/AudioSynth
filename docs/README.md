@@ -19,9 +19,10 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 49 тестів, виміряні числа, бенчмарки, `pluginval`, що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 50 тестів, виміряні числа, бенчмарки, `pluginval`, що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; відсутність DAW-валідації тощо |
-| [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (344 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
+| [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (464 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
+| [09_ROADMAP.md](09_ROADMAP.md) | Дорожня карта: 3 вектори (DSP-розширення · оптимізація/портування · GUI/QA), кожен пункт з Проблема/Рішення/Файли/Оцінка/DoD; рекомендована послідовність |
 
 ## Порядок читання
 
@@ -40,8 +41,9 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус (2026-09-04)
 
-49 тестів проходять · clippy чистий (stable + `--no-default-features --release`
-+ nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP ·
-скрипт `pluginval` готовий (`harmonic_synth/scripts/validate.*` /
-`cargo xtask validate`), **фактичний прогін ще не виконано** (бінарник не
-встановлено).
+50 тестів проходять (46 юніт + 4 інтеграційні) · clippy чистий (stable +
+`--no-default-features --release` + nightly `--features portable-simd`) ·
+плагін збирається у VST3 + CLAP · **pluginval `--strictness-level 8`: повний
+прохід (VST3)** · **clap-validator: 31/31** (2 групи state-тестів виключено —
+баги nih-plug, див. `06_VERIFICATION.md` §6 / `09_ROADMAP.md` Б2) ·
+осцилятор: closed-form additive + band-limited BLIT саw/трикутник.

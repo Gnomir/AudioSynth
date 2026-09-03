@@ -29,7 +29,7 @@
 ### 2.1. `Voice` — POD, `#[repr(C)] Copy`
 
 ```
-size_of::<Voice>()  = 344 байти     (x86-64; те саме на 64-бітних ARM)
+size_of::<Voice>()  = 464 байти     (x86-64; те саме на 64-бітних ARM)
 align_of::<Voice>() = 8
 ```
 
@@ -59,6 +59,10 @@ align_of::<Voice>() = 8
 | | `feedback`, `last_osc` | `f64` | Самофідбек оператора + попередній семпл осцилятора |
 | LFO | `lfo` | `Lfo` (два `f64` + `LfoShape`) | Sine / triangle / saw модулятор |
 | | `lfo_to_rolloff`, `lfo_to_pitch` | `f64` | Роутинг → яскравість (±) / вібрато (центи) |
+| Осц. форма | `waveform` | `Waveform` (`u32`) | Geometric / Saw / Triangle |
+| BLIT саw/трикутник | `blit_leak`, `tri_leak` | `f64` | Коефіцієнти витоку інтеграторів (стадія 1 / стадія 2) |
+| | `saw_int`, `saw_dc_x1`, `saw_dc_y1` | `f64` | Інтегратор пилки/меандру + стан DC-blockerа |
+| | `tri_int`, `tri_dc_x1`, `tri_dc_y1` | `f64` | Другий інтегратор трикутника + стан DC-blockerа |
 | Нелінійні | `character` | `Character` | drive / bias / fold / crush / downsample |
 | | `filter` | `Svf` (112 б) | ZDF state-variable фільтр |
 
@@ -74,8 +78,8 @@ align_of::<Voice>() = 8
 
 ### 2.3. RAM-бюджет
 
-Один голос — 344 б. Плагін `harmonic_synth` тримає `PolySynth<24>`: масив із
-24 `PolyVoice` (`Voice` + дві `Adsr` + метадані нот), ~9–10 КБ, статично, без
+Один голос — 464 б. Плагін `harmonic_synth` тримає `PolySynth<24>`: масив із
+24 `PolyVoice` (`Voice` + дві `Adsr` + метадані нот), ~13 КБ, статично, без
 жодної алокації понад те, що розмістив хост. Для MCU обирайте кількість
 голосів під свій RAM.
 
@@ -140,7 +144,7 @@ Rust за замовчуванням не контрактить `a*b + c` у FM
 ```c
 #include "harmonic_core.h"
 
-size_t sz  = harmonic_voice_size();          /* 344 сьогодні — НЕ хардкодити */
+size_t sz  = harmonic_voice_size();          /* 464 сьогодні — НЕ хардкодити */
 size_t al  = harmonic_voice_align();         /* 8 */
 void  *mem = /* ваша стратегія: арена / пул / стек, >= sz, вирівняно на al */;
 
@@ -213,5 +217,5 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 | Стійкість SVF (`Q≤32`, cutoff-кламп), no-div-by-zero | 4× оверсемплінг · оверсемплінг фільтра (є лише 2× для character) |
 | SR клампиться зі статус-кодом (не тиха підміна) | Кламп-шлях SR у реальному хості не тестований |
 | POD-макет, безпечне побітове копіювання / серіалізація | Валідація в живому DAW / `pluginval` (скрипт готовий) |
-| 49 тестів (математика, стійкість, HQ, межі) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація |
+| 50 тестів (математика, стійкість, HQ, BLIT, межі) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація |
 | Alias-free **чистий** осцилятор під Найквіста | Alias-free при активних `character`/FM — лише в **HQ mode** (2× OS); без нього навмисний «цифровий характер» |

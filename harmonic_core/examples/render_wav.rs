@@ -1,30 +1,50 @@
-//! Renders a short demo to `harmonic_demo.wav` in the current directory:
-//! a 110 Hz note whose spectral tilt `r` sweeps dark → bright → dark, so you
-//! can hear the O(1) partial count open up without any CPU change.
+//! Renders a short demo WAV to the current directory.
 //!
-//!   cargo run --example render_wav --release
+//!   cargo run --example render_wav --release            # geometric r-sweep
+//!   cargo run --example render_wav --release -- saw     # band-limited saw, pitch sweep
+//!   cargo run --example render_wav --release -- tri     # band-limited triangle, pitch sweep
+//!
+//! Geometric: a 110 Hz note whose spectral tilt `r` sweeps dark → bright → dark,
+//! so you can hear the O(1) partial count open up without any CPU change.
+//! Saw / triangle: a two-octave pitch glide, so you can hear the BLIT staying
+//! band-limited (no aliasing whine) as the fundamental climbs.
 
-use harmonic_core::Voice;
+use harmonic_core::{Voice, Waveform};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
 fn main() -> std::io::Result<()> {
     let fs = 48_000.0_f64;
+    let mode = std::env::args().nth(1).unwrap_or_default();
+    let (wf, name): (Waveform, &str) = match mode.as_str() {
+        "saw" => (Waveform::Saw, "harmonic_demo_saw.wav"),
+        "tri" | "triangle" => (Waveform::Triangle, "harmonic_demo_triangle.wav"),
+        _ => (Waveform::Geometric, "harmonic_demo.wav"),
+    };
     let secs = 6.0_f64;
     let total = (fs * secs) as usize;
 
     let mut v = Voice::new(fs);
-    v.set_frequency(110.0);
+    v.set_waveform(wf);
     v.set_gain(0.6);
+    v.set_frequency(110.0);
     v.reset();
 
     let mut pcm: Vec<i16> = Vec::with_capacity(total);
     for i in 0..total {
         let t = i as f64 / total as f64;
-        // triangle sweep of r over [0.05, 0.9995]
-        let tri = 1.0 - (2.0 * t - 1.0).abs();
-        let r = 0.05 + tri * (0.9995 - 0.05);
-        v.set_rolloff(r);
+        let tri = 1.0 - (2.0 * t - 1.0).abs(); // 0 → 1 → 0
+
+        match wf {
+            Waveform::Geometric => {
+                // spectral-tilt sweep at a fixed pitch
+                v.set_rolloff(0.05 + tri * (0.9995 - 0.05));
+            }
+            _ => {
+                // two-octave pitch glide for the BLIT waves
+                v.set_frequency(110.0 * 2.0_f64.powf(2.0 * tri));
+            }
+        }
 
         // one voice, centre pan → L == R; undo the −3 dB equal-power law
         let [l, _] = v.render_sample();
@@ -32,11 +52,8 @@ fn main() -> std::io::Result<()> {
         pcm.push((s * i16::MAX as f32) as i16);
     }
 
-    write_wav("harmonic_demo.wav", fs as u32, &pcm)?;
-    println!(
-        "wrote harmonic_demo.wav  ({:.1}s, {} Hz mono, r sweeps 0.05 -> 0.9995 -> 0.05)",
-        secs, fs as u32
-    );
+    write_wav(name, fs as u32, &pcm)?;
+    println!("wrote {name}  ({secs:.1}s, {} Hz mono, {wf:?})", fs as u32);
     Ok(())
 }
 

@@ -15,9 +15,11 @@ band-limited impulse train) at the limit:
 ```
 
 `r` is a spectral tilt (dark → bright); `n` is clamped to Nyquist so the clean
-oscillator cannot alias. On top of it: a character stage (drive / wavefolder /
-bit-crush / downsampler), FM with operator feedback, a ZDF state-variable filter,
-two ADSR envelopes, an LFO, unison, pitch bend and equal-power pan.
+oscillator cannot alias. Two extra waveforms — a band-limited **sawtooth** and
+**triangle** via leaky-integrated BLIT (Stilson & Smith 1996) — sit alongside it.
+On top: a character stage (drive / wavefolder / bit-crush / downsampler), FM with
+operator feedback, a ZDF state-variable filter, two ADSR envelopes, an LFO,
+unison, pitch bend and equal-power pan.
 
 > Cost is **Θ(log n)** per sample (one `rⁿ` by exponentiation-by-squaring),
 > **Θ(1)** at fixed partial count — measured ~20 M samples/s per voice, flat
@@ -41,7 +43,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 45 unit + integration tests
+cargo test                                    # 46 unit + 4 integration tests
 cargo build --no-default-features --release    # the real no_std build
 
 # plugin bundle (VST3 + CLAP)
@@ -59,10 +61,12 @@ nightly.
 
 ## Status
 
-45 tests pass; `clippy` clean on `std` and `no_std`. The plugin builds and
-bundles, but has **not** been validated in a live DAW or against `pluginval`
-yet — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) for exactly what
-is and isn't covered.
+50 tests pass (46 unit + 4 integration); `clippy` clean on `std`, `no_std` and
+nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3;
+`clap-validator` passes 31/31 on the CLAP (2 state-test groups excluded — known
+`nih-plug` bugs, see [`docs/09_ROADMAP.md`](docs/09_ROADMAP.md) §Б2). Not yet
+validated in a live DAW — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md)
+for exactly what is and isn't covered.
 
 ## License
 

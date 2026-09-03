@@ -20,7 +20,7 @@
 
 use crate::filter::FilterMode;
 use crate::lfo::LfoShape;
-use crate::voice::Voice;
+use crate::voice::{Voice, Waveform};
 
 /// Size in bytes of the opaque voice state. Allocate at least this much.
 #[no_mangle]
@@ -181,6 +181,19 @@ pub unsafe extern "C" fn harmonic_voice_set_filter(
 pub unsafe extern "C" fn harmonic_voice_set_hq(ptr: *mut Voice, hq: u32) {
     if let Some(v) = unsafe { ptr.as_mut() } {
         v.set_hq(hq != 0);
+    }
+}
+
+/// Oscillator waveform: `0` geometric (additive core) · `1` sawtooth ·
+/// `2` triangle. Saw/triangle are band-limited leaky-integrated BLITs; they
+/// ignore `rolloff` and HQ mode.
+///
+/// # Safety
+/// `ptr` must come from a successful [`harmonic_voice_init`].
+#[no_mangle]
+pub unsafe extern "C" fn harmonic_voice_set_waveform(ptr: *mut Voice, waveform: u32) {
+    if let Some(v) = unsafe { ptr.as_mut() } {
+        v.set_waveform(Waveform::from_u32(waveform));
     }
 }
 

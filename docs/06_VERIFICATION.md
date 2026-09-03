@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **49 тестів проходять** (45
+Що перевірено, як, і якими числами. Статус: **50 тестів проходять** (46
 юніт + 4 інтеграційні), clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP.
 
@@ -90,11 +90,12 @@
 | `shapes_are_phase_aligned_at_start` | sine, triangle, saw усі `≈ 0` у фазі 0 |
 | `triangle_and_saw_hit_their_peaks` | пік `> 0.95`, мін `< −0.95` |
 
-### `voice` (5)
+### `voice` (6)
 
 | Тест | Що доводить |
 |---|---|
 | `output_stays_bounded_across_the_range` | `f₀ ∈ {20…12000}`: стерео-пік `∈ (0.05, 1.5]`, скінченне |
+| `blit_saw_and_triangle_are_bounded_and_shaped` | `Saw`/`Triangle` на `f₀ ∈ {55, 220, 3000}`: `\|y\| ≤ 1.6`, енергія над Найквістом `< 2 %·h₁`, гармоніки спадають; трикутник — парні `< 15 %`, `h₃/h₁ ∈ [0.06, 0.22]` (≈ `1/9`) |
 | `equal_power_pan_splits_correctly` | hard-left «протікання» `< 5 %`; центр збалансований `< 5 %` |
 | `free_running_phase_survives_note_on` | `free_running=true` → фаза не змінилась на `reset()`; `false` → фаза = 0 |
 | `declick_ramps_in_from_near_zero` | перший семпл після `reset()` тихіший за пік перших 64 |

@@ -5,7 +5,7 @@
 //! array with no allocation on the audio path. This file is only the host glue:
 //! parameters, MIDI event routing, and the sample loop.
 
-use harmonic_core::{CharParams, FilterMode, LfoShape, PolySynth};
+use harmonic_core::{CharParams, FilterMode, LfoShape, PolySynth, Waveform};
 use nih_plug::prelude::*;
 use std::sync::Arc;
 
@@ -40,6 +40,32 @@ impl FilterKind {
             FilterKind::BandPass => FilterMode::Band,
             FilterKind::HighPass => FilterMode::High,
             FilterKind::Notch => FilterMode::Notch,
+        }
+    }
+}
+
+/// Oscillator waveform, host-visible. `Geometric` is the closed-form additive
+/// core (Brightness = spectral tilt); `Saw` / `Triangle` are band-limited
+/// leaky-integrated BLITs with fixed `1/k` / `1/k²` spectra (they ignore
+/// Brightness and HQ Mode).
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+enum OscKind {
+    #[id = "geom"]
+    #[name = "Geometric"]
+    Geometric,
+    #[id = "saw"]
+    Saw,
+    #[id = "tri"]
+    #[name = "Triangle"]
+    Triangle,
+}
+
+impl OscKind {
+    fn to_core(self) -> Waveform {
+        match self {
+            OscKind::Geometric => Waveform::Geometric,
+            OscKind::Saw => Waveform::Saw,
+            OscKind::Triangle => Waveform::Triangle,
         }
     }
 }
@@ -81,8 +107,12 @@ struct HarmonicSynth {
 
 #[derive(Params)]
 struct HarmonicSynthParams {
+    /// Oscillator waveform: Geometric (additive core) / Saw / Triangle.
+    #[id = "oscwave"]
+    osc_wave: EnumParam<OscKind>,
+
     /// 0 → pure fundamental, 1 → bright flat-spectrum pulse. Maps to the
-    /// geometric rolloff `r`.
+    /// geometric rolloff `r`. Only affects the Geometric oscillator.
     #[id = "bright"]
     brightness: FloatParam,
 
@@ -191,6 +221,8 @@ impl Default for HarmonicSynth {
 impl Default for HarmonicSynthParams {
     fn default() -> Self {
         Self {
+            osc_wave: EnumParam::new("Oscillator", OscKind::Geometric),
+
             brightness: FloatParam::new(
                 "Brightness",
                 0.35,
@@ -498,6 +530,8 @@ impl Plugin for HarmonicSynth {
         // Voice mode, unison, LFO — per-block.
         self.engine
             .set_free_running(self.params.free_running.value());
+        self.engine
+            .set_waveform(self.params.osc_wave.value().to_core());
 
         // HQ mode. Latency is fixed (reported once in initialize); when HQ is
         // off the `dly` line below re-adds the matching delay.
