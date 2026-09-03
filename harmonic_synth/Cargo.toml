@@ -1,0 +1,24 @@
+[package]
+name = "harmonic_synth"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Polyphonic MIDI synth: band-limited additive synthesis via the Dirichlet kernel."
+
+[workspace]
+members = ["xtask"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+harmonic_core = { path = "../harmonic_core" }
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "f36931f7af4646065488a9845d8f8c2f95252c23" }
+
+[profile.release]
+lto = "thin"
+opt-level = 3
+strip = "symbols"
+
+[profile.release.package."*"]
+opt-level = 3

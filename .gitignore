@@ -1,0 +1,22 @@
+# --- Rust ---
+# Build output — ~500 MB here. Regenerate: cargo build [--release]
+target/
+# rustfmt backups
+**/*.rs.bk
+# stray local cargo caches (never commit these if they land in-tree)
+.cargo/registry/
+.cargo/git/
+
+# --- generated artifacts ---
+# demo renders — regenerate: cargo run --example <name> --release
+*.wav
+# plugin bundles live under target/ (already ignored)
+
+# --- editors / OS ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

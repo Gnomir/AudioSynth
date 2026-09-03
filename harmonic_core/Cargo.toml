@@ -1,0 +1,32 @@
+[package]
+name = "harmonic_core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Honest O(1)/O(log n) band-limited additive synthesis via the Dirichlet kernel. no_std, zero-dependency DSP core."
+repository = "https://example.invalid/harmonic_core"
+keywords = ["dsp", "synthesis", "audio", "no_std", "additive"]
+categories = ["multimedia::audio", "no-std"]
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[features]
+# `std` is on by default so `cargo test` / `cargo build` just work.
+# The real firmware / plugin build is `--no-default-features --release`,
+# which is genuinely `#![no_std]` and links no libc math.
+default = ["std"]
+std = []
+# Explicit core::simd path for the batched oscillator. NIGHTLY ONLY
+# (pulls in #![feature(portable_simd)]). Stable builds get the auto-vectorising
+# [f64; 4] version instead, which is portable and has an exact scalar fallback.
+portable-simd = []
+
+[profile.release]
+panic = "abort"
+lto = true
+codegen-units = 1
+opt-level = 3
+
+# no_std dev builds need an eh_personality unless panic=abort, so the
+# no_std path is release-only by contract (standard for embedded crates).
