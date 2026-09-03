@@ -66,6 +66,11 @@ is and isn't covered.
 
 ## License
 
-`harmonic_core` and `harmonic_synth`: **MIT OR Apache-2.0** (declared in each
-crate's `Cargo.toml`; add top-level `LICENSE-MIT` / `LICENSE-APACHE` files
-before publishing).
+Dual-licensed under **MIT** ([`LICENSE-MIT`](LICENSE-MIT)) OR **Apache-2.0**
+([`LICENSE-APACHE`](LICENSE-APACHE)), at your option — the standard Rust
+convention. Both `harmonic_core` and `harmonic_synth` declare
+`license = "MIT OR Apache-2.0"`.
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the work by you shall be dual-licensed as above,
+without any additional terms or conditions.
