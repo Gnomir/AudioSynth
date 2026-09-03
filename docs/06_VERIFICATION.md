@@ -218,9 +218,13 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
    змінились після `load`. (VST3-шлях `pluginval` це проходить — стан
    круглить нормально.)
 2. `ext_state_load`: `Vec::with_capacity(length as usize)` з невалідованим
-   `length` зі стріму → OOM-abort на випадкових байтах (`state-invalid-random`).
+   `length` зі стріму → alloc-abort (`0xc0000409`) на випадкових байтах
+   (`state-invalid-random`).
 
-Треба зарепортити upstream; після фіксу — прибрати `--exclude` зі скриптів.
+Обидва підтверджені на `master`. Фікс написаний і перевірений локально
+(`[patch]` на клон nih-plug → **`clap-validator` 35/35, 0 fail**); корінь,
+репро та патч — **`10_NIH_PLUG_CLAP_BUGS.md`**. Публічний upstream-PR ще не
+подано. Після мержу — прибрати `--exclude` зі скриптів.
 
 Апаратура: Windows 11 x86-64, pluginval 1.0.4, clap-validator 0.4.1.
 
