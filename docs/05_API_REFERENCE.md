@@ -160,7 +160,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* ≈ 200 */
+size_t harmonic_voice_size(void);   /* 344 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 void   harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
 /* деструктора немає — Voice це POD; викликач звільняє свою пам'ять */
