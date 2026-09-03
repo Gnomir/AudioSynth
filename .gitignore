@@ -11,6 +11,8 @@ target/
 # demo renders — regenerate: cargo run --example <name> --release
 *.wav
 # plugin bundles live under target/ (already ignored)
+# downloaded validation tooling (pluginval etc.)
+harmonic_synth/tools/
 
 # --- editors / OS ---
 .vscode/

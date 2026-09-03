@@ -125,18 +125,17 @@ nightly Rust**. На stable явного `core::simd` шляху немає; п�
 
 ---
 
-## 10. Не валідовано в живому DAW
+## 10. Валідатори — так; живий DAW — ще ні
 
-- `pluginval` не запускався (немає в середовищі).
-- Реальні DAW (Ableton, Bitwig, Reaper, Logic) не тестувались.
-- Перевірено лише **структуру бандлів**: `.clap` містить `clap_entry`;
-  `.vst3` має розкладку `Contents/x86_64-win/` та експорти
-  `GetPluginFactory`/`InitDll`/`ExitDll`.
-- Скрипт валідації готовий (`harmonic_synth/scripts/validate.{ps1,sh}` /
-  `cargo xtask validate`) — покриває state recall, зміну блоку/SR на льоту,
-  перевірку алокацій, автоматизацію, fuzzing через `pluginval` strictness 8 —
-  але `pluginval` треба встановити (`github.com/Tracktion/pluginval`), у цьому
-  оточенні його нема, тож фактичний прогін ще не виконано.
+- **VST3: `pluginval --strictness-level 8` — повний прохід** (`cargo xtask
+  validate`). Включно з Plugin state / state restoration, зміною блоку та SR
+  на льоту, перевіркою алокацій, автоматизацією, потокобезпекою, fuzzing.
+- **CLAP: `clap-validator` — 31/31**, але тести `state-reproducibility-*` та
+  `state-invalid-random` **виключені** — це баги CLAP-обгортки nih-plug
+  (`ext_state_load` не постить `Task::RescanParamValues`; не валідує `length`
+  стріму → OOM-abort). Не наш код; VST3-шлях стану проходить. Деталі —
+  `06_VERIFICATION.md §6`.
+- Реальні DAW (Ableton, Bitwig, Reaper, Logic) **ще не тестувались**.
 
 ---
 
