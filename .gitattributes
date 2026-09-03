@@ -1,0 +1,3 @@
+# Normalise line endings — commit LF, check out native.
+# Without this, Windows contributors commit CRLF and Linux/macOS sees churn.
+* text=auto eol=lf
