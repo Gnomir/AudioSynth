@@ -66,28 +66,81 @@ fn sin_kernel(phi: f64) -> f64 {
     phi * p
 }
 
-/// `cos(2π · turns)` for any real `turns` (`|turns| < 2^51`).
-#[inline]
-pub fn cos_turns(turns: f64) -> f64 {
-    // Fold to [-0.5, 0.5] turns  →  angle in [-π, π].
-    let t = turns - round_int(turns);
-    // cos is even: reduce to [0, 0.5] turns.
-    let a = fabs(t);
-    // cos(2πa) = -cos(2π(0.5 - a)); fold [0.25, 0.5] → [0, 0.25].
+/// `cos(φ)` for `|φ| ≤ π/4` — 4-term Horner. Error `< 4·10⁻⁶`. Half the ops of
+/// [`cos_kernel`]; use for modulators (LFO, pan), not the carrier.
+#[inline(always)]
+fn cos_kernel_fast(phi: f64) -> f64 {
+    let u = phi * phi;
+    let p = -1.0 / 720.0_f64;
+    let p = p * u + (1.0 / 24.0);
+    let p = p * u + (-0.5);
+    p * u + 1.0
+}
+
+/// `sin(φ)` for `|φ| ≤ π/4` — 4-term Horner. Error `< 4·10⁻⁷`.
+#[inline(always)]
+fn sin_kernel_fast(phi: f64) -> f64 {
+    let u = phi * phi;
+    let p = -1.0 / 5040.0_f64;
+    let p = p * u + (1.0 / 120.0);
+    let p = p * u + (-1.0 / 6.0);
+    let p = p * u + 1.0;
+    phi * p
+}
+
+/// Octant fold shared by the precise and fast `cos_turns` variants.
+/// Returns `(reduced_angle_rad ∈ [0, π/4], outer_sign, use_sin_kernel)`.
+#[inline(always)]
+fn reduce_turns(turns: f64) -> (f64, f64, bool) {
+    let t = turns - round_int(turns); // [-0.5, 0.5]
+    let a = fabs(t); // [0, 0.5], cos is even
     let (a, sign) = if a > 0.25 { (0.5 - a, -1.0) } else { (a, 1.0) };
-    // a ∈ [0, 0.25] → angle in [0, π/2]. Split at π/4 (= 0.125 turns).
     if a <= 0.125 {
-        sign * cos_kernel(a * TAU)
+        (a * TAU, sign, false)
     } else {
-        // cos(θ) = sin(π/2 − θ);  (0.25 − a) turns ∈ [0, 0.125] → ≤ π/4.
-        sign * sin_kernel((0.25 - a) * TAU)
+        ((0.25 - a) * TAU, sign, true) // cos θ = sin(π/2 − θ)
     }
 }
 
-/// `sin(2π · turns) = cos(2π · (turns − ¼))`.
+/// `cos(2π · turns)` for any real `turns` (`|turns| < 2^51`). Full precision.
+#[inline]
+pub fn cos_turns(turns: f64) -> f64 {
+    let (phi, sign, use_sin) = reduce_turns(turns);
+    if use_sin {
+        sign * sin_kernel(phi)
+    } else {
+        sign * cos_kernel(phi)
+    }
+}
+
+/// `sin(2π · turns) = cos(2π · (turns − ¼))`. Full precision.
 #[inline]
 pub fn sin_turns(turns: f64) -> f64 {
     cos_turns(turns - 0.25)
+}
+
+/// `cos(2π · turns)` — ~16-bit accurate (error `< 5·10⁻⁶`). For modulation
+/// signals (LFO, pan) where the carrier's ULP precision is wasted CPU.
+#[inline]
+pub fn cos_turns_fast(turns: f64) -> f64 {
+    let (phi, sign, use_sin) = reduce_turns(turns);
+    if use_sin {
+        sign * sin_kernel_fast(phi)
+    } else {
+        sign * cos_kernel_fast(phi)
+    }
+}
+
+/// `sin(2π · turns)` — fast (see [`cos_turns_fast`]).
+#[inline]
+pub fn sin_turns_fast(turns: f64) -> f64 {
+    cos_turns_fast(turns - 0.25)
+}
+
+/// `(sin, cos)(2π · turns)` — fast. For the equal-power panner.
+#[inline]
+pub fn sin_cos_turns_fast(turns: f64) -> (f64, f64) {
+    (cos_turns_fast(turns - 0.25), cos_turns_fast(turns))
 }
 
 /// `(sin(2π·turns), cos(2π·turns))` — one call site for both.
@@ -244,6 +297,24 @@ mod tests {
             x += 0.00131;
         }
         assert!(max_err < 2e-11, "sin max abs error {max_err:e}");
+    }
+
+    #[test]
+    fn fast_trig_is_16bit_accurate() {
+        let mut max_c = 0.0_f64;
+        let mut max_s = 0.0_f64;
+        let mut x = -11.37_f64;
+        while x < 11.0 {
+            max_c = max_c.max((cos_turns_fast(x) - ref_cos(x)).abs());
+            max_s = max_s.max((sin_turns_fast(x) - ref_sin(x)).abs());
+            x += 0.00073;
+        }
+        assert!(max_c < 5e-6, "cos_turns_fast err {max_c:e}");
+        assert!(max_s < 5e-6, "sin_turns_fast err {max_s:e}");
+        // sin_cos_turns_fast agrees with the scalars
+        let (s, c) = sin_cos_turns_fast(0.3);
+        assert!((s - sin_turns_fast(0.3)).abs() < 1e-15);
+        assert!((c - cos_turns_fast(0.3)).abs() < 1e-15);
     }
 
     #[test]

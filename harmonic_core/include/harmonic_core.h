@@ -23,8 +23,18 @@ size_t harmonic_voice_size(void);
 size_t harmonic_voice_align(void);
 
 /* Initialise a voice into caller-owned memory (>= harmonic_voice_size() bytes,
- * aligned to harmonic_voice_align()). sample_rate in Hz. */
-void harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
+ * aligned to harmonic_voice_align()). sample_rate in Hz.
+ *
+ * Returns:  0  sample_rate accepted as given
+ *           1  was < 8000 Hz, clamped up   (pitch/time wrong; pick a real rate)
+ *           2  was > 768000 Hz, clamped down (same caveat)
+ *           3  was not finite, defaulted to 48000 Hz
+ *          -1  voice was NULL, nothing written
+ * Read harmonic_voice_sample_rate() for the rate actually used. */
+int harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
+
+/* The sample rate the voice actually runs at (after clamping). 0 for NULL. */
+double harmonic_voice_sample_rate(const HarmonicVoice *voice);
 
 /* Parameter setters. Values are clamped internally.
  *   frequency  -> [1, fs/2)
@@ -50,6 +60,11 @@ void harmonic_voice_set_filter(HarmonicVoice *voice, unsigned int mode,
  * to_rolloff adds to brightness (+/-); to_pitch_cents is vibrato depth. */
 void harmonic_voice_set_lfo(HarmonicVoice *voice, double rate_hz, unsigned int shape,
                             double to_rolloff, double to_pitch_cents);
+
+/* HQ mode: hq != 0 -> 2x-oversample the oscillator + character stage so the
+ * nonlinear stages (drive / fold / crush / FM) don't alias. Adds 3 samples of
+ * latency; hq == 0 is bit-identical to leaving it off. */
+void harmonic_voice_set_hq(HarmonicVoice *voice, unsigned int hq);
 
 /* Reset phase + smoothers + filter state (call on note-on). Honors
  * free_running: in that mode the oscillator phase keeps running. */

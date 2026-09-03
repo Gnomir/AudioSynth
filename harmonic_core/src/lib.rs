@@ -77,10 +77,69 @@ pub use lfo::{Lfo, LfoShape};
 pub use poly::{midi_to_hz, PolySynth};
 pub use voice::Voice;
 
+/// Supported sample-rate range, in Hz. Outside this the prewarp `tan(π fc/fs)`
+/// and the smoother time constants lose meaning.
+pub const SAMPLE_RATE_MIN: f64 = 8_000.0;
+pub const SAMPLE_RATE_MAX: f64 = 768_000.0;
+
+/// Outcome of validating a host-supplied sample rate. `#[repr(i32)]` so it can
+/// double as the C-ABI return code of [`ffi::harmonic_voice_init`].
+#[repr(i32)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SampleRateStatus {
+    /// Inside `[SAMPLE_RATE_MIN, SAMPLE_RATE_MAX]` — used exactly as requested.
+    Ok = 0,
+    /// Below the minimum — raised to `SAMPLE_RATE_MIN`. Pitch/time will be off;
+    /// the host should pick a supported rate.
+    ClampedLow = 1,
+    /// Above the maximum — lowered to `SAMPLE_RATE_MAX`. Same caveat.
+    ClampedHigh = 2,
+    /// Not finite (NaN / ∞) — defaulted to 48 kHz.
+    Defaulted = 3,
+}
+
+/// Clamp a requested sample rate into the supported range and report what
+/// happened, instead of silently substituting a default.
+#[inline]
+pub fn validate_sample_rate(hz: f64) -> (f64, SampleRateStatus) {
+    if !hz.is_finite() {
+        (48_000.0, SampleRateStatus::Defaulted)
+    } else if hz < SAMPLE_RATE_MIN {
+        (SAMPLE_RATE_MIN, SampleRateStatus::ClampedLow)
+    } else if hz > SAMPLE_RATE_MAX {
+        (SAMPLE_RATE_MAX, SampleRateStatus::ClampedHigh)
+    } else {
+        (hz, SampleRateStatus::Ok)
+    }
+}
+
 #[cfg(not(feature = "std"))]
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
     // The audio path is written to never panic. If a panic ever reaches here
     // in a real build, hanging is safer than unwinding through a C ABI.
     loop {}
+}
+
+#[cfg(test)]
+mod sr_tests {
+    use super::*;
+
+    #[test]
+    fn sample_rate_validation_reports_instead_of_substituting() {
+        assert_eq!(validate_sample_rate(48_000.0), (48_000.0, SampleRateStatus::Ok));
+        assert_eq!(validate_sample_rate(4_000.0), (8_000.0, SampleRateStatus::ClampedLow));
+        assert_eq!(validate_sample_rate(2_000_000.0), (768_000.0, SampleRateStatus::ClampedHigh));
+        assert_eq!(validate_sample_rate(f64::NAN).1, SampleRateStatus::Defaulted);
+        assert_eq!(validate_sample_rate(f64::INFINITY).1, SampleRateStatus::Defaulted);
+
+        let (v, s) = Voice::new_checked(1_000.0);
+        assert_eq!(s, SampleRateStatus::ClampedLow);
+        assert_eq!(v.sample_rate(), 8_000.0);
+
+        let mut poly: PolySynth<4> = PolySynth::new(48_000.0);
+        assert_eq!(poly.set_sample_rate(999_999.0), SampleRateStatus::ClampedHigh);
+        assert_eq!(poly.sample_rate(), 768_000.0);
+        assert_eq!(poly.set_sample_rate(96_000.0), SampleRateStatus::Ok);
+    }
 }

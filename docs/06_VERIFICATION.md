@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **45 тестів проходять** (41
+Що перевірено, як, і якими числами. Статус: **49 тестів проходять** (45
 юніт + 4 інтеграційні), clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP.
 
@@ -24,15 +24,22 @@
 
 ## 2. Каталог тестів
 
-### `trig` (5)
+### `trig` (6)
 
 | Тест | Що доводить |
 |---|---|
 | `cos_matches_reference_across_many_turns` | `cos_turns` vs `std`, макс. похибка `< 2·10⁻¹¹` абс. на `t ∈ [−37, 37]` |
 | `sin_matches_reference_across_many_turns` | те саме для `sin_turns` |
+| `fast_trig_is_16bit_accurate` | `cos/sin_turns_fast` vs `std`, макс. похибка `< 5·10⁻⁶` (для LFO/панорами) |
 | `exp2_matches_reference` | `exp2` vs `std`, макс. відн. похибка `< 1.5·10⁻⁶` на `x ∈ [−60, 60]` |
 | `floor_f64_matches_reference` | точна відповідність `f64::floor` |
 | `exact_at_cardinal_points` | `cos_turns` у `{0, 0.25, 0.5, 2.5}` = `{1, 0, −1, −1}` |
+
+### `lib::sr_tests` (1)
+
+| Тест | Що доводить |
+|---|---|
+| `sample_rate_validation_reports_instead_of_substituting` | `validate_sample_rate` клампить (не підставляє 48k) і повертає `Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`; `Voice::new_checked` та `PolySynth::set_sample_rate` пробрасують статус |
 
 ### `kernel` (5)
 
@@ -44,13 +51,14 @@
 | `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно = `geometric_partials`, `n` до 1500, `r` до 1.0 |
 | `geometric_reduces_to_fundamental_for_small_r` | `r = 10⁻³` → нормований вихід ≈ `cos(x)` у межах `5·10⁻³` |
 
-### `character` (4)
+### `character` (5)
 
 | Тест | Що доводить |
 |---|---|
 | `clean_params_are_bit_identity` | `CLEAN` → `process(x) == x` бітово, на 2000 значеннях |
 | `drive_adds_energy_but_stays_bounded` | `drive 0.8` піднімає тихий сигнал (пік `> 0.3`), лишається `|y| ≤ 1.05` |
 | `fold_and_grit_stay_finite_and_bounded` | усі 5 стадій разом на 48000 семплів → скінченне, `|y| ≤ 1.2` |
+| `hq_path_is_bounded_and_reduces_alias_energy` | 2×+децимація на near-Nyquist тоні в фолдер → менше LF-енергії (аліасів), ніж 1× |
 | `round_f32_behaves` | `round_f32` округлює до найближчого |
 
 ### `filter` (7)
@@ -92,7 +100,7 @@
 | `declick_ramps_in_from_near_zero` | перший семпл після `reset()` тихіший за пік перших 64 |
 | `pitch_bend_and_lfo_stay_finite` | bend `+2 st` + LFO вібрато `25 ct` → пік `≤ 1.5` на 96000 семплів |
 
-### `poly` (8)
+### `poly` (9)
 
 | Тест | Що доводить |
 |---|---|
@@ -101,6 +109,7 @@
 | `voice_stealing_never_panics_or_clips` | 40 note-on на 4-голосний → `≤ 4` активних, `|L|,|R| ≤ 1.001` |
 | `unison_stacks_voices_and_spreads_stereo` | `unison 4` → 4 голоси; ширина `(L−R)²/(L+R)² > 0.05`; після note-off → 0 |
 | `pitch_bend_shifts_all_voices` | `unison 3` + bend `+2 st` / `−12 st` → пік `≤ 1.5` |
+| `hq_mode_stays_bounded_and_adds_latency` | `set_hq(true)` + drive+fold → пік `≤ 1.5` на 48000 |
 | `lfo_modulation_stays_bounded` | LFO triangle `→bright 0.35` + вібрато `30 ct` → пік `≤ 1.5` на 96000 |
 | `filter_envelope_is_independent_of_amp_envelope` | фільтровий свіп (`sustain 0`) закриває HF `> 1.5×`, поки амплітудна ADSR тримає ноту |
 | `soft_clip_is_gentle_and_bounded` | `≈` identity при `x ≤ 0.1`; `|soft_clip(±1000)| ≤ 1` |
@@ -122,10 +131,12 @@
 
 | f₀ | гармонік | семплів/с | × realtime @48k |
 |---|---|---|---|
-| 8000 Hz | 3 | ~20.7 M | ~432 |
-| 880 Hz | 27 | ~19.7 M | ~411 |
-| 110 Hz | 218 | ~19.6 M | ~408 |
-| 20 Hz | 1200 | ~18.9 M | ~394 |
+| 8000 Hz | 3 | ~21.9 M | ~456 |
+| 880 Hz | 27 | ~20.8 M | ~433 |
+| 110 Hz | 218 | ~20.6 M | ~430 |
+| 20 Hz | 1200 | ~20.0 M | ~417 |
+
+(після переводу LFO/панорами на швидку тригонометрію — ~+5 % vs попередній вимір)
 
 Розкид ~10 % на діапазоні гармонік ×400 → вартість плоска по `n`
 (підтверджує `Θ(log n)`, спростовує `Θ(n)`).
@@ -171,7 +182,7 @@
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 45 / 45 |
+| Тести | `cargo test` | 49 / 49 |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -187,13 +198,32 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 
 ---
 
-## 6. Що НЕ покрито
+## 6. DAW / `pluginval`
+
+Скрипт валідації: `harmonic_synth/scripts/validate.ps1` (Windows) /
+`validate.sh` (Unix), або `cargo xtask validate`. Він збирає бандли й
+проганяє `pluginval --strictness-level 8 --validate-in-process`, що покриває:
+
+- **state recall** — збереження й побайтове відновлення стану параметрів;
+- **зміна розміру аудіо-блоку хостом на льоту**;
+- **зміна частоти дискретизації хостом на льоту**;
+- **відсутність алокацій** у `process` (in-process режим);
+- автоматизація параметрів, потокобезпека, розкладка шин, fuzzing.
+
+`pluginval` — зовнішня утиліта (`github.com/Tracktion/pluginval`); у цьому
+оточенні не встановлена, тож **фактичний прогін ще не виконано** — скрипт
+готовий, чекає на бінарник.
+
+---
+
+## 7. Що НЕ покрито
 
 - **Живий DAW** (Ableton, Bitwig, Reaper, Logic) — не запускалось.
-- **`pluginval`** — не встановлено в середовищі.
+- **`pluginval`** — скрипт готовий, бінарник не встановлено (див. §6).
 - **Не-x86 таргети** (ARM Cortex-M, AArch64, RISC-V) — код `no_std`-сумісний
   і не має платформних припущень, але не компілювався/не тестувався там.
-- **Частоти дискретизації поза `[8000, 768000]` Hz** — тихо падають у 48000.
+- **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі
+  статус-кодом (не тихо), але сам кламп-шлях у реальному хості не тестований.
 - **Довготривалий числовий дрейф** фазового акумулятора (`f64` phase, wrap
   щоперіоду — накопичення похибки обмежене, але не виміряне на годинах).
 - **Автоматизація параметрів на межі блоку** в реальному хості (тестовано

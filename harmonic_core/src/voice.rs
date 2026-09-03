@@ -9,7 +9,8 @@ use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
 use crate::kernel::{geometric_partials, geometric_peak};
 use crate::lfo::{Lfo, LfoShape};
-use crate::trig::{exp2, floor_f64, sin_cos_turns, sin_turns};
+use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns};
+use crate::{validate_sample_rate, SampleRateStatus};
 
 /// Hard ceiling on partial count (error budget + `r^n` loop length).
 pub const MAX_PARTIALS: u32 = 2048;
@@ -52,6 +53,8 @@ pub struct Voice {
     lfo_to_rolloff: f64, // added to r, ±
     lfo_to_pitch: f64,   // cents of vibrato
 
+    hq: bool, // 2× oversample the oscillator + character stage
+
     character: Character,
     filter: Svf,
 }
@@ -60,17 +63,25 @@ impl Voice {
     pub const ROLLOFF_MIN: f64 = 1.0e-3;
     pub const ROLLOFF_MAX: f64 = 0.9995;
 
+    /// Latency, in samples, added by [`Voice::set_hq`] `true` (the character
+    /// decimation FIR). Zero when HQ is off.
+    pub const HQ_LATENCY: usize = crate::character::HQ_LATENCY;
+
+    /// Create a voice. Non-finite / out-of-range `sample_rate` is clamped —
+    /// see [`Voice::new_checked`] to also learn what happened.
     pub fn new(sample_rate: f64) -> Self {
-        let sr = if (8_000.0..=768_000.0).contains(&sample_rate) {
-            sample_rate
-        } else {
-            48_000.0
-        };
+        Self::new_checked(sample_rate).0
+    }
+
+    /// Like [`Voice::new`], and also reports whether `sample_rate` was accepted
+    /// as given, clamped to `[8000, 768000]`, or (if non-finite) defaulted.
+    pub fn new_checked(sample_rate: f64) -> (Self, SampleRateStatus) {
+        let (sr, status) = validate_sample_rate(sample_rate);
         let dt = 1.0 / sr;
         let smooth_coeff = 1.0 - dt / (0.005 + dt); // ~5 ms
         let pan_smooth = 1.0 - dt / (0.010 + dt); // ~10 ms
 
-        Voice {
+        let v = Voice {
             sample_rate: sr,
             phase: 0.0,
             freq: 110.0,
@@ -94,9 +105,17 @@ impl Voice {
             lfo: Lfo::new(),
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
+            hq: false,
             character: Character::new(),
             filter: Svf::new(sr),
-        }
+        };
+        (v, status)
+    }
+
+    /// The (validated) sample rate this voice runs at.
+    #[inline]
+    pub fn sample_rate(&self) -> f64 {
+        self.sample_rate
     }
 
     // ---- pitch ----
@@ -184,6 +203,14 @@ impl Voice {
         self.character.set_params(p);
     }
 
+    /// HQ mode: 2×-oversample the oscillator + character stage and decimate,
+    /// so the nonlinear stages do not alias. Adds [`Voice::HQ_LATENCY`]
+    /// samples of latency; `false` is bit-identical to the previous behaviour.
+    #[inline]
+    pub fn set_hq(&mut self, hq: bool) {
+        self.hq = hq;
+    }
+
     #[inline]
     pub fn set_filter_mode(&mut self, mode: FilterMode) {
         self.filter.set_mode(mode);
@@ -262,20 +289,40 @@ impl Voice {
         };
 
         // ---- oscillator ----
-        let fm_term = if self.fm_index > 0.0 {
-            self.fm_index * sin_turns(self.fm_phase)
-        } else {
-            0.0
-        };
-        let pm = fm_term + self.feedback * self.last_osc;
-
-        let raw = geometric_partials(self.phase + pm, roll_eff, n);
         let peak = geometric_peak(roll_eff, n);
-        let osc = raw / peak;
-        self.last_osc = osc;
+        let fb = self.feedback * self.last_osc;
+        let step = f_eff / self.sample_rate; // turns per output sample
 
-        // ---- character → filter ----
-        let shaped = self.character.process(osc as f32);
+        let shaped = if self.hq {
+            // 2× oversample: evaluate the analytic oscillator on-grid and at the
+            // half-step, run both through the character stage, decimate.
+            let fm_step = self.fm_ratio * step;
+            let (fm_lo, fm_hi) = if self.fm_index > 0.0 {
+                (
+                    self.fm_index * sin_turns(self.fm_phase),
+                    self.fm_index * sin_turns(self.fm_phase + 0.5 * fm_step),
+                )
+            } else {
+                (0.0, 0.0)
+            };
+            let osc_lo = geometric_partials(self.phase + fm_lo + fb, roll_eff, n) / peak;
+            let osc_hi =
+                geometric_partials(self.phase + 0.5 * step + fm_hi + fb, roll_eff, n) / peak;
+            self.last_osc = osc_lo;
+            self.character
+                .process_hq(osc_lo as f32, osc_hi as f32)
+        } else {
+            let fm_term = if self.fm_index > 0.0 {
+                self.fm_index * sin_turns(self.fm_phase)
+            } else {
+                0.0
+            };
+            let osc = geometric_partials(self.phase + fm_term + fb, roll_eff, n) / peak;
+            self.last_osc = osc;
+            self.character.process(osc as f32)
+        };
+
+        // ---- filter ----
         let filtered = self.filter.process(shaped);
 
         // ---- de-click ----
@@ -288,18 +335,18 @@ impl Voice {
         let mono = filtered * self.gain as f32 * dg;
 
         // ---- advance phases ----
-        self.fm_phase += f_eff * self.fm_ratio / self.sample_rate;
+        self.fm_phase += self.fm_ratio * step;
         if self.fm_phase >= 1.0 || self.fm_phase <= -1.0 {
             self.fm_phase -= floor_f64(self.fm_phase);
         }
-        self.phase += f_eff / self.sample_rate;
+        self.phase += step;
         if self.phase >= 1.0 {
             self.phase -= 1.0;
         }
 
-        // ---- equal-power pan ----
+        // ---- equal-power pan ---- (a modulator → fast trig is plenty)
         // angle θ ∈ [0, π/2]; in turns that is (pan·0.5 + 0.5)·0.25
-        let (sin_p, cos_p) = sin_cos_turns((self.pan_z * 0.5 + 0.5) * 0.25);
+        let (sin_p, cos_p) = sin_cos_turns_fast((self.pan_z * 0.5 + 0.5) * 0.25);
         [mono * cos_p as f32, mono * sin_p as f32]
     }
 

@@ -68,11 +68,9 @@ impl Svf {
     pub const MIN_CUTOFF_HZ: f64 = 20.0;
 
     pub fn new(sample_rate: f64) -> Self {
-        let sr = if (8_000.0..=768_000.0).contains(&sample_rate) {
-            sample_rate
-        } else {
-            48_000.0
-        };
+        // Callers (Voice / PolySynth) already validate; this is a defensive
+        // fallback for direct construction.
+        let sr = crate::validate_sample_rate(sample_rate).0;
         // ~1 ms smoother: fast enough for a snappy filter envelope, slow enough
         // to kill the zipper from block-rate cutoff automation.
         let dt = 1.0 / sr;

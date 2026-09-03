@@ -2,7 +2,7 @@
 //! Sine / triangle / saw, all phase-aligned (rising through 0 at phase 0) so
 //! swapping shape mid-note does not jump.
 
-use crate::trig::{floor_f64, sin_turns};
+use crate::trig::{floor_f64, sin_turns_fast};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -71,7 +71,8 @@ impl Lfo {
             self.phase -= 1.0;
         }
         match self.shape {
-            LfoShape::Sine => sin_turns(p) as f32,
+            // a modulator — 16-bit trig is plenty, and it halves the cost
+            LfoShape::Sine => sin_turns_fast(p) as f32,
             LfoShape::Triangle => {
                 // rising through 0 at p=0: 0 → +1 → 0 → −1 → 0
                 let t = if p < 0.25 {

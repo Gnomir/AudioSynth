@@ -34,9 +34,12 @@ cargo check                                     # fast typecheck
 cd harmonic_synth
 cargo build --release
 cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_synth.{vst3,clap}
+cargo xtask validate                            # build + run Tracktion pluginval (needs pluginval installed)
 ```
 
-There is **no CI** — run the lints and tests yourself.
+There is **no CI** — run the lints and tests yourself. `cargo xtask validate`
+(or `scripts/validate.{ps1,sh}`) covers state recall, block-size / sample-rate
+changes, and allocation checks via `pluginval` once it's on PATH.
 
 ## Code style
 

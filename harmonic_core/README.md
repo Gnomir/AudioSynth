@@ -151,9 +151,12 @@ oscillator / offline rendering.
 4. ~~Dedicated filter ADSR.~~ ✔ · ~~Stereo + equal-power pan + unison.~~ ✔
 5. ~~Pitch bend + LFO (sine/tri/saw → brightness, vibrato).~~ ✔ · ~~De-click + free-running phase.~~ ✔
 6. ~~Batched / SIMD oscillator.~~ ✔ `geometric_partials_x4`
-7. Oversampled (2×) drive/fold for *optional* clean saturation.
-8. Leaky-integrated BLIT → band-limited saw/triangle (still O(1)).
-9. Route the batched oscillator into a filter-free "clean voice" fast path.
-10. Per-voice LFO retrigger mode + LFO → cutoff / FM.
-11. Minimal GUI (`nih_plug_vizia`): brightness, both envelopes, filter, spectrum.
-12. `pluginval` / live-DAW validation.
+7. ~~2× oversampled oscillator + Character ("HQ Mode") — clean nonlinear stages.~~ ✔
+8. ~~Sample-rate validation with a status code (was a silent 48 k fallback).~~ ✔
+9. ~~Fast 4-term trig for LFO / pan (16-bit is plenty for modulators).~~ ✔
+10. ~~`pluginval` script (`cargo xtask validate`).~~ ✔ — run pending an install.
+11. 4× HQ + oversampled filter; oversample the master `soft_clip`.
+12. Leaky-integrated BLIT → band-limited saw/triangle (still O(1)).
+13. Filter-free "clean voice" fast path over the batched oscillator.
+14. Spatial SIMD: 4–8 voices in parallel (SoA `PolySynth`).
+15. Minimal GUI (`nih_plug_vizia`).
