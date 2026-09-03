@@ -66,22 +66,17 @@ impl LfoKind {
     }
 }
 
+/// The plugin reports this constant latency (the HQ decimator's group delay).
+/// With HQ off, `HarmonicSynth::dly` re-adds the matching delay so the
+/// reported figure stays honest without ever *changing* at runtime.
+const HQ_LAT: usize = harmonic_core::Voice::HQ_LATENCY;
+
 struct HarmonicSynth {
     params: Arc<HarmonicSynthParams>,
     engine: PolySynth<MAX_VOICES>,
-    /// Tracks the HQ toggle so we only re-report latency on a real change.
-    last_hq: bool,
-}
-
-impl HarmonicSynth {
-    #[inline]
-    fn hq_latency(&self) -> u32 {
-        if self.params.hq_mode.value() {
-            harmonic_core::Voice::HQ_LATENCY as u32
-        } else {
-            0
-        }
-    }
+    /// Compensating stereo delay, only used when HQ mode is off.
+    dly: [[f32; 2]; HQ_LAT],
+    dly_pos: usize,
 }
 
 #[derive(Params)]
@@ -187,7 +182,8 @@ impl Default for HarmonicSynth {
         Self {
             params: Arc::new(HarmonicSynthParams::default()),
             engine: PolySynth::new(48_000.0),
-            last_hq: false,
+            dly: [[0.0; 2]; HQ_LAT],
+            dly_pos: 0,
         }
     }
 }
@@ -456,24 +452,31 @@ impl Plugin for HarmonicSynth {
         buffer_config: &BufferConfig,
         context: &mut impl InitContext<Self>,
     ) -> bool {
+        // Clamp + warn, but keep running — a host that hands us an odd rate
+        // (pluginval tries 1234 Hz) should still get audio, not a rejected
+        // activate. Direct/embedded callers get the status via the C ABI.
         let status = self
             .engine
             .set_sample_rate(buffer_config.sample_rate as f64);
         if status != harmonic_core::SampleRateStatus::Ok {
             nih_plug::nih_log!(
-                "harmonic_synth: sample rate {} Hz is outside the supported range (8 kHz - 768 kHz); rejecting",
-                buffer_config.sample_rate
+                "harmonic_synth: sample rate {} Hz outside 8 kHz - 768 kHz; clamped to {} Hz (pitch/time will be off)",
+                buffer_config.sample_rate,
+                self.engine.sample_rate()
             );
-            return false;
         }
         self.engine.set_hq(self.params.hq_mode.value());
-        context.set_latency_samples(self.hq_latency());
-        self.last_hq = self.params.hq_mode.value();
+        // The HQ decimator's group delay. Reported unconditionally so the
+        // latency never changes at runtime (CLAP forbids that outside
+        // activate); when HQ is off, `dly` below re-adds the matching delay.
+        context.set_latency_samples(harmonic_core::Voice::HQ_LATENCY as u32);
         true
     }
 
     fn reset(&mut self) {
         self.engine.reset();
+        self.dly = [[0.0; 2]; HQ_LAT];
+        self.dly_pos = 0;
     }
 
     fn process(
@@ -496,14 +499,10 @@ impl Plugin for HarmonicSynth {
         self.engine
             .set_free_running(self.params.free_running.value());
 
-        // HQ mode: when it toggles, the character stage's decimation FIR
-        // latency changes — tell the host so it can re-sync.
+        // HQ mode. Latency is fixed (reported once in initialize); when HQ is
+        // off the `dly` line below re-adds the matching delay.
         let hq = self.params.hq_mode.value();
         self.engine.set_hq(hq);
-        if hq != self.last_hq {
-            context.set_latency_samples(self.hq_latency());
-            self.last_hq = hq;
-        }
         self.engine.set_unison(
             self.params.unison_voices.value() as u32,
             self.params.unison_detune.value() as f64,
@@ -577,7 +576,16 @@ impl Plugin for HarmonicSynth {
             self.engine
                 .set_feedback(self.params.feedback.smoothed.next() as f64);
 
-            let [l, r] = self.engine.render_sample();
+            let mut out = self.engine.render_sample();
+            if !hq {
+                // HQ is off (engine adds 0 latency) but we report HQ_LAT — so
+                // push through a matching delay to keep PDC honest.
+                let d = self.dly[self.dly_pos];
+                self.dly[self.dly_pos] = out;
+                self.dly_pos = (self.dly_pos + 1) % HQ_LAT;
+                out = d;
+            }
+            let [l, r] = out;
             let mut ch = channel_samples.into_iter();
             if let Some(left) = ch.next() {
                 *left = l;

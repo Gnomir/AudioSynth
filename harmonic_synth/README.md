@@ -95,15 +95,20 @@ matching CLAP folder.
 ## Status
 
 - Builds and bundles clean on `x86_64-pc-windows-msvc`, nih-plug pinned to
-  `f36931f7`.
-- Bundle structure verified (`clap_entry` export; VST3
-  `Contents/x86_64-win/` + `GetPluginFactory`/`InitDll`/`ExitDll`).
-- Engine covered by 49 `harmonic_core` tests. `pluginval` script is in place
-  (`scripts/validate.*`); the actual run is pending a `pluginval` install.
+  `de421011`.
+- **VST3: `pluginval --strictness-level 8` — full pass** (state recall,
+  block-size / sample-rate changes on the fly, allocation checks, automation,
+  thread safety, fuzzing).
+- **CLAP: `clap-validator` — 31/31** with the 4 `state-*` tests excluded.
+  Those hit nih-plug's CLAP state wrapper (`ext_state_load` skips the post-load
+  `host_params->rescan` and doesn't bound-check the state length) — not our
+  code; VST3 state round-trips fine. Re-enable when nih-plug fixes it.
+- Engine covered by 49 `harmonic_core` tests.
+- Not yet run inside a real DAW.
 
 ## Next
 
-- Run `pluginval` for real; DAW smoke test.
+- File the two nih-plug CLAP-state bugs upstream.
+- DAW smoke test (Reaper / Bitwig).
 - Stereo detune (two geometric stacks per voice) for width.
-- Optional simple GUI (`nih_plug_vizia`): brightness + envelopes + a spectrum
-  strip.
+- Optional GUI (`nih_plug_vizia`).
