@@ -4,7 +4,9 @@
 no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прохід. CLAP —
 `clap-validator` 31/31 (2 групи state-тестів блоковані багами nih-plug, §Б2).
 
-**Прогрес:** ✅ А1 (BLIT саw/трикутник) — виконано.
+**Прогрес:** ✅ Б3-крок-1 (крос-компіляція) · ✅ А1 (BLIT саw/трикутник) ·
+🔶 Б2 (фікс CLAP-обгортки nih-plug: патч готовий і перевірений 35/35,
+публічний PR — за рішенням користувача, див. `10_NIH_PLUG_CLAP_BUGS.md`).
 
 Три вектори. У кожному пункті: **Проблема / Рішення / Файли / Оцінка /
 Критерій готовності (DoD)**.
@@ -92,22 +94,29 @@ no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прох�
   поліфонії). Регресія: driven-голос без змін; вихід біт-у-біт той самий,
   коли гілка не спрацьовує. Оновити `06 §3`.
 
-### Б2. Внесок в upstream — фікс CLAP-обгортки nih-plug
+### Б2. Внесок в upstream — фікс CLAP-обгортки nih-plug 🔶 ПАТЧ ГОТОВИЙ, PR НЕ ПОДАНО
 
-- **Проблема.** `src/wrapper/clap/wrapper.rs` (rev `de421011`):
+- **Проблема.** `src/wrapper/clap/wrapper.rs` (rev `de421011`, і на `master`):
   (1) `ext_state_load` викликає `set_state_inner` напряму, **не постить**
-  `Task::RescanParamValues` → хост не знає про зміну параметрів після `load`;
+  `Task::RescanParamValues` → хост не отримує
+  `clap_host_params::rescan(CLAP_PARAM_RESCAN_VALUES)` після `load`
+  (`state-reproducibility-{basic,binary,buffered}` FAIL);
   (2) `Vec::with_capacity(length as usize)` з невалідованим `length` зі
-  стріму → OOM-abort на пошкодженому пресеті (`state-invalid-random`).
-  VST3-шлях стану проходить `pluginval` — тобто це саме CLAP-обгортка.
-- **Рішення.** Чесний баг-репорт + PR: (1) додати `schedule_gui(
-  Task::RescanParamValues)` після `set_state_inner` у `ext_state_load`;
-  (2) обмежити `length` розумною межею (напр. 16 МБ) до алокації.
-- **Файли.** (upstream) `nih-plug/src/wrapper/clap/wrapper.rs`. Локально —
-  тимчасовий `[patch]` на форк, поки PR не змержено.
+  стріму → alloc-abort (`0xc0000409`) на випадкових байтах
+  (`state-invalid-random` CRASH). VST3-шлях стану проходить `pluginval` —
+  тобто це саме CLAP-обгортка.
+- **Зроблено.** Корінь, репро, патч і верифікація — `10_NIH_PLUG_CLAP_BUGS.md`.
+  Фікс: (1) `wrapper.schedule_gui(Task::RescanParamValues)` після успішного
+  `set_state_inner`, як у `set_state_object_from_gui`; (2) `try_reserve_exact`
+  замість `Vec::with_capacity`. Перевірено локально через `[patch]` на клон
+  nih-plug: **`clap-validator` 35/35, 0 fail** (було 31/4/9); VST3
+  `pluginval --strictness 8` не зачеплено.
+- **Не зроблено (потребує рішення користувача).** Публічний форк
+  `robbert-vdh/nih-plug` + PR; далі — `[patch]` на форк у
+  `harmonic_synth/Cargo.toml` + `xtask/Cargo.toml`.
 - **Оцінка.** S (патч тривіальний) + невизначений час на review.
-- **DoD.** PR відкрито; після мержу — прибрати `--exclude` зі
-  `scripts/validate.*` і `[patch]`; `clap-validator` 35/35.
+- **DoD.** PR відкрито; після мержу — бампнути `rev`, прибрати `--exclude` зі
+  `scripts/validate.*` і `[patch]`; `clap-validator` 35/35 без винятків.
 
 ### Б3. Фізична верифікація на залізі
 
@@ -171,8 +180,9 @@ no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прох�
 
 1. ~~**Б3 крок 1** (крос-компіляція)~~ — виконано (4 таргети чисто).
 2. ~~**А1** (BLIT пила/трикутник)~~ — ✅ виконано.
-3. **Б2** (nih-plug PR) — розблоковує CLAP state, малий патч. ← наступне.
-4. **Б1** (fast path) — приріст поліфонії, вимірюваний.
+3. **Б2** (nih-plug PR) — 🔶 патч готовий і перевірений (35/35), лишилось
+   подати публічний PR (рішення користувача).
+4. **Б1** (fast path) — приріст поліфонії, вимірюваний. ← наступне технічне.
 5. **А2** (LFO retrigger + матриця) — дешево, помітно.
 6. **В3** (drift-тест) — дешево написати, закриває питання з `07`.
 7. **А3** (живий унісон) · **В1** (GUI) · **В2** (DAW) — більші, ітеративні.

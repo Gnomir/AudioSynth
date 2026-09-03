@@ -1,0 +1,42 @@
+diff --git a/src/wrapper/clap/wrapper.rs b/src/wrapper/clap/wrapper.rs
+index 3b6a63ed..a9cb5b42 100644
+--- a/src/wrapper/clap/wrapper.rs
++++ b/src/wrapper/clap/wrapper.rs
+@@ -3153,7 +3153,19 @@ impl<P: ClapPlugin> Wrapper<P> {
+         }
+         let length = u64::from_le_bytes(length_bytes);
+ 
+-        let mut read_buffer: Vec<u8> = Vec::with_capacity(length as usize);
++        // `length` comes straight from the stream and cannot be trusted. A corrupt
++        // or truncated preset (clap-validator's `state-invalid-random` loads pure
++        // random bytes) yields a garbage value here, and `Vec::with_capacity()`
++        // aborts the entire process when that allocation fails. `try_reserve_exact`
++        // turns that into a recoverable error instead.
++        let mut read_buffer: Vec<u8> = Vec::new();
++        if read_buffer.try_reserve_exact(length as usize).is_err() {
++            nih_debug_assert_failure!(
++                "Could not allocate {} bytes for the state buffer",
++                length
++            );
++            return false;
++        }
+         if !read_stream(&*stream, read_buffer.spare_capacity_mut()) {
+             nih_debug_assert_failure!(
+                 "Error or end of stream while reading the state buffer from the stream."
+@@ -3167,6 +3179,16 @@ impl<P: ClapPlugin> Wrapper<P> {
+                 let success = wrapper.set_state_inner(&mut state);
+                 if success {
+                     nih_trace!("Loaded state ({} bytes)", read_buffer.len());
++
++                    // `set_state_inner()` only notifies the plugin's own editor
++                    // through `Task::ParameterValuesChanged`. The host that called
++                    // `clap_plugin_state::load()` also needs to be told that the
++                    // parameter values changed, the same way `set_state_object_from_gui()`
++                    // does after a preset load from the plugin's GUI. Without this a
++                    // CLAP host keeps showing the pre-load values until the next
++                    // rescan (clap-validator's `state-reproducibility-*`).
++                    let task_posted = wrapper.schedule_gui(Task::RescanParamValues);
++                    nih_debug_assert!(task_posted, "The task queue is full, dropping task...");
+                 }
+ 
+                 success
