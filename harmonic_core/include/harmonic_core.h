@@ -66,6 +66,13 @@ void harmonic_voice_set_lfo(HarmonicVoice *voice, double rate_hz, unsigned int s
  * latency; hq == 0 is bit-identical to leaving it off. */
 void harmonic_voice_set_hq(HarmonicVoice *voice, unsigned int hq);
 
+/* Oscillator waveform: 0 geometric (additive core, uses rolloff + HQ) /
+ * 1 sawtooth / 2 triangle. Saw and triangle are band-limited leaky-integrated
+ * BLITs (Stilson & Smith 1996) with fixed 1/k and 1/k^2 spectra; they ignore
+ * rolloff and HQ. The triangle rolls off gently below ~80 Hz. Unknown values
+ * fall back to geometric. */
+void harmonic_voice_set_waveform(HarmonicVoice *voice, unsigned int waveform);
+
 /* Reset phase + smoothers + filter state (call on note-on). Honors
  * free_running: in that mode the oscillator phase keeps running. */
 void harmonic_voice_reset(HarmonicVoice *voice);

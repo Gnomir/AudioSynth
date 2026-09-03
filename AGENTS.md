@@ -4,8 +4,9 @@
 
 `harmonic_core` — a `no_std`, **zero-dependency** Rust DSP crate: band-limited
 additive synthesis from a closed-form Dirichlet-kernel sum
-(`Σ rᵏ·cos(2πkp)`), plus character (drive/fold/grit), a ZDF state-variable
-filter, two ADSRs, an LFO, unison, pitch bend, equal-power pan.
+(`Σ rᵏ·cos(2πkp)`), plus band-limited BLIT saw/triangle (`Waveform` enum),
+character (drive/fold/grit), a ZDF state-variable filter, two ADSRs, an LFO,
+unison, pitch bend, equal-power pan.
 `harmonic_synth` — a 24-voice polyphonic VST3 + CLAP plugin over it, via
 `nih-plug`. Full design docs: `docs/` (start at `docs/README.md`).
 
@@ -23,7 +24,7 @@ Rust stable (1.97 known-good). `harmonic_core` has no dependencies.
 
 ```
 cd harmonic_core
-cargo test                                     # all 45 tests (unit + tests/spectrum.rs)
+cargo test                                     # all 50 tests (46 unit + tests/spectrum.rs)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0
@@ -74,8 +75,8 @@ changes, and allocation checks via `pluginval` once it's on PATH.
 
 ## Git / commit & PR rules
 
-- **`D:\TEST` is not a git repo yet.** If you initialise one, `.gitignore` must
-  exclude every `target/`.
+- Repo: `github.com/Gnomir/AudioSynth`, branch `main`. `.gitignore` excludes
+  every `target/`, `*.wav` demo renders and `harmonic_synth/tools/`.
 - Commit style: Conventional Commits — `feat:`, `fix:`, `chore:`, `test:`,
   `docs:`. End commit messages with the trailer in `CLAUDE.md`.
 - Before a PR / hand-off: `cargo test`, `cargo clippy --all-targets`, and

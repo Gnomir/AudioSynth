@@ -10,7 +10,7 @@ use crate::env::Adsr;
 use crate::filter::FilterMode;
 use crate::lfo::LfoShape;
 use crate::trig::exp2;
-use crate::voice::Voice;
+use crate::voice::{Voice, Waveform};
 
 /// Max unison voices stacked on one MIDI note.
 pub const MAX_UNISON: u32 = 8;
@@ -85,6 +85,7 @@ pub struct PolySynth<const VOICES: usize> {
     lfo_to_pitch: f64,
 
     hq: bool,
+    waveform: Waveform,
 
     counter: u64,
 }
@@ -131,6 +132,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
             hq: false,
+            waveform: Waveform::Geometric,
             counter: 0,
         };
         (s, status)
@@ -201,6 +203,14 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.hq = hq;
         for v in &mut self.voices {
             v.core.set_hq(hq);
+        }
+    }
+
+    /// Oscillator waveform (Geometric / Saw / Triangle). See [`Voice::set_waveform`].
+    pub fn set_waveform(&mut self, w: Waveform) {
+        self.waveform = w;
+        for v in &mut self.voices {
+            v.core.set_waveform(w);
         }
     }
 
@@ -335,6 +345,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         v.core.set_pan(pan);
         v.core.set_free_running(self.free_running);
         v.core.set_hq(self.hq);
+        v.core.set_waveform(self.waveform);
         v.core.set_pitch_bend(self.bend_ratio);
         v.core.set_character(self.character);
         v.core.set_fm(self.fm_ratio, self.fm_index);

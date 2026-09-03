@@ -60,7 +60,7 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **344 байти** (x86-64; `align = 8`), без
+`#[repr(C)] #[derive(Clone, Copy)]`, **464 байти** (x86-64; `align = 8`), без
 `Drop`, без вказівників. Розмір зростав із розвитком рушія — хост має
 викликати `harmonic_voice_size()` у рантаймі, не хардкодити число.
 
@@ -88,6 +88,12 @@ pub struct Voice {
     lfo: Lfo,
     lfo_to_rolloff: f64,             // ± до r
     lfo_to_pitch: f64,               // центи вібрато
+    hq: bool,                        // 2× оверсемплінг осц.+character
+    // --- BLIT саw / трикутник (leaky-integrated) ---
+    waveform: Waveform,              // Geometric (дефолт) / Saw / Triangle
+    blit_leak: f64, tri_leak: f64,   // коеф. витоку інтеграторів
+    saw_int: f64, saw_dc_x1: f64, saw_dc_y1: f64,   // інтегратор + DC-blocker
+    tri_int: f64, tri_dc_x1: f64, tri_dc_y1: f64,   // 2-й інтегратор + DC-blocker
     // --- нелінійні стадії ---
     character: Character,            // включно з DC-blocker + S&H стан
     filter: Svf,                     // коеф. a1/a2/a3/k + інтегратори ic1/ic2
@@ -110,10 +116,15 @@ LFO.tick() → m ∈ [−1,1]
 n = clamp(⌊f_s / (2·f_eff)⌋, 1, 2048)                  [Найквіст-кламп по f_eff]
   │
 pm = fm_index·sin_turns(fm_phase) + feedback·last_osc  [фазова модуляція]
-osc = geometric_partials(phase + pm, roll_eff, n) / geometric_peak(roll_eff, n)
+osc = match waveform {                                 [Geometric — дефолт]
+        Geometric => geometric_partials(phase+pm, roll_eff, n) / geometric_peak(..)
+                     │  (hq → 2× оверсемпл + децимація)
+        Saw       => blit_saw(phase+pm, n, f_eff)      [leaky-integrated BLIT]
+        Triangle  => blit_triangle(phase+pm, n, f_eff) [подвійний інтегратор]
+      }
 last_osc ← osc
   │
-shaped   = character.process(osc)                      [identity якщо clean]
+shaped   = character.process(osc)                      [identity якщо clean; hq → process_hq]
 filtered = filter.process(shaped)                      [identity якщо Bypass; cutoff/res згладжено ВСЕРЕДИНІ]
   │
 dg   = declick-рампа (16 семплів, 1/16 → 1)
@@ -206,7 +217,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 45 тестів |
+| Розробка / тести | `cargo test` | `std` (дефолт), 50 тестів (46 юніт + 4 інтеграційні) |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -223,7 +234,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 344 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 464 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці
