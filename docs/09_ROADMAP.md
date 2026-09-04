@@ -1,6 +1,6 @@
 # 09 — Дорожня карта розвитку
 
-**Поточний стан:** core stable, 67/67 тестів green (+1 `#[ignore]` дрейф),
+**Поточний стан:** core stable, 68/68 тестів green (+1 `#[ignore]` дрейф),
 проходять біт-у-біт на `aarch64` + `armv7-hf` під QEMU. clippy чистий
 (std / no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прохід
 (з GUI-тестами). CLAP — `clap-validator` **35/35** (баг `ext_state_load`
@@ -159,7 +159,7 @@
 - **Крок 1 ✅.** Крос-**компіляція** чиста під `thumbv7em-none-eabihf`,
   `thumbv6m-none-eabi`, `aarch64-unknown-none`, `riscv32imac-unknown-none-elf`.
 - **Крок 2 ✅ (RFC-15).** `scripts/cross-verify.{sh,ps1}` (Docker + QEMU)
-  проганяє **весь набір 67/67** на `aarch64-unknown-linux-gnu` та
+  проганяє **весь набір 68/68** на `aarch64-unknown-linux-gnu` та
   `armv7-unknown-linux-gnueabihf` (VFP `f64` тотожний Cortex-M4F). Новий
   інтеграційний тест `cross_platform_bit_exact` звіряє хеш 100-мс рендеру
   всього тракту з x86-64 референсом — **дельта `= 0.0`** на всіх трьох
@@ -227,7 +227,7 @@
 ## Рекомендована послідовність
 
 1. ~~**Б3** (крос-компіляція + bit-exact на ARM)~~ — ✅ виконано (RFC-15:
-   4 таргети чисто; 67/67 біт-у-біт на `aarch64` + `armv7-hf` під QEMU).
+   4 таргети чисто; 68/68 біт-у-біт на `aarch64` + `armv7-hf` під QEMU).
 2. ~~**А1** (PolyBLEP пила/трикутник)~~ — ✅ виконано (плаский бас, ~3× швидше).
 3. ~~**Б2** (фікс CLAP-обгортки)~~ — ✅ `[patch]` на `vendor/nih-plug` →
    `clap-validator` 35/35; лишається лише публічний upstream-PR.

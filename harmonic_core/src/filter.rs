@@ -39,7 +39,16 @@ impl FilterMode {
 
 #[derive(Clone, Copy)]
 pub struct Svf {
-    sample_rate: f64,
+    sample_rate: f64, // *operating* rate — 2× base while the HQ bus is active
+    // The rate `set_cutoff`'s musical ceiling is measured against. Set once
+    // at construction, never touched by `set_sample_rate` — unlike
+    // `sample_rate`, this must NOT double when HQ turns the filter's
+    // operating rate to 2×, or the same modulation sweep would open the
+    // filter twice as far in HQ mode as at 1× (RFC-19 audit). `sample_rate`
+    // itself still has to track the real operating rate for prewarp
+    // (`recompute_g`) and the smoother's timing — those need the true rate,
+    // only the musical clamp doesn't.
+    base_sample_rate: f64,
     mode: FilterMode,
     smooth: f64, // one-pole coefficient for the parameter smoothers
 
@@ -79,6 +88,7 @@ impl Svf {
 
         let mut s = Svf {
             sample_rate: sr,
+            base_sample_rate: sr,
             mode: FilterMode::Bypass,
             smooth,
             cutoff_t: 0.4 * sr,
@@ -109,11 +119,16 @@ impl Svf {
         self.mode
     }
 
-    /// Cutoff target in Hz. Clamped to `[20, 0.45·fs]`. Smoothed toward per
-    /// sample inside [`Self::process`].
+    /// Cutoff target in Hz. Clamped to `[20, 0.45·fs_base]` — against the
+    /// *base* rate, not the current operating rate, so the same modulation
+    /// sweep reaches the same ceiling whether or not the HQ bus has this
+    /// filter running at `2×` (RFC-19 audit: clamping against the doubled
+    /// operating rate let HQ-on sweeps open twice as far as HQ-off, an
+    /// audible tonal difference the HQ toggle is supposed to be silent
+    /// about). Smoothed toward per sample inside [`Self::process`].
     #[inline]
     pub fn set_cutoff(&mut self, hz: f64) {
-        let hi = Self::MAX_CUTOFF_FRAC * self.sample_rate;
+        let hi = Self::MAX_CUTOFF_FRAC * self.base_sample_rate;
         self.cutoff_t = if hz < Self::MIN_CUTOFF_HZ {
             Self::MIN_CUTOFF_HZ
         } else if hz > hi {
@@ -142,7 +157,13 @@ impl Svf {
         let dt = 1.0 / sample_rate;
         let tau = 0.001;
         self.smooth = 1.0 - dt / (tau + dt);
-        let hi = Self::MAX_CUTOFF_FRAC * sample_rate;
+        // Re-clamp against the *base* rate's musical ceiling, same as
+        // `set_cutoff` — not the new operating rate. In practice this is
+        // already a no-op (every `cutoff_t`/`cutoff_z` in the crate only
+        // ever comes from `set_cutoff`, which enforces this same bound), but
+        // `base_sample_rate` never changes here, so keeping it costs nothing
+        // and doesn't rely on that invariant holding forever.
+        let hi = Self::MAX_CUTOFF_FRAC * self.base_sample_rate;
         if self.cutoff_t > hi {
             self.cutoff_t = hi;
         }
@@ -382,21 +403,51 @@ mod tests {
         s.set_sample_rate(96_000.0);
         assert_eq!(s.g, g96, "no-op set_sample_rate changed g");
 
-        // the cutoff clamp must also track the new rate: at 96 kHz the old
-        // 0.45*48000 = 21 600 Hz bound no longer applies — a target between the
-        // two bounds must now be accepted, not silently clamped down.
-        s.set_cutoff(30_000.0); // > 0.45*48000, < 0.45*96000
-        assert!((s.cutoff_t - 30_000.0).abs() < 1.0, "clamp still using the old rate: {}", s.cutoff_t);
+        // the musical cutoff ceiling must NOT track the new operating rate
+        // (RFC-19 audit): it stays pinned to the *base* rate (0.45*48000 =
+        // 21 600 Hz) even while running at 2x, so the same modulation sweep
+        // opens the filter to the same absolute Hz whether or not HQ is on.
+        s.set_cutoff(30_000.0); // > 0.45*48000 — must clamp down, not pass through
+        assert!(
+            (s.cutoff_t - 0.45 * 48_000.0).abs() < 1.0,
+            "musical ceiling moved with the operating rate: {}",
+            s.cutoff_t
+        );
 
-        // switching back down must re-clamp against the smaller bound.
+        // switching back down changes nothing about that ceiling.
         s.set_sample_rate(48_000.0);
-        assert!(s.cutoff_t <= 0.45 * 48_000.0 + 1.0, "old bound not restored: {}", s.cutoff_t);
+        assert!(s.cutoff_t <= 0.45 * 48_000.0 + 1.0, "ceiling drifted: {}", s.cutoff_t);
 
         // and the filter stays stable and finite through all of this.
         s.set_mode(FilterMode::Low);
         for i in 0..1000 {
             let x = ((i as f64 * 0.05).sin()) as f32;
             assert!(s.process(x).is_finite());
+        }
+    }
+
+    #[test]
+    fn cutoff_ceiling_is_identical_at_1x_and_hq_2x() {
+        // RFC-19 audit: the same requested cutoff — including one far past
+        // the 1x ceiling, as a fast LFO/envelope sweep would send — must
+        // clamp to the *same* Hz value whether the filter is running at its
+        // base rate or the HQ bus's 2x. Before this fix, HQ let the same
+        // sweep reach twice as far (a real, audible HQ-on/off tonal
+        // difference), because the clamp tracked the operating rate.
+        let base = 44_100.0;
+        for requested in [8_000.0, 19_845.0, 25_000.0, 60_000.0, 500_000.0] {
+            let mut s1x = Svf::new(base);
+            s1x.set_cutoff(requested);
+
+            let mut s2x = Svf::new(base);
+            s2x.set_sample_rate(2.0 * base);
+            s2x.set_cutoff(requested);
+
+            assert_eq!(
+                s1x.cutoff_t, s2x.cutoff_t,
+                "cutoff ceiling differs between 1x and HQ 2x for requested={requested}: {} vs {}",
+                s1x.cutoff_t, s2x.cutoff_t
+            );
         }
     }
 }

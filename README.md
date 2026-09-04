@@ -45,9 +45,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 67 (62 unit + 5 integration); + `-- --ignored` drift test
+cargo test                                    # 68 (63 unit + 5 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 67/67 bit-identical on ARM (Docker + QEMU)
+bash scripts/cross-verify.sh                   # 68/68 bit-identical on ARM (Docker + QEMU)
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -65,7 +65,7 @@ nightly.
 
 ## Status
 
-67 tests pass (62 unit + 5 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+68 tests pass (63 unit + 5 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. The whole suite — including a whole-signal-path hash
 compared against an x86-64 reference — passes bit-for-bit on
 `aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU
