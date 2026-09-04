@@ -135,6 +135,10 @@ struct HarmonicSynth {
     /// Editor spectrum display — fed only while the editor is open.
     analyzer: Box<SpectrumAnalyzer>,
     analyzer_bands: Arc<AnalyzerBands>,
+    /// CC64 (sustain pedal) state: while held, `NoteOff` is deferred instead
+    /// of released immediately. One flag per MIDI note number.
+    sustain_held: bool,
+    sustained_notes: [bool; 128],
 }
 
 #[derive(Params)]
@@ -265,6 +269,8 @@ impl Default for HarmonicSynth {
             dly_pos: 0,
             analyzer: Box::new(SpectrumAnalyzer::new(analyzer_bands.clone())),
             analyzer_bands,
+            sustain_held: false,
+            sustained_notes: [false; 128],
         }
     }
 }
@@ -600,6 +606,8 @@ impl Plugin for HarmonicSynth {
         self.engine.reset();
         self.dly = [[0.0; 2]; HQ_LAT];
         self.dly_pos = 0;
+        self.sustain_held = false;
+        self.sustained_notes = [false; 128];
     }
 
     fn process(
@@ -671,19 +679,56 @@ impl Plugin for HarmonicSynth {
                 }
                 match event {
                     NoteEvent::NoteOn { note, velocity, .. } => {
+                        // A fresh press always overrides a stale pending-release
+                        // marker left over from a previous sustain cycle.
+                        if let Some(pending) = self.sustained_notes.get_mut(note as usize) {
+                            *pending = false;
+                        }
                         self.engine.note_on(note, velocity)
                     }
-                    NoteEvent::NoteOff { note, .. } => self.engine.note_off(note),
-                    NoteEvent::Choke { note, .. } => self.engine.choke(note),
+                    NoteEvent::NoteOff { note, .. } => {
+                        // `note` is documented as `0..128`, but CLAP's wildcard key
+                        // (-1, "any note") arrives here cast to `u8` as 255 — out of
+                        // range for the tracking table. It can't be deferred, so
+                        // release it immediately rather than index out of bounds.
+                        let pending = self
+                            .sustain_held
+                            .then(|| self.sustained_notes.get_mut(note as usize))
+                            .flatten();
+                        match pending {
+                            Some(pending) => *pending = true,
+                            None => self.engine.note_off(note),
+                        }
+                    }
+                    NoteEvent::Choke { note, .. } => {
+                        if let Some(pending) = self.sustained_notes.get_mut(note as usize) {
+                            *pending = false;
+                        }
+                        self.engine.choke(note);
+                    }
                     NoteEvent::MidiPitchBend { value, .. } => {
                         // value ∈ [0, 1], 0.5 = centre
                         let st = (value - 0.5) * 2.0 * self.params.bend_range.value() as f32;
                         self.engine.set_pitch_bend(st as f64);
                     }
-                    NoteEvent::MidiCC { cc, value, .. }
-                        if cc == 123 && value <= f32::EPSILON =>
-                    {
+                    NoteEvent::MidiCC { cc, value, .. } if cc == 123 && value <= f32::EPSILON => {
+                        self.sustain_held = false;
+                        self.sustained_notes = [false; 128];
                         self.engine.all_notes_off()
+                    }
+                    // CC64 sustain pedal: >= 0.5 (raw >= 64) is "on" per the MIDI spec's
+                    // customary half-way threshold for a binary on/off controller.
+                    NoteEvent::MidiCC { cc: 64, value, .. } => {
+                        let held = value >= 0.5;
+                        if self.sustain_held && !held {
+                            for (note, pending) in self.sustained_notes.iter_mut().enumerate() {
+                                if *pending {
+                                    *pending = false;
+                                    self.engine.note_off(note as u8);
+                                }
+                            }
+                        }
+                        self.sustain_held = held;
                     }
                     _ => {}
                 }
