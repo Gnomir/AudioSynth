@@ -7,15 +7,17 @@
 //!
 //!   cargo run --example bench_hq_bus --release
 //!
-//! 24 voices (the plugin's voice count), all held, with `drive`+`fold` active
-//! so the nonlinear `Character` stage actually engages (the scenario HQ mode
-//! exists for).
+//! Swept over 12 / 16 / 24 simultaneously *sounding* voices (a plugin
+//! instance always allocates capacity for `MAX_VOICES = 24`; a realistic
+//! playing scenario rarely holds all 24 down at once — 12-16 is a more
+//! typical dense chord/pad). `drive`+`fold` active so the nonlinear
+//! `Character` stage actually engages (the scenario HQ mode exists for).
 
 use harmonic_core::filter::FilterMode;
 use harmonic_core::{CharParams, PolySynth, Voice};
 use std::time::Instant;
 
-const VOICES: usize = 24;
+const MAX_VOICES: usize = 24; // plugin's actual allocated capacity
 const FRAMES: usize = 240_000; // 5 s @ 48k
 const ITERS: usize = 4;
 
@@ -24,13 +26,13 @@ fn hq_params() -> CharParams {
 }
 
 /// Old architecture, reconstructed faithfully from primitives that are still
-/// live in the crate: `VOICES` independent `Voice`s, each with its own HQ
-/// path (own 2× oversample + own decimate, exactly `Voice::render_sample`'s
+/// live in the crate: `n` independent `Voice`s, each with its own HQ path
+/// (own 2× oversample + own decimate, exactly `Voice::render_sample`'s
 /// intact standalone behaviour), manually summed and clipped once — this is
 /// exactly what `PolySynth::render_sample` did before RFC-16.
-fn bench_old_per_voice_decimation() -> f64 {
+fn bench_old_per_voice_decimation(n: usize) -> f64 {
     let fs = 48_000.0;
-    let mut voices: Vec<Voice> = (0..VOICES)
+    let mut voices: Vec<Voice> = (0..n)
         .map(|i| {
             let mut v = Voice::new(fs);
             v.set_frequency(55.0 * (1.0 + i as f64 * 0.37));
@@ -69,16 +71,18 @@ fn bench_old_per_voice_decimation() -> f64 {
     (FRAMES * ITERS) as f64 / t.elapsed().as_secs_f64()
 }
 
-/// New architecture: `PolySynth`'s unified HQ bus.
-fn bench_new_unified_bus() -> f64 {
+/// New architecture: `PolySynth`'s unified HQ bus. Allocates the plugin's
+/// real capacity (`MAX_VOICES = 24`) but only triggers `n` notes — matching
+/// how the plugin actually runs (fixed-size voice array, variable polyphony).
+fn bench_new_unified_bus(n: usize) -> f64 {
     let fs = 48_000.0;
-    let mut synth: PolySynth<VOICES> = PolySynth::new(fs);
+    let mut synth: PolySynth<MAX_VOICES> = PolySynth::new(fs);
     synth.set_rolloff(0.9);
     synth.set_gain(0.5);
     synth.set_character(hq_params());
     synth.set_filter(FilterMode::Low, 6_000.0, 0.5, 0.0);
     synth.set_hq(true);
-    for i in 0..VOICES {
+    for i in 0..n {
         let note = 24 + (i as u8 * 2) % 48;
         synth.note_on(note, 0.8);
     }
@@ -96,18 +100,19 @@ fn bench_new_unified_bus() -> f64 {
 }
 
 fn main() {
-    let old_sps = bench_old_per_voice_decimation();
-    let new_sps = bench_new_unified_bus();
     let fs = 48_000.0;
-    println!(
-        "old (per-voice decimate): {:.2} M samp/s  ({:.1}x realtime)",
-        old_sps / 1e6,
-        old_sps / fs
-    );
-    println!(
-        "new (unified HQ bus):     {:.2} M samp/s  ({:.1}x realtime)",
-        new_sps / 1e6,
-        new_sps / fs
-    );
-    println!("change: {:+.1}%", (new_sps / old_sps - 1.0) * 100.0);
+    println!("{:>7}  {:>18}  {:>18}  {:>8}", "voices", "old (M samp/s)", "new (M samp/s)", "change");
+    for &n in &[12usize, 16, 24] {
+        let old_sps = bench_old_per_voice_decimation(n);
+        let new_sps = bench_new_unified_bus(n);
+        println!(
+            "{:>7}  {:>15.2}     {:>15.2}     {:>+6.1}%   ({:.1}x / {:.1}x realtime)",
+            n,
+            old_sps / 1e6,
+            new_sps / 1e6,
+            (new_sps / old_sps - 1.0) * 100.0,
+            old_sps / fs,
+            new_sps / fs,
+        );
+    }
 }
