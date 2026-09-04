@@ -263,8 +263,8 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 
 | Формат | Утиліта | Результат |
 |---|---|---|
-| VST3 | `pluginval --strictness-level 8 --validate-in-process` | **SUCCESS — повний прохід** (усі тести, включно з Plugin state / state restoration) |
-| CLAP | `clap-validator` | **31 / 31** з виключеними `state-reproducibility-*` та `state-invalid-random` (9 skipped — N/A: GUI, note-ports тощо) |
+| VST3 | `pluginval --strictness-level 8 --validate-in-process` | **SUCCESS — повний прохід**, включно з `Editor` / `Open editor whilst processing` / `Editor Automation` (редактор `nih_plug_vizia` тепер є, тож ці тести не пропускаються) та Plugin state / state restoration |
+| CLAP | `clap-validator` | **31 / 31** з виключеними `state-reproducibility-*` та `state-invalid-random` (9 skipped — N/A: note-ports тощо) |
 
 **Виключені CLAP-тести — це баги nih-plug, не наші** (rev `de421011`,
 `src/wrapper/clap/wrapper.rs`):

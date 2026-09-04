@@ -13,13 +13,16 @@ bend, equal-power pan.
 
 Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs`
 · `harmonic_core/tests/spectrum.rs` (integration) ·
-`harmonic_synth/src/lib.rs` (host glue) · `harmonic_synth/xtask/` (bundler).
+`harmonic_synth/src/{lib,editor,analyzer}.rs` (host glue + `nih_plug_vizia` GUI +
+a cheap filter-bank spectrum display) · `harmonic_synth/xtask/` (bundler).
 
 ## Setup
 
-Rust stable (1.97 known-good). `harmonic_core` has no dependencies.
-`harmonic_synth` pulls `nih-plug` from git at a pinned rev in `Cargo.toml` —
-**first build needs network**. The `portable-simd` feature needs nightly.
+Rust stable (1.97 known-good). `harmonic_core` has **no dependencies** — keep it
+that way. `harmonic_synth` pulls `nih-plug` + `nih_plug_vizia` (heavy tree:
+baseview, vizia/femtovg, fonts) from git at **one** pinned rev, plus
+`atomic_float` — **first build needs network** and takes a few minutes. The
+`portable-simd` feature (core) needs nightly.
 
 ## Build & test
 
