@@ -214,10 +214,29 @@ coeff_r = 1 − 2^(−13.3 / (r·f_s))     // ~ −80 дБ через r с
 | Triangle | `p<0.25: 4p` · `p<0.75: 2−4p` · інакше `4p−4` |
 | Saw | `p<0.5: 2p` · інакше `2p−2` |
 
-`set_rate(hz, f_s)` → `inc = clamp(hz/f_s, 0, 0.499)`. Ключово-ретригериться
-на note-on. Роутинг у `Voice`: `lfo_to_rolloff` (± до `r`),
-`lfo_to_pitch` (центи вібрато через `exp2`). Синус LFO рахується через
-`sin_turns_fast` (16-біт — це модулятор, не несуча).
+`set_rate(hz, f_s)` → `inc = clamp(hz/f_s, 0, 0.499)`. Синус LFO рахується
+через `sin_turns_fast` (16-біт — це модулятор, не несуча).
+
+**Key-sync режим** (`LfoMode`, `set_lfo_mode`):
+
+| Режим | На note-on (`retrigger()`) |
+|---|---|
+| `Retrigger` (дефолт) | фаза → 0 |
+| `FreeRun` | фаза не чіпається — LFO біжить крізь ноти (аналог `free_running` осцилятора) |
+
+**Матриця модуляції** (`set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm)`).
+Кожна ціль `== 0` **не застосовується взагалі** — і якщо всі чотири нулі, LFO
+навіть не тикається (clean fast path, `03 §2`).
+
+| Ціль | Діапазон | Застосування в `render_sample` |
+|---|---|---|
+| `lfo_to_rolloff` | `[−0.9, 0.9]` | `roll_eff = clamp(rolloff_z + d·m, r_min, r_max)` |
+| `lfo_to_pitch` | `[−1200, 1200]` центів | `f_eff ·= exp2(d·m / 1200)` |
+| `lfo_to_cutoff` | `[−8, 8]` октав | `filter.set_cutoff(filter_cutoff · exp2(d·m))` — `filter_cutoff` це остання база від хоста; композиться з фільтровою обгинаючою мультиплікативно |
+| `lfo_to_fm` | `[−8, 8]` | `fm_index_eff = max(fm_index + d·m, 0)` |
+
+`m ∈ [−1, 1]` — вихід `tick()`. Плагін: `LFO Sync` (enum), `LFO → Cutoff`
+(±4 окт), `LFO → FM` (±4).
 
 ---
 

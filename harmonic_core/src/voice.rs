@@ -8,7 +8,7 @@
 use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
 use crate::kernel::{dirichlet_blit, geometric_partials_pre, geometric_peak_pre, powi_pos};
-use crate::lfo::{Lfo, LfoShape};
+use crate::lfo::{Lfo, LfoMode, LfoShape};
 use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns};
 use crate::{validate_sample_rate, SampleRateStatus};
 
@@ -81,6 +81,9 @@ pub struct Voice {
     lfo: Lfo,
     lfo_to_rolloff: f64, // added to r, ±
     lfo_to_pitch: f64,   // cents of vibrato
+    lfo_to_cutoff: f64,  // octaves on the filter cutoff, ±
+    lfo_to_fm: f64,      // added to the FM index, ±
+    filter_cutoff: f64,  // last cutoff set by the host — the base for lfo_to_cutoff
 
     hq: bool, // 2× oversample the oscillator + character stage
 
@@ -156,6 +159,9 @@ impl Voice {
             lfo: Lfo::new(),
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
+            lfo_to_cutoff: 0.0,
+            lfo_to_fm: 0.0,
+            filter_cutoff: 0.4 * sr, // matches Svf::new's default target
             hq: false,
             geom_r: f64::NAN, // force a compute on the first sample
             geom_n: 0,
@@ -247,12 +253,29 @@ impl Voice {
         self.lfo.set_shape(shape);
     }
 
-    /// LFO routing: `to_rolloff` adds to `r` (± brightness), `to_pitch_cents`
-    /// is vibrato depth.
+    /// Key-sync mode: `Retrigger` (phase snaps to 0 on note-on) or `FreeRun`
+    /// (phase runs across notes).
     #[inline]
-    pub fn set_lfo_targets(&mut self, to_rolloff: f64, to_pitch_cents: f64) {
+    pub fn set_lfo_mode(&mut self, mode: LfoMode) {
+        self.lfo.set_mode(mode);
+    }
+
+    /// LFO routing. `to_rolloff` adds to `r` (± brightness, `[−0.9, 0.9]`),
+    /// `to_pitch_cents` is vibrato depth (`[−1200, 1200]`), `to_cutoff_oct`
+    /// shifts the filter cutoff (`[−8, 8]` octaves), `to_fm` adds to the FM
+    /// index (`[−8, 8]`). A target of `0` is not applied at all.
+    #[inline]
+    pub fn set_lfo_targets(
+        &mut self,
+        to_rolloff: f64,
+        to_pitch_cents: f64,
+        to_cutoff_oct: f64,
+        to_fm: f64,
+    ) {
         self.lfo_to_rolloff = clamp(to_rolloff, -0.9, 0.9);
         self.lfo_to_pitch = clamp(to_pitch_cents, -1200.0, 1200.0);
+        self.lfo_to_cutoff = clamp(to_cutoff_oct, -8.0, 8.0);
+        self.lfo_to_fm = clamp(to_fm, -8.0, 8.0);
     }
 
     #[inline]
@@ -292,6 +315,7 @@ impl Voice {
 
     #[inline]
     pub fn set_filter_cutoff(&mut self, hz: f64) {
+        self.filter_cutoff = hz; // remembered as the base for `lfo_to_cutoff`
         self.filter.set_cutoff(hz);
     }
 
@@ -415,30 +439,30 @@ impl Voice {
         self.pan_z += (1.0 - self.pan_smooth) * (self.pan - self.pan_z);
 
         // ---- LFO ----
-        // Fast path: when neither LFO target is routed the modulator output is
-        // unused, so don't tick the LFO or do the routing math at all. The
-        // results here are bit-identical to the general path in that case —
-        // `rolloff_z` is already inside `[ROLLOFF_MIN, ROLLOFF_MAX]` (the setter
-        // clamps `rolloff`), so the clamp is a no-op, and `pitch_mod` would be
-        // exactly `1.0`. The LFO phase is left frozen; it retriggers on the next
-        // note-on anyway.
-        let (f_eff, roll_eff) = if self.lfo_to_rolloff == 0.0 && self.lfo_to_pitch == 0.0 {
-            (self.freq_z * self.bend_z, self.rolloff_z)
+        // Fast path: when no LFO target is routed the modulator output is
+        // unused, so the LFO is not ticked at all. Every routing term below
+        // then reduces to an exact identity, so the output is bit-identical.
+        // The phase is left frozen; it retriggers (or, in FreeRun mode, does
+        // not) on the next note-on.
+        let lfo_routed = self.lfo_to_rolloff != 0.0
+            || self.lfo_to_pitch != 0.0
+            || self.lfo_to_cutoff != 0.0
+            || self.lfo_to_fm != 0.0;
+        let m = if lfo_routed { self.lfo.tick() as f64 } else { 0.0 };
+
+        let f_eff = if self.lfo_to_pitch != 0.0 {
+            self.freq_z * self.bend_z * exp2(self.lfo_to_pitch * m / 1200.0)
         } else {
-            let m = self.lfo.tick() as f64; // −1..1
-            let pitch_mod = if self.lfo_to_pitch != 0.0 {
-                exp2(self.lfo_to_pitch * m / 1200.0)
-            } else {
-                1.0
-            };
-            (
-                self.freq_z * self.bend_z * pitch_mod,
-                clamp(
-                    self.rolloff_z + self.lfo_to_rolloff * m,
-                    Self::ROLLOFF_MIN,
-                    Self::ROLLOFF_MAX,
-                ),
+            self.freq_z * self.bend_z
+        };
+        let roll_eff = if self.lfo_to_rolloff != 0.0 {
+            clamp(
+                self.rolloff_z + self.lfo_to_rolloff * m,
+                Self::ROLLOFF_MIN,
+                Self::ROLLOFF_MAX,
             )
+        } else {
+            self.rolloff_z
         };
 
         // Nyquist partial clamp tracks the effective (bent + vibrato) pitch.
@@ -450,8 +474,20 @@ impl Voice {
         // ---- oscillator ----
         let fb = self.feedback * self.last_osc;
         let step = f_eff / self.sample_rate; // turns per output sample
-        let fm_term = if self.fm_index > 0.0 {
-            self.fm_index * sin_turns(self.fm_phase)
+        // FM index with the LFO routing folded in (clamped at 0 — a negative
+        // effective index is just "off").
+        let fm_index = if self.lfo_to_fm != 0.0 {
+            let i = self.fm_index + self.lfo_to_fm * m;
+            if i > 0.0 {
+                i
+            } else {
+                0.0
+            }
+        } else {
+            self.fm_index
+        };
+        let fm_term = if fm_index > 0.0 {
+            fm_index * sin_turns(self.fm_phase)
         } else {
             0.0
         };
@@ -460,8 +496,8 @@ impl Voice {
             // 2× oversample: analytic oscillator on-grid + at the half-step,
             // both through the character stage, then decimate.
             let (rn1, peak) = self.geom_norm(roll_eff, n);
-            let fm_hi = if self.fm_index > 0.0 {
-                self.fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * step)
+            let fm_hi = if fm_index > 0.0 {
+                fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * step)
             } else {
                 0.0
             };
@@ -486,6 +522,10 @@ impl Voice {
         };
 
         // ---- filter ----
+        if self.lfo_to_cutoff != 0.0 {
+            self.filter
+                .set_cutoff(self.filter_cutoff * exp2(self.lfo_to_cutoff * m));
+        }
         let filtered = self.filter.process(shaped);
 
         // ---- de-click ----
@@ -721,7 +761,7 @@ mod tests {
             if let Some(hz) = rate {
                 v.set_lfo(hz, LfoShape::Sine);
             }
-            v.set_lfo_targets(0.0, 0.0);
+            v.set_lfo_targets(0.0, 0.0, 0.0, 0.0);
             v.reset();
             v
         };
@@ -730,6 +770,56 @@ mod tests {
         for i in 0..20_000 {
             assert_eq!(a.render_sample(), b.render_sample(), "diverged at sample {i}");
         }
+    }
+
+    #[test]
+    fn lfo_to_cutoff_and_fm_stay_bounded() {
+        // Route the LFO to every target at once on a filtered + FM voice. A
+        // resonant SVF swept fast overshoots unity (that is real, not a bug —
+        // see `filter::resonance_lifts_the_corner`), so the bound is loose;
+        // `mono_peak` also asserts every sample is finite.
+        let mut v = Voice::new(48_000.0);
+        v.set_frequency(110.0);
+        v.set_gain(1.0);
+        v.set_fm(2.0, 0.5);
+        v.set_filter_mode(FilterMode::Low);
+        v.set_filter_cutoff(3_000.0);
+        v.set_filter_resonance(0.5);
+        v.set_lfo(7.0, LfoShape::Triangle);
+        v.set_lfo_targets(0.5, 40.0, 2.0, 3.0); // rolloff, cents, ±2 oct, ±3 index
+        v.reset();
+        assert!(mono_peak(&mut v, 96_000) <= 2.5);
+    }
+
+    #[test]
+    fn free_run_lfo_phase_survives_note_on() {
+        // Two identical free-running-oscillator voices, deep vibrato. Run both
+        // ~⅔ of an LFO cycle, then note-on. The Retrigger voice snaps its LFO
+        // to 0; the FreeRun voice keeps going — so their outputs must differ.
+        let mk = |mode: LfoMode| {
+            let mut v = Voice::new(48_000.0);
+            v.set_frequency(330.0);
+            v.set_gain(1.0);
+            v.set_free_running(true); // osc phase itself doesn't reset
+            v.set_lfo(5.0, LfoShape::Sine);
+            v.set_lfo_targets(0.0, 200.0, 0.0, 0.0); // strong vibrato
+            v.set_lfo_mode(mode);
+            v.reset();
+            for _ in 0..6500 {
+                v.render_sample();
+            }
+            v.reset(); // note-on mid LFO cycle
+            v
+        };
+        let mut retrig = mk(LfoMode::Retrigger);
+        let mut freerun = mk(LfoMode::FreeRun);
+        let mut max_diff = 0.0_f32;
+        for _ in 0..2000 {
+            let [lr, _] = retrig.render_sample();
+            let [lf, _] = freerun.render_sample();
+            max_diff = max_diff.max((lr - lf).abs());
+        }
+        assert!(max_diff > 0.05, "FreeRun LFO restarted like Retrigger ({max_diff})");
     }
 
     #[test]
@@ -777,7 +867,7 @@ mod tests {
         v.set_frequency(220.0);
         v.set_pitch_bend((2.0_f64).powf(2.0 / 12.0));
         v.set_lfo(6.0, LfoShape::Sine);
-        v.set_lfo_targets(0.3, 25.0);
+        v.set_lfo_targets(0.3, 25.0, 0.0, 0.0);
         v.reset();
         assert!(mono_peak(&mut v, 96_000) <= 1.5);
     }

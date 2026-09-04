@@ -7,7 +7,8 @@ no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прох�
 **Прогрес:** ✅ Б3-крок-1 (крос-компіляція) · ✅ А1 (BLIT саw/трикутник) ·
 🔶 Б2 (фікс CLAP-обгортки nih-plug: патч готовий і перевірений 35/35,
 публічний PR — за користувачем, `10_NIH_PLUG_CLAP_BUGS.md`) ·
-✅ Б1 (clean-voice fast path: +25 % на голос, +80 % поліфонії).
+✅ Б1 (clean-voice fast path: +25 % на голос, +80 % поліфонії) ·
+✅ А2 (LFO retrigger/free-run + матриця: LFO→cutoff, LFO→FM index).
 
 Три вектори. У кожному пункті: **Проблема / Рішення / Файли / Оцінка /
 Критерій готовності (DoD)**.
@@ -47,18 +48,26 @@ no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прох�
 - **Не зроблено.** Демо-WAV (окремим кроком за потреби); polyBLEP-варіант
   трикутника без спаду баса — можливий майбутній апгрейд.
 
-### А2. Поголосна LFO — retrigger + матриця модуляції
+### А2. Поголосна LFO — retrigger + матриця модуляції ✅ ВИКОНАНО
 
-- **Проблема.** LFO хоч і поголосний фізично, але не має режиму key-sync
-  retrigger vs free-run, і роутиться лише в `rolloff` та `pitch`.
-- **Рішення.** (1) `LfoMode { Retrigger, FreeRun }` — у free-run фаза не
-  скидається на note-on (аналог `free_running` осцилятора). (2) Розширити
-  роутинг: LFO → cutoff SVF (± октави), LFO → FM index. Це просто ще два
-  `lfo_to_*` поля + застосування в `render_sample`.
-- **Файли.** `lfo.rs` (mode), `voice.rs` (нові цілі), `poly.rs`, плагін
-  (2 параметри: LFO → Cutoff, LFO → FM; enum LFO Mode).
-- **Оцінка.** S (≈ 2–3 год).
-- **DoD.** Тести на обмеженість + що free-run фаза переживає note-on. Docs 04.
+- **Проблема.** LFO не мав режиму key-sync і роутився лише в `rolloff` та
+  `pitch`.
+- **Зроблено.**
+  1. `LfoMode { Retrigger, FreeRun }` (`lfo.rs`) — `retrigger()` не чіпає фазу
+     у `FreeRun`; `Voice::set_lfo_mode`, fanout у `poly.rs`.
+  2. Матриця розширена на 4 цілі: `set_lfo_targets(to_rolloff, to_pitch_cents,
+     to_cutoff_oct, to_fm)`. `lfo_to_cutoff` → `filter.set_cutoff(base ·
+     2^(d·m))` (композиться мультиплікативно з фільтровою обгинаючою);
+     `lfo_to_fm` → `max(fm_index + d·m, 0)`. Кожна ціль `0` не застосовується;
+     усі 4 нулі → LFO не тикається (clean fast path зберігається, бітово).
+  3. Плагін: `LFO Sync` (enum), `LFO → Cutoff` (±4 окт), `LFO → FM` (±4).
+     C-ABI `harmonic_voice_set_lfo` розширено (+`mode`, +2 цілі).
+- **Файли.** `lfo.rs`, `voice.rs`, `poly.rs`, `ffi.rs`, `include/harmonic_core.h`,
+  `harmonic_synth/src/lib.rs`. Docs 03/04 §5/05/06/08.
+- **Тести.** `lfo::free_run_mode_survives_retrigger`,
+  `voice::{lfo_to_cutoff_and_fm_stay_bounded, free_run_lfo_phase_survives_note_on}`,
+  `poly::lfo_modulation_stays_bounded` (розширено на всі 4 цілі). 53→56.
+- **Voice.** 528 → 552 б (+3 `f64`).
 
 ### А3. Стерео-унісон — мікро-затримки + динамічна декореляція
 
@@ -191,6 +200,6 @@ no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прох�
 3. **Б2** (nih-plug PR) — 🔶 патч готовий і перевірений (35/35), лишилось
    подати публічний PR (рішення користувача).
 4. ~~**Б1** (fast path)~~ — ✅ виконано (+25 % голос / +80 % поліфонія).
-5. **А2** (LFO retrigger + матриця) — дешево, помітно. ← наступне технічне.
-6. **В3** (drift-тест) — дешево написати, закриває питання з `07`.
+5. ~~**А2** (LFO retrigger + матриця)~~ — ✅ виконано.
+6. **В3** (drift-тест) — дешево написати, закриває питання з `07`. ← наступне.
 7. **А3** (живий унісон) · **В1** (GUI) · **В2** (DAW) — більші, ітеративні.

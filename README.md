@@ -18,7 +18,8 @@ band-limited impulse train) at the limit:
 oscillator cannot alias. Two extra waveforms — a band-limited **sawtooth** and
 **triangle** via leaky-integrated BLIT (Stilson & Smith 1996) — sit alongside it.
 On top: a character stage (drive / wavefolder / bit-crush / downsampler), FM with
-operator feedback, a ZDF state-variable filter, two ADSR envelopes, an LFO,
+operator feedback, a ZDF state-variable filter, two ADSR envelopes, a per-voice
+LFO (retrigger / free-run, routed to brightness / pitch / cutoff / FM index),
 unison, pitch bend and equal-power pan.
 
 > Cost is **Θ(log n)** per sample (one `rⁿ` by exponentiation-by-squaring),
@@ -43,7 +44,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 49 unit + 4 integration tests
+cargo test                                    # 52 unit + 4 integration tests
 cargo build --no-default-features --release    # the real no_std build
 
 # plugin bundle (VST3 + CLAP)
@@ -61,7 +62,7 @@ nightly.
 
 ## Status
 
-53 tests pass (49 unit + 4 integration); `clippy` clean on `std`, `no_std` and
+56 tests pass (52 unit + 4 integration); `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3;
 `clap-validator` passes 31/31 on the CLAP (2 state-test groups excluded — known
 `nih-plug` bugs, see [`docs/09_ROADMAP.md`](docs/09_ROADMAP.md) §Б2). Not yet

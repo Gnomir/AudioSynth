@@ -8,7 +8,7 @@
 use crate::character::CharParams;
 use crate::env::Adsr;
 use crate::filter::FilterMode;
-use crate::lfo::LfoShape;
+use crate::lfo::{LfoMode, LfoShape};
 use crate::trig::exp2;
 use crate::voice::{Voice, Waveform};
 
@@ -81,8 +81,11 @@ pub struct PolySynth<const VOICES: usize> {
     bend_ratio: f64, // pitch-bend, 2^(st/12)
     lfo_rate: f64,
     lfo_shape: LfoShape,
+    lfo_mode: LfoMode,
     lfo_to_rolloff: f64,
     lfo_to_pitch: f64,
+    lfo_to_cutoff: f64,
+    lfo_to_fm: f64,
 
     hq: bool,
     waveform: Waveform,
@@ -129,8 +132,11 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             bend_ratio: 1.0,
             lfo_rate: 5.0,
             lfo_shape: LfoShape::Sine,
+            lfo_mode: LfoMode::Retrigger,
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
+            lfo_to_cutoff: 0.0,
+            lfo_to_fm: 0.0,
             hq: false,
             waveform: Waveform::Geometric,
             counter: 0,
@@ -229,16 +235,31 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
-    /// Shared LFO: rate, shape, and routing depth to brightness (`to_rolloff`,
-    /// ±) and vibrato (`to_pitch_cents`).
-    pub fn set_lfo(&mut self, rate_hz: f64, shape: LfoShape, to_rolloff: f64, to_pitch_cents: f64) {
+    /// Shared LFO: rate, shape, key-sync `mode`, and routing depth to
+    /// brightness (`to_rolloff`, ±), vibrato (`to_pitch_cents`), filter cutoff
+    /// (`to_cutoff_oct`, ±) and FM index (`to_fm`, ±).
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_lfo(
+        &mut self,
+        rate_hz: f64,
+        shape: LfoShape,
+        mode: LfoMode,
+        to_rolloff: f64,
+        to_pitch_cents: f64,
+        to_cutoff_oct: f64,
+        to_fm: f64,
+    ) {
         self.lfo_rate = rate_hz;
         self.lfo_shape = shape;
+        self.lfo_mode = mode;
         self.lfo_to_rolloff = to_rolloff;
         self.lfo_to_pitch = to_pitch_cents;
+        self.lfo_to_cutoff = to_cutoff_oct;
+        self.lfo_to_fm = to_fm;
         for v in &mut self.voices {
             v.core.set_lfo(rate_hz, shape);
-            v.core.set_lfo_targets(to_rolloff, to_pitch_cents);
+            v.core.set_lfo_mode(mode);
+            v.core.set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm);
         }
     }
 
@@ -354,8 +375,13 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         v.core.set_filter_resonance(self.filter_res);
         v.core.set_filter_cutoff(self.filter_cutoff);
         v.core.set_lfo(self.lfo_rate, self.lfo_shape);
-        v.core
-            .set_lfo_targets(self.lfo_to_rolloff, self.lfo_to_pitch);
+        v.core.set_lfo_mode(self.lfo_mode);
+        v.core.set_lfo_targets(
+            self.lfo_to_rolloff,
+            self.lfo_to_pitch,
+            self.lfo_to_cutoff,
+            self.lfo_to_fm,
+        );
         v.core.reset();
 
         // decorrelate stacked unison voices
@@ -627,7 +653,10 @@ mod tests {
     fn lfo_modulation_stays_bounded() {
         let mut s: PolySynth<8> = PolySynth::new(48_000.0);
         s.set_gain(1.0);
-        s.set_lfo(6.0, LfoShape::Triangle, 0.35, 30.0);
+        // every routing target at once, plus a filter + FM to actually hit
+        s.set_fm(2.0, 0.4);
+        s.set_filter(FilterMode::Low, 4_000.0, 0.7, 0.0);
+        s.set_lfo(6.0, LfoShape::Triangle, LfoMode::Retrigger, 0.35, 30.0, 3.0, 2.5);
         s.note_on(52, 1.0);
         assert!(peak(&mut s, 96_000) <= 1.5);
     }

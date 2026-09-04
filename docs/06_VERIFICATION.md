@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **53 тести проходять** (49
+Що перевірено, як, і якими числами. Статус: **56 тестів проходять** (52
 юніт + 4 інтеграційні), clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP.
 
@@ -83,21 +83,24 @@
 | `zero_sustain_is_percussive_and_frees` | `sustain = 0` → голос стає Idle навіть при затиснутій ноті |
 | `monotone_attack_then_nonincreasing_release` | attack монотонно росте, release монотонно спадає |
 
-### `lfo` (3)
+### `lfo` (4)
 
 | Тест | Що доводить |
 |---|---|
 | `all_shapes_stay_in_range_and_have_zero_mean` | усі форми `∈ [−1,1]`, середнє за цикл `< 0.02` |
 | `shapes_are_phase_aligned_at_start` | sine, triangle, saw усі `≈ 0` у фазі 0 |
 | `triangle_and_saw_hit_their_peaks` | пік `> 0.95`, мін `< −0.95` |
+| `free_run_mode_survives_retrigger` | `FreeRun` — `retrigger()` не чіпає фазу; `Retrigger` (дефолт) — скидає в 0 |
 
-### `voice` (8)
+### `voice` (10)
 
 | Тест | Що доводить |
 |---|---|
 | `output_stays_bounded_across_the_range` | `f₀ ∈ {20…12000}`: стерео-пік `∈ (0.05, 1.5]`, скінченне |
 | `blit_saw_and_triangle_are_bounded_and_shaped` | `Saw`/`Triangle` на `f₀ ∈ {55, 220, 3000}`: `\|y\| ≤ 1.6`, енергія над Найквістом `< 2 %·h₁`, гармоніки спадають; трикутник — парні `< 15 %`, `h₃/h₁ ∈ [0.06, 0.22]` (≈ `1/9`) |
 | `unrouted_lfo_does_not_affect_output` | голос з LFO на якійсь частоті, але routing `= 0`, рендериться **бітово** так само, як без LFO (fast path не тикає LFO) |
+| `lfo_to_cutoff_and_fm_stay_bounded` | усі 4 цілі роутингу разом на filtered+FM голосі → скінченне, `\|y\| ≤ 2.5` (резонансний SVF на швидкому свіпі перевищує unity — це реально) |
+| `free_run_lfo_phase_survives_note_on` | `FreeRun` vs `Retrigger` голос після note-on посеред циклу LFO дають **різний** вихід (FreeRun не рестартує вібрато) |
 | `geom_and_pan_caches_track_changing_params` | після зсуву `rolloff` + `pan` голос сходиться (`< 1e-4`) до значень свіжого голосу, стартованого прямо на цих параметрах → кеші інвалідуються коректно |
 | `equal_power_pan_splits_correctly` | hard-left «протікання» `< 5 %`; центр збалансований `< 5 %` |
 | `free_running_phase_survives_note_on` | `free_running=true` → фаза не змінилась на `reset()`; `false` → фаза = 0 |
