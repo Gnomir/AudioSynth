@@ -181,7 +181,15 @@ nightly Rust**. На stable явного `core::simd` шляху немає; п�
 
 Скомпільовані `.dll`/`.lib`/`.vst3`/`.clap` — `x86_64-pc-windows-msvc`. Для
 Linux/macOS/ARM перекомпілюйте. Вихідний код `no_std`-сумісний і не має
-платформних припущень, але не збирався під інші таргети.
+платформних припущень.
+
+`harmonic_core` крос-компілюється чисто під `thumbv7em-none-eabihf` (M4F),
+`thumbv6m-none-eabi` (M0), `aarch64-unknown-none`, `riscv32imac-unknown-none-elf`.
+**Бітова ідентичність вихідного аудіо перевірена** на `aarch64-unknown-linux-gnu`
+та `armv7-unknown-linux-gnueabihf` (VFP `f64` тотожний Cortex-M4F) під QEMU —
+дельта `= 0.0` проти x86-64 (`06_VERIFICATION.md §6-bis`). Реальне залізо
+Cortex-M, soft-float `thumbv6m` та RISC-V прогін — ще ні. Плагін
+(`harmonic_synth`) під не-Windows платформи не збирався.
 
 ---
 
