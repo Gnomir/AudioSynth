@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **67 тестів проходять** (62
+Що перевірено, як, і якими числами. Статус: **68 тестів проходять** (63
 юніт + 5 інтеграційних) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
 чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP, увесь набір
 проходить біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
@@ -69,7 +69,7 @@
 | `hq_path_is_bounded_and_reduces_alias_energy` | 2×+децимація на near-Nyquist тоні в фолдер → менше LF-енергії (аліасів), ніж 1× |
 | `round_f32_behaves` | `round_f32` округлює до найближчого |
 
-### `filter` (8)
+### `filter` (9)
 
 | Тест | Що доводить |
 |---|---|
@@ -79,7 +79,8 @@
 | `bandpass_peaks_near_cutoff` | @2 kHz: відгук на 2 kHz `> 3×` відгуку на 200 Hz та 16 kHz |
 | `resonance_lifts_the_corner` | `res 1.0` → відгук на частоті зрізу `> 2×` проти `res 0` |
 | `per_sample_smoothing_removes_the_zipper` | cutoff кидається 300↔8000 Hz щосемпла → макс. стрибок виходу `< 0.35` |
-| `set_sample_rate_retargets_the_prewarp_and_the_clamp` | подвоєння `sample_rate` при тому самому Hz cutoff → `g` зменшується `2×` (прямий доказ, що `recompute_g` перерахувався на нову ставку); кламп cutoff теж стежить за новою ставкою в обидва боки; no-op при тій самій ставці |
+| `set_sample_rate_retargets_the_prewarp_and_the_clamp` | подвоєння `sample_rate` при тому самому Hz cutoff → `g` зменшується `2×` (прямий доказ, що `recompute_g` перерахувався на нову ставку); повторний кламп у `set_sample_rate` no-op при тій самій ставці |
+| `cutoff_ceiling_is_identical_at_1x_and_hq_2x` | той самий запитаний cutoff (до `500 000` Гц) клампується **однаково** при `Svf::new(fs)` і після `set_sample_rate(2fs)` — доводить, що музична стеля прив'язана до `base_sample_rate`, не до робочої ставки (RFC-19 подальший аудит; без фіксу HQ відкривав фільтр удвічі далі за той самий свіп) |
 | `stable_under_cutoff_and_resonance_sweep` | свіп cutoff при `res 1.0`, 200 000 семплів, `|y| < 20`, скінченне |
 
 ### `env` (4)
@@ -336,7 +337,7 @@ master-decimate`, якого вимагав би наївний RFC-14) все �
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 67 / 67 (62 юніт + 5 інтеграційних) |
+| Тести | `cargo test` | 68 / 68 (63 юніт + 5 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -384,7 +385,7 @@ upstream-PR — за користувачем.
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **67 / 67 pass** (62 юніт + 5 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **68 / 68 pass** (63 юніт + 5 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **62 / 62 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
@@ -412,7 +413,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 67/67, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 68/68, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.

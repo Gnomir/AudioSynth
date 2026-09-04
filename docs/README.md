@@ -19,7 +19,7 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 67 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 68 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; відсутність DAW-валідації тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (512 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Дорожня карта: 3 вектори (DSP-розширення · оптимізація/портування · GUI/QA), кожен пункт з Проблема/Рішення/Файли/Оцінка/DoD; рекомендована послідовність |
@@ -30,6 +30,7 @@
 | [14_RFC_AUDIT_HQ_BUS_TAN_MXCSR.md](14_RFC_AUDIT_HQ_BUS_TAN_MXCSR.md) | RFC-16/17 «5 прихованих компромісів», перевірено проти коду: `tan_turns_fast`-полюс і MXCSR-крихкість спростовано як живі баги (захисний кламп + документація додані), minimum-phase FIR відхилено, PolyBLEP-шейв відкладено, Unified HQ Bus — правильна архітектура (реалізація → `15`) |
 | [15_TECHNICAL_SPEC_HQ_BUS.md](15_TECHNICAL_SPEC_HQ_BUS.md) | RFC-16 Unified HQ Bus: реалізовано. Аліасинг майстра `−94.6` дБ (DoD `−75`) ✅; CPU-DoD `40–50 %` ❌ спростовано вимірюванням (`+0.5…+2.7 %` на 12/16/24 голосах — дециматор ніколи не був вузьким місцем). Стандалон `Voice`/C-ABI HQ-шлях лишився недоторканим |
 | [16_RFC19_AUDIT_DOCS_DC_SH_NOSTD.md](16_RFC19_AUDIT_DOCS_DC_SH_NOSTD.md) | RFC-19 аудит: `.min()` у `no_std` — спростовано з доказом (`core`-safe, список заборонених викликів виправлено); 2 реальних DSP-баги виправлено (DC-blocker rate-scaling, S&H near-zero jitter, обидва з регресійними тестами); PolyBLEP ZOH-пастка — спростована вимірюванням; ADSR/SVF rate «проблема» — спростована; латентність/wording у 04/05/13 виправлено |
+| [17_RFC_AUDIT_STATE_CLAMP_UNISON.md](17_RFC_AUDIT_STATE_CLAMP_UNISON.md) | Наступний аудит: HQ cutoff-стеля `0.45×2fs` vs `0.45×fs` — реальний баг, виправлено (`Svf::base_sample_rate`); DC-blocker reset — переспростовано (той самий хибний закид, що й RFC-12 §1.2); S&H bypass-freeze — залишено з обґрунтуванням; унісон при `detune=0` — спростовано вимірюванням: гасить (аж до тиші), не перевантажує |
 
 ## Порядок читання
 
@@ -48,7 +49,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус (2026-09-04)
 
-67 тестів проходять (62 юніт + 5 інтеграційних) + 1 `#[ignore]` (дрейф),
+68 тестів проходять (63 юніт + 5 інтеграційних) + 1 `#[ignore]` (дрейф),
 біт-у-біт на `aarch64` + `armv7-hf` під QEMU (`cross-verify.sh`) · clippy чистий (stable +
 `--no-default-features --release` + nightly `--features portable-simd`) ·
 плагін збирається у VST3 + CLAP, має GUI (`nih_plug_vizia`: усі параметри +
