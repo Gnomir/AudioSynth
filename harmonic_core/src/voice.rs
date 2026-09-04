@@ -7,7 +7,7 @@
 
 use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
-use crate::kernel::{dirichlet_blit, geometric_partials, geometric_peak};
+use crate::kernel::{dirichlet_blit, geometric_partials_pre, geometric_peak_pre, powi_pos};
 use crate::lfo::{Lfo, LfoShape};
 use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns};
 use crate::{validate_sample_rate, SampleRateStatus};
@@ -61,6 +61,11 @@ pub struct Voice {
     pan: f64,        // −1..1, target
     pan_z: f64,      // smoothed
     pan_smooth: f64, // one-pole coeff, ~10 ms
+    // cached equal-power gains for the last `pan_z` (it stops changing once
+    // smoothing converges, so this hits every sample of a steady pan)
+    pan_cache_z: f64,
+    pan_sin: f64,
+    pan_cos: f64,
 
     free_running: bool, // true = phase survives note-on (analog-style)
     declick: u16,       // samples left in the note-on fade
@@ -78,6 +83,14 @@ pub struct Voice {
     lfo_to_pitch: f64,   // cents of vibrato
 
     hq: bool, // 2× oversample the oscillator + character stage
+
+    // cached geometric normalisation: `r^{n+1}` and the peak for the last
+    // `(roll_eff, n)`. Both `powi_pos` calls are skipped while a note holds a
+    // steady brightness and pitch.
+    geom_r: f64,
+    geom_n: u32,
+    geom_rn1: f64,
+    geom_peak: f64,
 
     // BLIT saw / triangle: leaky integrators + DC blockers
     waveform: Waveform,
@@ -130,6 +143,9 @@ impl Voice {
             pan: 0.0,
             pan_z: 0.0,
             pan_smooth,
+            pan_cache_z: f64::NAN, // force a compute on the first sample
+            pan_sin: 0.0,
+            pan_cos: 0.0,
             free_running: false,
             declick: 0,
             fm_phase: 0.0,
@@ -141,6 +157,10 @@ impl Voice {
             lfo_to_rolloff: 0.0,
             lfo_to_pitch: 0.0,
             hq: false,
+            geom_r: f64::NAN, // force a compute on the first sample
+            geom_n: 0,
+            geom_rn1: 0.0,
+            geom_peak: 1.0,
             waveform: Waveform::Geometric,
             blit_leak: 1.0 - dt / 0.5, // saw integrator, ~0.5 s
             tri_leak: 1.0 - dt / 0.02, // triangle stage-2, ~20 ms
@@ -357,6 +377,22 @@ impl Voice {
         clamp(y, -1.5, 1.5)
     }
 
+    /// `(r^{n+1}, peak)` for the geometric oscillator, keyed on `(r, n)`. The
+    /// two `powi_pos` evaluations run only when brightness or the Nyquist
+    /// partial count actually changes — a steady note pays two `f64` compares.
+    /// Bit-identical to `geometric_peak(r, n)` / the `powi_pos(r, n+1)` inside
+    /// `geometric_partials`.
+    #[inline]
+    fn geom_norm(&mut self, r: f64, n: u32) -> (f64, f64) {
+        if r != self.geom_r || n != self.geom_n {
+            self.geom_r = r;
+            self.geom_n = n;
+            self.geom_rn1 = powi_pos(r, n + 1);
+            self.geom_peak = geometric_peak_pre(r, n, powi_pos(r, n));
+        }
+        (self.geom_rn1, self.geom_peak)
+    }
+
     #[inline]
     pub fn max_partials(&self) -> u32 {
         let f = if self.freq_z > 1.0 { self.freq_z } else { 1.0 };
@@ -379,18 +415,31 @@ impl Voice {
         self.pan_z += (1.0 - self.pan_smooth) * (self.pan - self.pan_z);
 
         // ---- LFO ----
-        let m = self.lfo.tick() as f64; // −1..1
-        let pitch_mod = if self.lfo_to_pitch != 0.0 {
-            exp2(self.lfo_to_pitch * m / 1200.0)
+        // Fast path: when neither LFO target is routed the modulator output is
+        // unused, so don't tick the LFO or do the routing math at all. The
+        // results here are bit-identical to the general path in that case —
+        // `rolloff_z` is already inside `[ROLLOFF_MIN, ROLLOFF_MAX]` (the setter
+        // clamps `rolloff`), so the clamp is a no-op, and `pitch_mod` would be
+        // exactly `1.0`. The LFO phase is left frozen; it retriggers on the next
+        // note-on anyway.
+        let (f_eff, roll_eff) = if self.lfo_to_rolloff == 0.0 && self.lfo_to_pitch == 0.0 {
+            (self.freq_z * self.bend_z, self.rolloff_z)
         } else {
-            1.0
+            let m = self.lfo.tick() as f64; // −1..1
+            let pitch_mod = if self.lfo_to_pitch != 0.0 {
+                exp2(self.lfo_to_pitch * m / 1200.0)
+            } else {
+                1.0
+            };
+            (
+                self.freq_z * self.bend_z * pitch_mod,
+                clamp(
+                    self.rolloff_z + self.lfo_to_rolloff * m,
+                    Self::ROLLOFF_MIN,
+                    Self::ROLLOFF_MAX,
+                ),
+            )
         };
-        let f_eff = self.freq_z * self.bend_z * pitch_mod;
-        let roll_eff = clamp(
-            self.rolloff_z + self.lfo_to_rolloff * m,
-            Self::ROLLOFF_MIN,
-            Self::ROLLOFF_MAX,
-        );
 
         // Nyquist partial clamp tracks the effective (bent + vibrato) pitch.
         let n = {
@@ -410,22 +459,24 @@ impl Voice {
         let shaped = if self.waveform == Waveform::Geometric && self.hq {
             // 2× oversample: analytic oscillator on-grid + at the half-step,
             // both through the character stage, then decimate.
-            let peak = geometric_peak(roll_eff, n);
+            let (rn1, peak) = self.geom_norm(roll_eff, n);
             let fm_hi = if self.fm_index > 0.0 {
                 self.fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * step)
             } else {
                 0.0
             };
-            let osc_lo = geometric_partials(self.phase + fm_term + fb, roll_eff, n) / peak;
+            let osc_lo =
+                geometric_partials_pre(self.phase + fm_term + fb, roll_eff, n, rn1) / peak;
             let osc_hi =
-                geometric_partials(self.phase + 0.5 * step + fm_hi + fb, roll_eff, n) / peak;
+                geometric_partials_pre(self.phase + 0.5 * step + fm_hi + fb, roll_eff, n, rn1)
+                    / peak;
             self.last_osc = osc_lo;
             self.character.process_hq(osc_lo as f32, osc_hi as f32)
         } else {
             let osc = match self.waveform {
                 Waveform::Geometric => {
-                    geometric_partials(self.phase + fm_term + fb, roll_eff, n)
-                        / geometric_peak(roll_eff, n)
+                    let (rn1, peak) = self.geom_norm(roll_eff, n);
+                    geometric_partials_pre(self.phase + fm_term + fb, roll_eff, n, rn1) / peak
                 }
                 Waveform::Saw => self.blit_saw(self.phase + fm_term + fb, n, f_eff),
                 Waveform::Triangle => self.blit_triangle(self.phase + fm_term + fb, n, f_eff),
@@ -457,9 +508,16 @@ impl Voice {
         }
 
         // ---- equal-power pan ---- (a modulator → fast trig is plenty)
-        // angle θ ∈ [0, π/2]; in turns that is (pan·0.5 + 0.5)·0.25
-        let (sin_p, cos_p) = sin_cos_turns_fast((self.pan_z * 0.5 + 0.5) * 0.25);
-        [mono * cos_p as f32, mono * sin_p as f32]
+        // angle θ ∈ [0, π/2]; in turns that is (pan·0.5 + 0.5)·0.25. `pan_z`
+        // stops moving once the ~10 ms smoother converges, so cache the gains
+        // and skip the trig on every steady sample (bit-identical: same input).
+        if self.pan_z != self.pan_cache_z {
+            let (s, c) = sin_cos_turns_fast((self.pan_z * 0.5 + 0.5) * 0.25);
+            self.pan_sin = s;
+            self.pan_cos = c;
+            self.pan_cache_z = self.pan_z;
+        }
+        [mono * self.pan_cos as f32, mono * self.pan_sin as f32]
     }
 
     /// Fill `left` / `right` with rendered samples (up to the shorter length).
@@ -647,6 +705,69 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn unrouted_lfo_does_not_affect_output() {
+        // Fast path: when both LFO depths are zero the LFO is not ticked. Prove
+        // that is transparent — a voice with an LFO configured at some rate but
+        // routed to nothing renders bit-identically to one with no LFO at all.
+        let mk = |rate: Option<f64>| {
+            let mut v = Voice::new(48_000.0);
+            v.set_frequency(196.0);
+            v.set_gain(0.9);
+            v.set_pan(-0.3);
+            v.set_rolloff(0.93);
+            if let Some(hz) = rate {
+                v.set_lfo(hz, LfoShape::Sine);
+            }
+            v.set_lfo_targets(0.0, 0.0);
+            v.reset();
+            v
+        };
+        let mut a = mk(None);
+        let mut b = mk(Some(6.3));
+        for i in 0..20_000 {
+            assert_eq!(a.render_sample(), b.render_sample(), "diverged at sample {i}");
+        }
+    }
+
+    #[test]
+    fn geom_and_pan_caches_track_changing_params() {
+        // The per-(r,n) and per-pan caches must invalidate when the target
+        // moves. Compare a voice whose brightness + pan are swept against a
+        // fresh voice started directly at each end state and let it settle.
+        let mut swept = Voice::new(48_000.0);
+        swept.set_frequency(220.0);
+        swept.set_gain(1.0);
+        swept.reset();
+        for _ in 0..2000 {
+            swept.render_sample();
+        }
+        swept.set_rolloff(0.7);
+        swept.set_pan(0.6);
+        for _ in 0..6000 {
+            swept.render_sample();
+        } // let both smoothers converge
+
+        let mut fresh = Voice::new(48_000.0);
+        fresh.set_frequency(220.0);
+        fresh.set_gain(1.0);
+        fresh.set_rolloff(0.7);
+        fresh.set_pan(0.6);
+        fresh.set_free_running(true); // no phase reset, no de-click ramp
+        fresh.reset();
+        // align oscillator phase to `swept` so the tones line up
+        fresh.set_start_phase(swept.phase);
+        fresh.fm_phase = swept.fm_phase;
+
+        let mut max_diff = 0.0_f32;
+        for _ in 0..4000 {
+            let [la, ra] = swept.render_sample();
+            let [lb, rb] = fresh.render_sample();
+            max_diff = max_diff.max((la - lb).abs()).max((ra - rb).abs());
+        }
+        assert!(max_diff < 1e-4, "cache did not converge to the direct value: {max_diff}");
     }
 
     #[test]

@@ -22,7 +22,7 @@ operator feedback, a ZDF state-variable filter, two ADSR envelopes, an LFO,
 unison, pitch bend and equal-power pan.
 
 > Cost is **Θ(log n)** per sample (one `rⁿ` by exponentiation-by-squaring),
-> **Θ(1)** at fixed partial count — measured ~20 M samples/s per voice, flat
+> **Θ(1)** at fixed partial count — measured ~26 M samples/s per clean voice, flat
 > across a 400× range of harmonic counts.
 
 This project is **not** "AQOE-AudioSynth" / `cos²(2εθ)` — that idea was analysed
@@ -43,7 +43,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 46 unit + 4 integration tests
+cargo test                                    # 49 unit + 4 integration tests
 cargo build --no-default-features --release    # the real no_std build
 
 # plugin bundle (VST3 + CLAP)
@@ -61,7 +61,7 @@ nightly.
 
 ## Status
 
-50 tests pass (46 unit + 4 integration); `clippy` clean on `std`, `no_std` and
+53 tests pass (49 unit + 4 integration); `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3;
 `clap-validator` passes 31/31 on the CLAP (2 state-test groups excluded — known
 `nih-plug` bugs, see [`docs/09_ROADMAP.md`](docs/09_ROADMAP.md) §Б2). Not yet

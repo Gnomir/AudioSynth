@@ -24,7 +24,7 @@ Rust stable (1.97 known-good). `harmonic_core` has no dependencies.
 
 ```
 cd harmonic_core
-cargo test                                     # all 50 tests (46 unit + tests/spectrum.rs)
+cargo test                                     # all 53 tests (49 unit + tests/spectrum.rs)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0
