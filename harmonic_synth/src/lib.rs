@@ -118,10 +118,13 @@ impl LfoSync {
     }
 }
 
-/// The plugin reports this constant latency (the HQ decimator's group delay).
-/// With HQ off, `HarmonicSynth::dly` re-adds the matching delay so the
-/// reported figure stays honest without ever *changing* at runtime.
-const HQ_LAT: usize = harmonic_core::Voice::HQ_LATENCY;
+/// The plugin reports this constant latency (the unified HQ bus's master
+/// decimator group delay — `PolySynth::HQ_LATENCY`, RFC-16; *not*
+/// `Voice::HQ_LATENCY`, which is the smaller, unrelated per-voice figure for
+/// a standalone `Voice` driven directly, not through `PolySynth`). With HQ
+/// off, `HarmonicSynth::dly` re-adds the matching delay so the reported
+/// figure stays honest without ever *changing* at runtime.
+const HQ_LAT: usize = PolySynth::<MAX_VOICES>::HQ_LATENCY;
 
 struct HarmonicSynth {
     params: Arc<HarmonicSynthParams>,
@@ -585,10 +588,11 @@ impl Plugin for HarmonicSynth {
         self.engine.set_hq(self.params.hq_mode.value());
         self.analyzer
             .set_sample_rate(self.engine.sample_rate());
-        // The HQ decimator's group delay. Reported unconditionally so the
-        // latency never changes at runtime (CLAP forbids that outside
-        // activate); when HQ is off, `dly` below re-adds the matching delay.
-        context.set_latency_samples(harmonic_core::Voice::HQ_LATENCY as u32);
+        // The unified HQ bus's master decimator group delay. Reported
+        // unconditionally so the latency never changes at runtime (CLAP
+        // forbids that outside activate); when HQ is off, `dly` below
+        // re-adds the matching delay.
+        context.set_latency_samples(HQ_LAT as u32);
         true
     }
 
