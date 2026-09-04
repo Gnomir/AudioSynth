@@ -67,8 +67,10 @@ pub fn midi_to_hz(note: f32) -> f64
 
 Створення: `PolySynth::<N>::new(sample_rate)` (клампить тихо) або
 `new_checked(sr) -> (Self, SampleRateStatus)`. `set_sample_rate(sr) ->
-SampleRateStatus` перебудовує (глушить голоси) і повертає статус —
-плагін відхиляє все крім `Ok`. `sample_rate() -> f64` — поточна валідована.
+SampleRateStatus` перебудовує (глушить голоси) і повертає статус — плагін
+**не** відхиляє ініціалізацію на не-`Ok`: клампить, пише в лог і завжди
+повертає `true` з `initialize` (`harmonic_synth/src/lib.rs`; `07 §11`
+має причину). `sample_rate() -> f64` — поточна валідована.
 Константа: `PolySynth::<N>::HQ_LATENCY = 16` — латентність Unified HQ Bus
 (RFC-16, `docs/15_TECHNICAL_SPEC_HQ_BUS.md`), незалежна від `Voice::
 HQ_LATENCY` (=3, лише для прямого `Voice`/C-ABI шляху нижче).
