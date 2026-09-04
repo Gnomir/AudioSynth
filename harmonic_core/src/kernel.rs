@@ -77,12 +77,29 @@ pub fn geometric_partials(p: f64, r: f64, n: u32) -> f64 {
     if r <= 0.0 {
         return 0.0; // Σ 0^k cos(..) = 0
     }
+    geometric_partials_pre(p, r, n, powi_pos(r, n + 1))
+}
+
+/// [`geometric_partials`] with `r^{n+1}` supplied by the caller. Compute it once
+/// with `powi_pos(r, n + 1)` and reuse it across every sample at a fixed `r`,
+/// `n` — the per-sample cost then drops to the three cosines. Bit-identical to
+/// [`geometric_partials`] for the same `rn1`.
+#[inline]
+pub fn geometric_partials_pre(p: f64, r: f64, n: u32, rn1: f64) -> f64 {
+    if n == 0 {
+        return 0.0;
+    }
+    if r >= 1.0 {
+        return dirichlet_blit(p, n);
+    }
+    if r <= 0.0 {
+        return 0.0;
+    }
     let nf = n as f64;
     let c1 = cos_turns(p);
     let cn = cos_turns(nf * p);
     let cn1 = cos_turns((nf + 1.0) * p);
 
-    let rn1 = powi_pos(r, n + 1);
     let rn2 = rn1 * r;
 
     let num = r * c1 - r * r - rn1 * cn1 + rn2 * cn;
@@ -103,7 +120,24 @@ pub fn geometric_peak(r: f64, n: u32) -> f64 {
     if r <= 0.0 {
         return 1.0;
     }
-    let peak = r * (1.0 - powi_pos(r, n)) / (1.0 - r);
+    geometric_peak_pre(r, n, powi_pos(r, n))
+}
+
+/// [`geometric_peak`] with `r^n` supplied by the caller (see
+/// [`geometric_partials_pre`]). Bit-identical to [`geometric_peak`] for the
+/// same `rn`.
+#[inline]
+pub fn geometric_peak_pre(r: f64, n: u32, rn: f64) -> f64 {
+    if n == 0 {
+        return 1.0;
+    }
+    if r >= 1.0 {
+        return n as f64;
+    }
+    if r <= 0.0 {
+        return 1.0;
+    }
+    let peak = r * (1.0 - rn) / (1.0 - r);
     if peak > 0.0 {
         peak
     } else {
@@ -299,6 +333,27 @@ mod tests {
                         );
                     }
                     p0 += 0.041;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn pre_variants_are_bit_identical() {
+        // The `_pre` forms (used by Voice's per-(r,n) cache) must match the
+        // originals bit-for-bit, not just approximately.
+        for &n in &[1u32, 3, 27, 218, 1200, 2048] {
+            for &r in &[1.0e-3_f64, 0.3, 0.7, 0.9, 0.99, 0.9995] {
+                assert_eq!(geometric_peak(r, n), geometric_peak_pre(r, n, powi_pos(r, n)));
+                let rn1 = powi_pos(r, n + 1);
+                let mut p = 0.0_f64;
+                while p < 1.0 {
+                    assert_eq!(
+                        geometric_partials(p, r, n),
+                        geometric_partials_pre(p, r, n, rn1),
+                        "n={n} r={r} p={p}"
+                    );
+                    p += 0.017;
                 }
             }
         }

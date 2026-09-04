@@ -148,7 +148,9 @@ HQ ігноруються. Трикутник: м'який спад баса н�
 // kernel:
 pub fn dirichlet_blit(p: f64, n: u32) -> f64
 pub fn geometric_partials(p: f64, r: f64, n: u32) -> f64
+pub fn geometric_partials_pre(p: f64, r: f64, n: u32, rn1: f64) -> f64   // rn1 = powi_pos(r, n+1), кешується
 pub fn geometric_peak(r: f64, n: u32) -> f64
+pub fn geometric_peak_pre(r: f64, n: u32, rn: f64) -> f64               // rn = powi_pos(r, n), кешується
 pub fn powi_pos(base: f64, exp: u32) -> f64
 pub fn geometric_partials_x4(p0: f64, dp: f64, r: f64, n: u32) -> [f64; 4]   // батч
 #[cfg(feature = "portable-simd")]
@@ -179,7 +181,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 464 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 528 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */

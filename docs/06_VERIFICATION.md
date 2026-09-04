@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **50 тестів проходять** (46
+Що перевірено, як, і якими числами. Статус: **53 тести проходять** (49
 юніт + 4 інтеграційні), clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP.
 
@@ -41,11 +41,12 @@
 |---|---|
 | `sample_rate_validation_reports_instead_of_substituting` | `validate_sample_rate` клампить (не підставляє 48k) і повертає `Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`; `Voice::new_checked` та `PolySynth::set_sample_rate` пробрасують статус |
 
-### `kernel` (5)
+### `kernel` (6)
 
 | Тест | Що доводить |
 |---|---|
 | `dirichlet_matches_naive_sum` | `D_n` vs `Σ cos(kx)`, збіг `< 10⁻⁹·n` (`n` до 1024) |
+| `pre_variants_are_bit_identical` | `geometric_partials_pre` / `geometric_peak_pre` == оригінали **бітово** для `powi_pos(r, n±1)` (гарантія кешу fast path) |
 | `geometric_matches_naive_sum` | `S_n` vs `Σ rᵏ cos(kx)` для `r ∈ {0.3…0.999}`, `n` до 1024 |
 | `dirichlet_peak_and_dc` | пік = `n`, середнє за період `< 10⁻²` |
 | `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно = `geometric_partials`, `n` до 1500, `r` до 1.0 |
@@ -90,12 +91,14 @@
 | `shapes_are_phase_aligned_at_start` | sine, triangle, saw усі `≈ 0` у фазі 0 |
 | `triangle_and_saw_hit_their_peaks` | пік `> 0.95`, мін `< −0.95` |
 
-### `voice` (6)
+### `voice` (8)
 
 | Тест | Що доводить |
 |---|---|
 | `output_stays_bounded_across_the_range` | `f₀ ∈ {20…12000}`: стерео-пік `∈ (0.05, 1.5]`, скінченне |
 | `blit_saw_and_triangle_are_bounded_and_shaped` | `Saw`/`Triangle` на `f₀ ∈ {55, 220, 3000}`: `\|y\| ≤ 1.6`, енергія над Найквістом `< 2 %·h₁`, гармоніки спадають; трикутник — парні `< 15 %`, `h₃/h₁ ∈ [0.06, 0.22]` (≈ `1/9`) |
+| `unrouted_lfo_does_not_affect_output` | голос з LFO на якійсь частоті, але routing `= 0`, рендериться **бітово** так само, як без LFO (fast path не тикає LFO) |
+| `geom_and_pan_caches_track_changing_params` | після зсуву `rolloff` + `pan` голос сходиться (`< 1e-4`) до значень свіжого голосу, стартованого прямо на цих параметрах → кеші інвалідуються коректно |
 | `equal_power_pan_splits_correctly` | hard-left «протікання» `< 5 %`; центр збалансований `< 5 %` |
 | `free_running_phase_survives_note_on` | `free_running=true` → фаза не змінилась на `reset()`; `false` → фаза = 0 |
 | `declick_ramps_in_from_near_zero` | перший семпл після `reset()` тихіший за пік перших 64 |
@@ -128,19 +131,33 @@
 
 ## 3. Виміряні числа
 
-### Пропускна здатність (`examples/bench_hc.rs`, реліз, скаляр, без SIMD)
+### Пропускна здатність — один голос (`examples/bench_hc.rs`, реліз, скаляр)
 
-| f₀ | гармонік | семплів/с | × realtime @48k |
+Чистий голос (character CLEAN, filter Bypass, LFO не роутований) — **clean
+fast path**: LFO не тикається, equal-power гейни та `powi_pos(r, n±1)`
+кешуються на сталій ноті.
+
+| f₀ | гармонік | семплів/с | × realtime @48k | до fast path |
+|---|---|---|---|---|
+| 8000 Hz | 3 | ~26.4 M | ~550 | ~22.5 M |
+| 880 Hz | 27 | ~26.3 M | ~548 | ~21.4 M (+23 %) |
+| 110 Hz | 218 | ~26.5 M | ~552 | ~21.2 M (+25 %) |
+| 20 Hz | 1200 | ~26.6 M | ~554 | ~21.1 M (+26 %) |
+
+Тепер **повністю** плоско 3↔1200 гармонік (кеш `powi_pos` прибрав залишковий
+`Θ(log n)`). Розкид `< 1 %`.
+
+### Пропускна здатність — поліфонія (`examples/bench_poly.rs`, `PolySynth<64>`)
+
+Акорд на всі 64 голоси, ноти 24–94 (багато низьких → великий `n`):
+
+| | стерео-фрейм/с | × realtime @48k | ~голосів @ realtime |
 |---|---|---|---|
-| 8000 Hz | 3 | ~21.9 M | ~456 |
-| 880 Hz | 27 | ~20.8 M | ~433 |
-| 110 Hz | 218 | ~20.6 M | ~430 |
-| 20 Hz | 1200 | ~20.0 M | ~417 |
+| до fast path | ~0.25 M | ~5.1 | ~330 |
+| **після** | **~0.45 M** | **~9.4** | **~590** |
 
-(після переводу LFO/панорами на швидку тригонометрію — ~+5 % vs попередній вимір)
-
-Розкид ~10 % на діапазоні гармонік ×400 → вартість плоска по `n`
-(підтверджує `Θ(log n)`, спростовує `Θ(n)`).
+**≈ +80 %** — виграш найбільший саме там, де боляче: низькі ноти з сотнями
+гармонік раніше платили `powi_pos` щосемпла на кожен голос.
 
 ### Спектральний ефект character (`examples/character_demo.rs`)
 

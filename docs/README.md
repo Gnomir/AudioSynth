@@ -19,9 +19,9 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 50 тестів, виміряні числа, бенчмарки, `pluginval`, що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 53 тестів, виміряні числа, бенчмарки, `pluginval`, що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; відсутність DAW-валідації тощо |
-| [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (464 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
+| [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (528 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Дорожня карта: 3 вектори (DSP-розширення · оптимізація/портування · GUI/QA), кожен пункт з Проблема/Рішення/Файли/Оцінка/DoD; рекомендована послідовність |
 | [10_NIH_PLUG_CLAP_BUGS.md](10_NIH_PLUG_CLAP_BUGS.md) | Два баги CLAP-обгортки nih-plug (`ext_state_load`: немає `rescan`; `Vec::with_capacity` на невалідованій довжині → abort); корінь, патч, верифікація 35/35. Roadmap Б2 |
 
@@ -42,9 +42,10 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус (2026-09-04)
 
-50 тестів проходять (46 юніт + 4 інтеграційні) · clippy чистий (stable +
+53 тести проходять (49 юніт + 4 інтеграційні) · clippy чистий (stable +
 `--no-default-features --release` + nightly `--features portable-simd`) ·
 плагін збирається у VST3 + CLAP · **pluginval `--strictness-level 8`: повний
 прохід (VST3)** · **clap-validator: 31/31** (2 групи state-тестів виключено —
-баги nih-plug, див. `06_VERIFICATION.md` §6 / `09_ROADMAP.md` Б2) ·
-осцилятор: closed-form additive + band-limited BLIT саw/трикутник.
+баги nih-plug, фікс готовий, `10_NIH_PLUG_CLAP_BUGS.md`) · осцилятор:
+closed-form additive + band-limited BLIT саw/трикутник · clean-voice fast
+path (~+25 % на голос, ~+80 % поліфонії на повному акорді).

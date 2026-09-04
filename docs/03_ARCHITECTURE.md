@@ -60,7 +60,7 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **464 байти** (x86-64; `align = 8`), без
+`#[repr(C)] #[derive(Clone, Copy)]`, **528 байти** (x86-64; `align = 8`), без
 `Drop`, без вказівників. Розмір зростав із розвитком рушія — хост має
 викликати `harmonic_voice_size()` у рантаймі, не хардкодити число.
 
@@ -78,6 +78,7 @@ pub struct Voice {
     // --- панорама ---
     pan: f64, pan_z: f64,            // −1..1, ціль / згладжено
     pan_smooth: f64,                 // одно-полюс ~10 мс
+    pan_cache_z, pan_sin, pan_cos: f64,   // кеш equal-power гейнів для сталого pan_z
     // --- старт ноти ---
     free_running: bool,              // true = фаза переживає note-on
     declick: u16,                    // семплів у fade-in, що лишились
@@ -89,6 +90,9 @@ pub struct Voice {
     lfo_to_rolloff: f64,             // ± до r
     lfo_to_pitch: f64,               // центи вібрато
     hq: bool,                        // 2× оверсемплінг осц.+character
+    // --- кеш нормалізації geometric-осцилятора (fast path) ---
+    geom_r: f64, geom_n: u32,        // ключ кешу (r, n)
+    geom_rn1: f64, geom_peak: f64,   // r^{n+1} та пік — обидва powi_pos пропускаються на сталій ноті
     // --- BLIT саw / трикутник (leaky-integrated) ---
     waveform: Waveform,              // Geometric (дефолт) / Saw / Triangle
     blit_leak: f64, tri_leak: f64,   // коеф. витоку інтеграторів
@@ -108,17 +112,21 @@ pub struct Voice {
 ```
 згладити freq_z, rolloff_z, bend_z, pan_z (одно-полюс)
   │
-LFO.tick() → m ∈ [−1,1]
-  ├─ pitch_mod = 2^(lfo_to_pitch · m / 1200)          [exp2, тільки якщо ≠ 0]
+якщо lfo_to_rolloff == 0 && lfo_to_pitch == 0:          [fast path]
+  └─ f_eff = freq_z · bend_z ;  roll_eff = rolloff_z    [LFO НЕ тикається]
+інакше:
+  ├─ m = LFO.tick() ∈ [−1,1]
+  ├─ pitch_mod = 2^(lfo_to_pitch · m / 1200)            [exp2, тільки якщо ≠ 0]
   ├─ f_eff     = freq_z · bend_z · pitch_mod
   └─ roll_eff  = clamp(rolloff_z + lfo_to_rolloff · m, 1e-3, 0.9995)
   │
 n = clamp(⌊f_s / (2·f_eff)⌋, 1, 2048)                  [Найквіст-кламп по f_eff]
+(geom-кеш: r^{n+1} та пік перераховуються лише коли (roll_eff, n) змінились)
   │
 pm = fm_index·sin_turns(fm_phase) + feedback·last_osc  [фазова модуляція]
 osc = match waveform {                                 [Geometric — дефолт]
-        Geometric => geometric_partials(phase+pm, roll_eff, n) / geometric_peak(..)
-                     │  (hq → 2× оверсемпл + децимація)
+        Geometric => geometric_partials_pre(phase+pm, roll_eff, n, rn1) / peak
+                     │  (rn1, peak із geom-кешу; hq → 2× оверсемпл + децимація)
         Saw       => blit_saw(phase+pm, n, f_eff)      [leaky-integrated BLIT]
         Triangle  => blit_triangle(phase+pm, n, f_eff) [подвійний інтегратор]
       }
@@ -133,7 +141,7 @@ mono = filtered · gain · dg
 advance fm_phase (+= f_eff·fm_ratio/f_s, wrap)
 advance phase    (+= f_eff/f_s, wrap)
   │
-(sin_p, cos_p) = sin_cos_turns((pan_z·0.5 + 0.5)·0.25) [equal-power]
+(sin_p, cos_p) = sin_cos_turns_fast(...)  [equal-power; кеш → лише коли pan_z рухається]
 return [mono·cos_p, mono·sin_p]                         [L, R]
 ```
 
@@ -217,7 +225,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 50 тестів (46 юніт + 4 інтеграційні) |
+| Розробка / тести | `cargo test` | `std` (дефолт), 53 тести (49 юніт + 4 інтеграційні) |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -234,7 +242,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 464 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 528 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці
