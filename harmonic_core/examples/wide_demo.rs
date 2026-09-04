@@ -6,7 +6,7 @@
 //!
 //!   cargo run --example wide_demo --release
 
-use harmonic_core::{FilterMode, LfoShape, PolySynth};
+use harmonic_core::{FilterMode, LfoMode, LfoShape, PolySynth};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
@@ -18,7 +18,7 @@ fn main() -> std::io::Result<()> {
     s.set_rolloff(0.55_f64.powi(2) * (0.9995 - 0.02) + 0.02);
     s.set_free_running(true);
     s.set_unison(7, 18.0, 0.95);
-    s.set_lfo(4.5, LfoShape::Sine, 0.0, 8.0); // 8-cent vibrato
+    s.set_lfo(4.5, LfoShape::Sine, LfoMode::Retrigger, 0.0, 8.0, 0.0, 0.0); // 8-cent vibrato
     s.set_amp_adsr(0.35, 0.2, 0.8, 1.2);
     s.set_filter(FilterMode::Low, 700.0, 0.55, 2.6);
     s.set_filter_envelope(0.5, 1.6, 0.35, 1.0);

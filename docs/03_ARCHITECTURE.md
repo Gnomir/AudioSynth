@@ -49,9 +49,9 @@ trig ──────────────┬──────────
 | `character` | ~230 | drive / bias / fold / crush / downsample |
 | `filter` | ~250 | `Svf` — ZDF SVF з посемпловим згладжуванням параметрів |
 | `env` | ~160 | `Adsr` |
-| `lfo` | ~130 | `Lfo` |
-| `voice` | ~330 | `Voice` — повний тракт одного голосу, стерео-вихід |
-| `poly` | ~430 | `PolySynth<VOICES>` |
+| `lfo` | ~180 | `Lfo` (+ `LfoMode`) |
+| `voice` | ~380 | `Voice` — повний тракт одного голосу, стерео-вихід |
+| `poly` | ~450 | `PolySynth<VOICES>` |
 | `ffi` | ~180 | C-ABI |
 
 \* приблизно, включно з докстрінгами й тестами.
@@ -60,7 +60,7 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **528 байти** (x86-64; `align = 8`), без
+`#[repr(C)] #[derive(Clone, Copy)]`, **552 байти** (x86-64; `align = 8`), без
 `Drop`, без вказівників. Розмір зростав із розвитком рушія — хост має
 викликати `harmonic_voice_size()` у рантаймі, не хардкодити число.
 
@@ -86,9 +86,10 @@ pub struct Voice {
     fm_phase: f64, fm_ratio: f64, fm_index: f64,
     feedback: f64, last_osc: f64,
     // --- LFO ---
-    lfo: Lfo,
-    lfo_to_rolloff: f64,             // ± до r
-    lfo_to_pitch: f64,               // центи вібрато
+    lfo: Lfo,                        // + LfoMode (Retrigger / FreeRun)
+    lfo_to_rolloff, lfo_to_pitch: f64,   // ± до r · центи вібрато
+    lfo_to_cutoff, lfo_to_fm: f64,       // ± октави cutoff · ± FM index
+    filter_cutoff: f64,             // остання база cutoff (для lfo_to_cutoff)
     hq: bool,                        // 2× оверсемплінг осц.+character
     // --- кеш нормалізації geometric-осцилятора (fast path) ---
     geom_r: f64, geom_n: u32,        // ключ кешу (r, n)
@@ -112,18 +113,17 @@ pub struct Voice {
 ```
 згладити freq_z, rolloff_z, bend_z, pan_z (одно-полюс)
   │
-якщо lfo_to_rolloff == 0 && lfo_to_pitch == 0:          [fast path]
-  └─ f_eff = freq_z · bend_z ;  roll_eff = rolloff_z    [LFO НЕ тикається]
-інакше:
-  ├─ m = LFO.tick() ∈ [−1,1]
-  ├─ pitch_mod = 2^(lfo_to_pitch · m / 1200)            [exp2, тільки якщо ≠ 0]
-  ├─ f_eff     = freq_z · bend_z · pitch_mod
-  └─ roll_eff  = clamp(rolloff_z + lfo_to_rolloff · m, 1e-3, 0.9995)
+lfo_routed = (lfo_to_rolloff|pitch|cutoff|fm) != 0
+m = if lfo_routed { LFO.tick() ∈ [−1,1] } else { 0 }   [не тикається якщо нероутований]
+  ├─ f_eff    = freq_z · bend_z · [2^(lfo_to_pitch·m/1200) якщо ≠ 0]
+  ├─ roll_eff = [clamp(rolloff_z + lfo_to_rolloff·m, …) якщо ≠ 0, інакше rolloff_z]
+  ├─ fm_index_eff = [max(fm_index + lfo_to_fm·m, 0) якщо ≠ 0]
+  └─ якщо lfo_to_cutoff ≠ 0: filter.set_cutoff(filter_cutoff · 2^(lfo_to_cutoff·m))
   │
 n = clamp(⌊f_s / (2·f_eff)⌋, 1, 2048)                  [Найквіст-кламп по f_eff]
 (geom-кеш: r^{n+1} та пік перераховуються лише коли (roll_eff, n) змінились)
   │
-pm = fm_index·sin_turns(fm_phase) + feedback·last_osc  [фазова модуляція]
+pm = fm_index_eff·sin_turns(fm_phase) + feedback·last_osc  [фазова модуляція]
 osc = match waveform {                                 [Geometric — дефолт]
         Geometric => geometric_partials_pre(phase+pm, roll_eff, n, rn1) / peak
                      │  (rn1, peak із geom-кешу; hq → 2× оверсемпл + децимація)
@@ -159,7 +159,8 @@ pub struct PolySynth<const VOICES: usize> {
     filter_mode, filter_cutoff, filter_res, filter_env,   // env_octaves
     fenv_a/d/s/r,                  // фільтрова ADSR
     unison_count, unison_detune, unison_spread,
-    bend_ratio, lfo_rate, lfo_shape, lfo_to_rolloff, lfo_to_pitch,
+    bend_ratio, lfo_rate, lfo_shape, lfo_mode,
+    lfo_to_rolloff, lfo_to_pitch, lfo_to_cutoff, lfo_to_fm,
     counter: u64,                  // вік голосу для стилінгу
 }
 
@@ -225,7 +226,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 53 тести (49 юніт + 4 інтеграційні) |
+| Розробка / тести | `cargo test` | `std` (дефолт), 56 тестів (52 юніт + 4 інтеграційні) |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -242,7 +243,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 528 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 552 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці

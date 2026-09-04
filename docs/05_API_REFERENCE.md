@@ -38,7 +38,8 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_fm(ratio: f64, index: f64)` | RT | `ratio [0,64]`, `index [0,8]` обертів |
 | `set_feedback(fb: f64)` | RT | `[0, 0.9]` |
 | `set_lfo(rate_hz: f64, shape: LfoShape)` | setup | `rate [0, f_s/2)` |
-| `set_lfo_targets(to_rolloff: f64, to_pitch_cents: f64)` | RT | `[−0.9,0.9]`, `[−1200,1200]` центів |
+| `set_lfo_mode(m: LfoMode)` | setup | `Retrigger` (фаза → 0 на note-on) / `FreeRun` |
+| `set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm)` | RT | `[−0.9,0.9]` · `[−1200,1200]` центів · `[−8,8]` окт · `[−8,8]`; кожна `0` = не застосовується |
 | `set_lfo_phase(turns: f64)` | setup | — |
 | `set_character(p: CharParams)` | RT | див. `CharParams` |
 | `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли; лише для `Waveform::Geometric` |
@@ -46,7 +47,7 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_filter_mode(m: FilterMode)` | setup | — |
 | `set_filter_cutoff(hz: f64)` | RT | `[20, 0.45·f_s]` Hz, згладж. ~1 мс всередині |
 | `set_filter_resonance(r: f64)` | RT | `[0, 1]` → `Q [0.5, 32]` |
-| `reset()` | setup (note-on) | скид фази (якщо `!free_running`) + де-клік; скид згладжувачів, фільтра, LFO |
+| `reset()` | setup (note-on) | скид фази (якщо `!free_running`) + де-клік; скид згладжувачів, фільтра; LFO ретригериться лише в режимі `Retrigger` |
 | `max_partials() -> u32` | — | `⌊f_s/(2·freq_z)⌋`, обмежено `2048` |
 | `current_frequency() -> f64` | — | `freq_z · bend_z`, Hz (для метрів) |
 | `sample_rate() -> f64` | — | валідована частота дискретизації голосу |
@@ -83,7 +84,8 @@ set_hq(hq: bool)                                          // 2× оверсем�
 set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
 set_unison(count: u32, detune_cents: f64, spread: f64)   // count clamp [1,8], spread [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
-set_lfo(rate_hz: f64, shape: LfoShape, to_rolloff: f64, to_pitch_cents: f64)
+set_lfo(rate_hz, shape: LfoShape, mode: LfoMode,
+        to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm)   // 0 = target off
 ```
 
 **Обгинаючі** (RT-fanout, оновлює живі голоси):
@@ -133,6 +135,9 @@ impl FilterMode { pub fn from_u32(v: u32) -> Self }   // невідоме → By
 #[repr(u32)] pub enum LfoShape { Sine=0, Triangle=1, Saw=2 }
 impl LfoShape { pub fn from_u32(v: u32) -> Self }     // невідоме → Sine
 
+#[repr(u32)] pub enum LfoMode { Retrigger=0, FreeRun=1 }
+impl LfoMode { pub fn from_u32(v: u32) -> Self }      // невідоме → Retrigger
+
 #[repr(u32)] pub enum Waveform { Geometric=0, Saw=1, Triangle=2 }
 impl Waveform { pub fn from_u32(v: u32) -> Self }     // невідоме → Geometric
 ```
@@ -181,7 +186,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 528 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 552 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */
@@ -200,8 +205,11 @@ void harmonic_voice_set_pitch_bend (HarmonicVoice*, double semitones);   /* → 
 void harmonic_voice_set_free_running(HarmonicVoice*, unsigned int on);   /* 0 = reset+declick */
 void harmonic_voice_set_filter(HarmonicVoice*, unsigned int mode,        /* 0..4 */
                                double cutoff_hz, double resonance);      /* [20,0.45fs] [0,1] */
-void harmonic_voice_set_lfo(HarmonicVoice*, double rate_hz, unsigned int shape, /* 0..2 */
-                            double to_rolloff, double to_pitch_cents);
+void harmonic_voice_set_lfo(HarmonicVoice*, double rate_hz,
+                            unsigned int shape,   /* 0 sine / 1 tri / 2 saw */
+                            unsigned int mode,    /* 0 retrigger / 1 free-run */
+                            double to_rolloff, double to_pitch_cents,
+                            double to_cutoff_oct, double to_fm);  /* 0 = target off */
 void harmonic_voice_set_hq(HarmonicVoice*, unsigned int hq);  /* !=0 → 2× OS, +3 семпли латентності */
 void harmonic_voice_set_waveform(HarmonicVoice*, unsigned int waveform); /* 0 geom / 1 saw / 2 tri */
 ```
@@ -245,7 +253,7 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 
 ## 3. Параметри плагіна `harmonic_synth`
 
-29 параметрів (host-generic UI, без власного GUI). Групи:
+32 параметри (host-generic UI, без власного GUI). Групи:
 
 | Група | Параметри |
 |---|---|
@@ -257,7 +265,7 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |
 | Режим голосу | Free-Run Phase, **HQ Mode** (2× OS, +3 семпли латентності, PDC повідомляється) |
 | Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%) |
-| Модуляція | Bend Range (st), LFO Rate, LFO Shape, LFO → Bright, LFO Vibrato (ct) |
+| Модуляція | Bend Range (st), LFO Rate, LFO Shape, **LFO Sync** (Retrigger/Free-Run), LFO → Bright, LFO Vibrato (ct), **LFO → Cutoff** (±4 окт), **LFO → FM** (±4) |
 
 `Grit` мапиться на `crush` + `downsample·0.8` разом. `Bend Range` мапить
 `MidiPitchBend` value `[0,1]` → `(value−0.5)·2·range` семитонів.

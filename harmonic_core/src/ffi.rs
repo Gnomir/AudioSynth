@@ -19,7 +19,7 @@
 //! ```
 
 use crate::filter::FilterMode;
-use crate::lfo::LfoShape;
+use crate::lfo::{LfoMode, LfoShape};
 use crate::voice::{Voice, Waveform};
 
 /// Size in bytes of the opaque voice state. Allocate at least this much.
@@ -131,22 +131,30 @@ pub unsafe extern "C" fn harmonic_voice_set_free_running(ptr: *mut Voice, free_r
     }
 }
 
-/// Per-voice LFO. `shape`: 0 sine · 1 triangle · 2 saw. `to_rolloff` adds to
-/// brightness `r` (±); `to_pitch_cents` is vibrato depth.
+/// Per-voice LFO. `shape`: 0 sine · 1 triangle · 2 saw. `mode`: 0 retrigger
+/// (phase resets on note-on) · 1 free-run. Routing depths (`0` = not applied):
+/// `to_rolloff` adds to brightness `r` (±), `to_pitch_cents` is vibrato,
+/// `to_cutoff_oct` shifts the filter cutoff (± octaves), `to_fm` adds to the
+/// FM index (±).
 ///
 /// # Safety
 /// `ptr` must come from a successful [`harmonic_voice_init`].
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn harmonic_voice_set_lfo(
     ptr: *mut Voice,
     rate_hz: f64,
     shape: u32,
+    mode: u32,
     to_rolloff: f64,
     to_pitch_cents: f64,
+    to_cutoff_oct: f64,
+    to_fm: f64,
 ) {
     if let Some(v) = unsafe { ptr.as_mut() } {
         v.set_lfo(rate_hz, LfoShape::from_u32(shape));
-        v.set_lfo_targets(to_rolloff, to_pitch_cents);
+        v.set_lfo_mode(LfoMode::from_u32(mode));
+        v.set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm);
     }
 }
 

@@ -5,7 +5,7 @@
 //! array with no allocation on the audio path. This file is only the host glue:
 //! parameters, MIDI event routing, and the sample loop.
 
-use harmonic_core::{CharParams, FilterMode, LfoShape, PolySynth, Waveform};
+use harmonic_core::{CharParams, FilterMode, LfoMode, LfoShape, PolySynth, Waveform};
 use nih_plug::prelude::*;
 use std::sync::Arc;
 
@@ -88,6 +88,26 @@ impl LfoKind {
             LfoKind::Sine => LfoShape::Sine,
             LfoKind::Triangle => LfoShape::Triangle,
             LfoKind::Saw => LfoShape::Saw,
+        }
+    }
+}
+
+/// LFO key-sync, host-visible.
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+enum LfoSync {
+    #[id = "retrig"]
+    #[name = "Retrigger"]
+    Retrigger,
+    #[id = "free"]
+    #[name = "Free-Run"]
+    FreeRun,
+}
+
+impl LfoSync {
+    fn to_core(self) -> LfoMode {
+        match self {
+            LfoSync::Retrigger => LfoMode::Retrigger,
+            LfoSync::FreeRun => LfoMode::FreeRun,
         }
     }
 }
@@ -201,10 +221,18 @@ struct HarmonicSynthParams {
     lfo_rate: FloatParam,
     #[id = "lfoshp"]
     lfo_shape: EnumParam<LfoKind>,
+    #[id = "lfosync"]
+    lfo_sync: EnumParam<LfoSync>,
     #[id = "lfobrt"]
     lfo_to_bright: FloatParam,
     #[id = "lfovib"]
     lfo_vibrato: FloatParam,
+    /// LFO → filter cutoff, in octaves at full swing. Bipolar.
+    #[id = "lfocut"]
+    lfo_to_cutoff: FloatParam,
+    /// LFO → FM index, added at full swing. Bipolar.
+    #[id = "lfofm"]
+    lfo_to_fm: FloatParam,
 }
 
 impl Default for HarmonicSynth {
@@ -426,6 +454,8 @@ impl Default for HarmonicSynthParams {
 
             lfo_shape: EnumParam::new("LFO Shape", LfoKind::Sine),
 
+            lfo_sync: EnumParam::new("LFO Sync", LfoSync::Retrigger),
+
             lfo_to_bright: FloatParam::new(
                 "LFO → Bright",
                 0.0,
@@ -442,6 +472,23 @@ impl Default for HarmonicSynthParams {
             .with_unit(" ct")
             .with_smoother(SmoothingStyle::Linear(15.0))
             .with_value_to_string(formatters::v2s_f32_rounded(1)),
+
+            lfo_to_cutoff: FloatParam::new(
+                "LFO → Cutoff",
+                0.0,
+                FloatRange::Linear { min: -4.0, max: 4.0 },
+            )
+            .with_unit(" oct")
+            .with_smoother(SmoothingStyle::Linear(15.0))
+            .with_value_to_string(formatters::v2s_f32_rounded(2)),
+
+            lfo_to_fm: FloatParam::new(
+                "LFO → FM",
+                0.0,
+                FloatRange::Linear { min: -4.0, max: 4.0 },
+            )
+            .with_smoother(SmoothingStyle::Linear(15.0))
+            .with_value_to_string(formatters::v2s_f32_rounded(2)),
         }
     }
 }
@@ -545,8 +592,11 @@ impl Plugin for HarmonicSynth {
         self.engine.set_lfo(
             self.params.lfo_rate.value() as f64,
             self.params.lfo_shape.value().to_core(),
+            self.params.lfo_sync.value().to_core(),
             self.params.lfo_to_bright.smoothed.next() as f64 * 0.5,
             self.params.lfo_vibrato.smoothed.next() as f64,
+            self.params.lfo_to_cutoff.smoothed.next() as f64,
+            self.params.lfo_to_fm.smoothed.next() as f64,
         );
         // Filter: mode + base cutoff + resonance + envelope depth, per-block.
         // Cutoff automation lands at block rate; the filter-envelope path

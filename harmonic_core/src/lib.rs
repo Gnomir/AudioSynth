@@ -73,7 +73,7 @@ pub mod ffi;
 pub use character::{CharParams, Character};
 pub use env::Adsr;
 pub use filter::{FilterMode, Svf};
-pub use lfo::{Lfo, LfoShape};
+pub use lfo::{Lfo, LfoMode, LfoShape};
 pub use poly::{midi_to_hz, PolySynth};
 pub use voice::{Voice, Waveform};
 

@@ -23,11 +23,32 @@ impl LfoShape {
     }
 }
 
+/// Key-sync behaviour on note-on.
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum LfoMode {
+    /// Phase snaps to 0 on every note-on (default).
+    Retrigger = 0,
+    /// Phase keeps running across notes (analog-style, per-voice free-run).
+    FreeRun = 1,
+}
+
+impl LfoMode {
+    /// For the C ABI. Unknown values fall back to `Retrigger`.
+    pub fn from_u32(v: u32) -> Self {
+        match v {
+            1 => LfoMode::FreeRun,
+            _ => LfoMode::Retrigger,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Lfo {
     phase: f64, // turns, [0, 1)
     inc: f64,   // turns per sample
     shape: LfoShape,
+    mode: LfoMode,
 }
 
 impl Lfo {
@@ -36,6 +57,7 @@ impl Lfo {
             phase: 0.0,
             inc: 0.0,
             shape: LfoShape::Sine,
+            mode: LfoMode::Retrigger,
         }
     }
 
@@ -52,14 +74,22 @@ impl Lfo {
     }
 
     #[inline]
+    pub fn set_mode(&mut self, mode: LfoMode) {
+        self.mode = mode;
+    }
+
+    #[inline]
     pub fn set_phase(&mut self, turns: f64) {
         self.phase = turns - floor_f64(turns);
     }
 
-    /// Restart from phase 0 (note-on, if the LFO is key-synced).
+    /// Note-on. Restarts from phase 0 in [`LfoMode::Retrigger`]; a no-op in
+    /// [`LfoMode::FreeRun`] (the phase keeps running across notes).
     #[inline]
     pub fn retrigger(&mut self) {
-        self.phase = 0.0;
+        if self.mode == LfoMode::Retrigger {
+            self.phase = 0.0;
+        }
     }
 
     /// Advance one sample, return the value in `[-1, 1]`.
@@ -121,6 +151,30 @@ mod tests {
             let mean: f32 = c.iter().sum::<f32>() / c.len() as f32;
             assert!(mean.abs() < 0.02, "mean {mean}");
         }
+    }
+
+    #[test]
+    fn free_run_mode_survives_retrigger() {
+        let mut l = Lfo::new();
+        l.set_rate(5.0, SR);
+        l.set_mode(LfoMode::FreeRun);
+        for _ in 0..1234 {
+            l.tick();
+        }
+        let before = l.tick();
+        l.retrigger(); // note-on: must NOT reset the phase
+        let after = l.tick();
+        // phase advanced by exactly one inc, not jumped back to ~0
+        assert!((after - before).abs() < 0.05, "free-run LFO jumped on retrigger");
+
+        // Retrigger mode (default) does snap back
+        let mut r = Lfo::new();
+        r.set_rate(5.0, SR);
+        for _ in 0..1234 {
+            r.tick();
+        }
+        r.retrigger();
+        assert!(r.tick().abs() < 1e-6, "retrigger LFO did not restart at 0");
     }
 
     #[test]

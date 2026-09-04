@@ -56,10 +56,15 @@ void harmonic_voice_set_free_running(HarmonicVoice *voice, unsigned int free_run
 void harmonic_voice_set_filter(HarmonicVoice *voice, unsigned int mode,
                                double cutoff_hz, double resonance);
 
-/* Per-voice LFO. shape: 0 sine / 1 triangle / 2 saw.
- * to_rolloff adds to brightness (+/-); to_pitch_cents is vibrato depth. */
+/* Per-voice LFO. shape: 0 sine / 1 triangle / 2 saw. mode: 0 retrigger (phase
+ * resets on note-on) / 1 free-run. Routing depths, 0 = not applied:
+ *   to_rolloff      adds to brightness r   (+/-)
+ *   to_pitch_cents  vibrato depth          (+/-)
+ *   to_cutoff_oct   filter cutoff shift    (+/- octaves)
+ *   to_fm           adds to the FM index   (+/-)                         */
 void harmonic_voice_set_lfo(HarmonicVoice *voice, double rate_hz, unsigned int shape,
-                            double to_rolloff, double to_pitch_cents);
+                            unsigned int mode, double to_rolloff, double to_pitch_cents,
+                            double to_cutoff_oct, double to_fm);
 
 /* HQ mode: hq != 0 -> 2x-oversample the oscillator + character stage so the
  * nonlinear stages (drive / fold / crush / FM) don't alias. Adds 3 samples of

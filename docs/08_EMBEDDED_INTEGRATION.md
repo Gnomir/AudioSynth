@@ -29,7 +29,7 @@
 ### 2.1. `Voice` — POD, `#[repr(C)] Copy`
 
 ```
-size_of::<Voice>()  = 528 байти     (x86-64; те саме на 64-бітних ARM)
+size_of::<Voice>()  = 552 байти     (x86-64; те саме на 64-бітних ARM)
 align_of::<Voice>() = 8
 ```
 
@@ -58,8 +58,10 @@ align_of::<Voice>() = 8
 | | `declick` | `u16` | Лічильник 16-семплового fade-in |
 | FM | `fm_phase`, `fm_ratio`, `fm_index` | `f64` | Фаза / відношення / глибина модулятора |
 | | `feedback`, `last_osc` | `f64` | Самофідбек оператора + попередній семпл осцилятора |
-| LFO | `lfo` | `Lfo` (два `f64` + `LfoShape`) | Sine / triangle / saw модулятор |
+| LFO | `lfo` | `Lfo` (2×`f64` + `LfoShape` + `LfoMode`) | модулятор; `LfoMode` = Retrigger / FreeRun (key-sync) |
 | | `lfo_to_rolloff`, `lfo_to_pitch` | `f64` | Роутинг → яскравість (±) / вібрато (центи) |
+| | `lfo_to_cutoff`, `lfo_to_fm` | `f64` | Роутинг → cutoff SVF (± октави) / FM index (±) |
+| | `filter_cutoff` | `f64` | Остання база cutoff від хоста — база для `lfo_to_cutoff` |
 | Geom-кеш | `geom_r`, `geom_rn1`, `geom_peak` | `f64` | `r^{n+1}` та пік для сталого `(r, n)` — обидва `powi_pos` пропускаються |
 | | `geom_n` | `u32` | друга половина ключа кешу |
 | Осц. форма | `waveform` | `Waveform` (`u32`) | Geometric / Saw / Triangle |
@@ -81,7 +83,7 @@ align_of::<Voice>() = 8
 
 ### 2.3. RAM-бюджет
 
-Один голос — 528 б. Плагін `harmonic_synth` тримає `PolySynth<24>`: масив із
+Один голос — 552 б. Плагін `harmonic_synth` тримає `PolySynth<24>`: масив із
 24 `PolyVoice` (`Voice` + дві `Adsr` + метадані нот), ~14 КБ, статично, без
 жодної алокації понад те, що розмістив хост. Для MCU обирайте кількість
 голосів під свій RAM.
@@ -150,7 +152,7 @@ Rust за замовчуванням не контрактить `a*b + c` у FM
 ```c
 #include "harmonic_core.h"
 
-size_t sz  = harmonic_voice_size();          /* 528 сьогодні — НЕ хардкодити */
+size_t sz  = harmonic_voice_size();          /* 552 сьогодні — НЕ хардкодити */
 size_t al  = harmonic_voice_align();         /* 8 */
 void  *mem = /* ваша стратегія: арена / пул / стек, >= sz, вирівняно на al */;
 
@@ -223,5 +225,5 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 | Стійкість SVF (`Q≤32`, cutoff-кламп), no-div-by-zero | 4× оверсемплінг · оверсемплінг фільтра (є лише 2× для character) |
 | SR клампиться зі статус-кодом (не тиха підміна) | Кламп-шлях SR у реальному хості не тестований |
 | POD-макет, безпечне побітове копіювання / серіалізація | Валідація в живому DAW / `pluginval` (скрипт готовий) |
-| 53 тести (математика, стійкість, HQ, BLIT, межі) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація |
+| 56 тестів (математика, стійкість, HQ, BLIT, LFO-матриця, межі) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація |
 | Alias-free **чистий** осцилятор під Найквіста | Alias-free при активних `character`/FM — лише в **HQ mode** (2× OS); без нього навмисний «цифровий характер» |
