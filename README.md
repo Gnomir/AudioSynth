@@ -36,7 +36,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | Path | What |
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs` + C ABI |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`) |
+| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), with a `nih_plug_vizia` editor + filter-bank spectrum display |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
 
@@ -57,18 +57,21 @@ cd ../harmonic_core
 cargo run --example wide_demo --release        # → wide_demo.wav (7× unison stereo pad)
 ```
 
-`harmonic_synth` fetches `nih-plug` from git at a pinned rev — the first build
-needs network. Rust stable (1.97+ known-good); the `portable-simd` feature needs
+`harmonic_synth` fetches `nih-plug` + `nih_plug_vizia` from git at one pinned
+rev — the first build needs network and takes a few minutes (vizia pulls a
+large tree). Rust stable (1.97+ known-good); the `portable-simd` feature needs
 nightly.
 
 ## Status
 
 57 tests pass (53 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
-nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3;
-`clap-validator` passes 31/31 on the CLAP (2 state-test groups excluded — known
-`nih-plug` bugs, see [`docs/09_ROADMAP.md`](docs/09_ROADMAP.md) §Б2). Not yet
-validated in a live DAW — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md)
-for exactly what is and isn't covered.
+nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3
+(editor tests included); `clap-validator` passes 31/31 on the CLAP (2 state-test
+groups excluded — known `nih-plug` bugs with a ready fix, see
+[`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md)). The plugin has
+a `nih_plug_vizia` editor (all params + a live spectrum). Not yet validated in a
+live DAW — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) for exactly
+what is and isn't covered.
 
 ## License
 

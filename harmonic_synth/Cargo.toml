@@ -14,6 +14,8 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 harmonic_core = { path = "../harmonic_core" }
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
+nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
+atomic_float = "0.1"
 
 [profile.release]
 lto = "thin"

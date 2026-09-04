@@ -7,7 +7,13 @@
 
 use harmonic_core::{CharParams, FilterMode, LfoMode, LfoShape, PolySynth, Waveform};
 use nih_plug::prelude::*;
+use nih_plug_vizia::ViziaState;
 use std::sync::Arc;
+
+mod analyzer;
+mod editor;
+
+use analyzer::{AnalyzerBands, SpectrumAnalyzer};
 
 /// Voice count. Fixed — the engine never allocates. Unison stacks eat into it.
 const MAX_VOICES: usize = 24;
@@ -123,10 +129,17 @@ struct HarmonicSynth {
     /// Compensating stereo delay, only used when HQ mode is off.
     dly: [[f32; 2]; HQ_LAT],
     dly_pos: usize,
+    /// Editor spectrum display — fed only while the editor is open.
+    analyzer: Box<SpectrumAnalyzer>,
+    analyzer_bands: Arc<AnalyzerBands>,
 }
 
 #[derive(Params)]
 struct HarmonicSynthParams {
+    /// Editor window size / scale, persisted with the parameter state.
+    #[persist = "editor-state"]
+    editor_state: Arc<ViziaState>,
+
     /// Oscillator waveform: Geometric (additive core) / Saw / Triangle.
     #[id = "oscwave"]
     osc_wave: EnumParam<OscKind>,
@@ -241,11 +254,14 @@ struct HarmonicSynthParams {
 
 impl Default for HarmonicSynth {
     fn default() -> Self {
+        let analyzer_bands = AnalyzerBands::new();
         Self {
             params: Arc::new(HarmonicSynthParams::default()),
             engine: PolySynth::new(48_000.0),
             dly: [[0.0; 2]; HQ_LAT],
             dly_pos: 0,
+            analyzer: Box::new(SpectrumAnalyzer::new(analyzer_bands.clone())),
+            analyzer_bands,
         }
     }
 }
@@ -253,6 +269,8 @@ impl Default for HarmonicSynth {
 impl Default for HarmonicSynthParams {
     fn default() -> Self {
         Self {
+            editor_state: editor::default_state(),
+
             osc_wave: EnumParam::new("Oscillator", OscKind::Geometric),
 
             brightness: FloatParam::new(
@@ -537,6 +555,14 @@ impl Plugin for HarmonicSynth {
         self.params.clone()
     }
 
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        editor::create(
+            self.params.clone(),
+            self.analyzer_bands.clone(),
+            self.params.editor_state.clone(),
+        )
+    }
+
     fn initialize(
         &mut self,
         _layout: &AudioIOLayout,
@@ -557,6 +583,8 @@ impl Plugin for HarmonicSynth {
             );
         }
         self.engine.set_hq(self.params.hq_mode.value());
+        self.analyzer
+            .set_sample_rate(self.engine.sample_rate());
         // The HQ decimator's group delay. Reported unconditionally so the
         // latency never changes at runtime (CLAP forbids that outside
         // activate); when HQ is off, `dly` below re-adds the matching delay.
@@ -628,6 +656,8 @@ impl Plugin for HarmonicSynth {
         );
 
         let mut next_event = context.next_event();
+        // Only run the (cheap) spectrum filter bank while someone is looking.
+        let analyze = self.params.editor_state.is_open();
 
         for (sample_id, channel_samples) in buffer.iter_samples().enumerate() {
             // Drain all MIDI events scheduled at or before this frame.
@@ -683,6 +713,9 @@ impl Plugin for HarmonicSynth {
                 out = d;
             }
             let [l, r] = out;
+            if analyze {
+                self.analyzer.feed((l + r) * 0.5);
+            }
             let mut ch = channel_samples.into_iter();
             if let Some(left) = ch.next() {
                 *left = l;

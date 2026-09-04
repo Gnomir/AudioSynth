@@ -5,8 +5,9 @@
 - **`harmonic_core`** — `#![no_std]`-сумісний DSP-рушій, нуль залежностей,
   C-ABI. Тут уся математика й синтез.
 - **`harmonic_synth`** — плагін VST3 + CLAP над `harmonic_core`, через
-  `nih-plug`. Лише хостовий клей: параметри, маршрутизація MIDI, семпловий
-  цикл.
+  `nih-plug` + `nih_plug_vizia`. Хостовий клей: параметри, маршрутизація
+  MIDI, семпловий цикл; редактор (`src/editor.rs`) та дешевий спектр-дисплей
+  на банку band-pass фільтрів (`src/analyzer.rs`).
 
 ---
 
@@ -267,16 +268,29 @@ C-ABI у плагіні **не використовується**. `harmonic_syn
 напряму.
 
 ```rust
-struct HarmonicSynth { params: Arc<HarmonicSynthParams>, engine: PolySynth<24> }
+struct HarmonicSynth {
+    params: Arc<HarmonicSynthParams>,   // + #[persist] editor_state: Arc<ViziaState>
+    engine: PolySynth<24>,
+    dly: [[f32;2]; HQ_LAT], dly_pos,    // PDC-компенсація коли HQ off
+    analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + envelope followers
+    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] — audio→GUI, lock-free
+}
 
 fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
     // по-блоково: обгинаючі, FM-ratio, унісон, free-run, LFO, фільтр
     // подієвий цикл: NoteOn/Off/Choke/MidiPitchBend/CC#123
     // посемплово: brightness, gain, character, feedback → render_sample() → [L,R]
+    //             + analyzer.feed((L+R)/2)  лише якщо editor_state.is_open()
 }
 ```
 
 `MidiConfig::Basic`, `SAMPLE_ACCURATE_AUTOMATION = true`, стерео-вихід
 (`main_output_channels: NonZeroU32::new(2)`), 24 голоси (унісон ділить пул).
-Потокобезпека GUI→аудіо — цілком на `nih-plug` (`FloatParam`/`EnumParam`
-lock-free); власних атоміків немає.
+
+**GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей
+(`Spectrum` — власний `View`, малює 30 барів із `AnalyzerBands` щокадру) +
+`GenericUi` у `ScrollView` (усі параметри). Розмір вікна персиститься через
+`#[persist] editor_state`. Спектр-аналіз — не FFT, а банк резонансних
+band-pass `Svf` (Q≈5, ⅓-октави) з envelope-фоловерами; результат — 30
+`AtomicF32`, які аудіо-потік пише, GUI читає. Потокобезпека GUI→аудіо для
+параметрів — на `nih-plug` (`FloatParam`/`EnumParam` lock-free).
