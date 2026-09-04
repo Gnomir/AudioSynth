@@ -267,6 +267,11 @@ C-ABI у плагіні **не використовується**. `harmonic_syn
 `harmonic_core` як звичайний Rust path-крейт і викликає `PolySynth`
 напряму.
 
+`nih-plug` та `nih_plug_vizia` беруться з `harmonic_synth/vendor/nih-plug/` —
+пропатчена копія pinned-дерева `de421011` (лише фікс CLAP `ext_state_load`,
+`10_NIH_PLUG_CLAP_BUGS.md`), підключена через `[patch]` у
+`harmonic_synth/Cargo.toml`. Прибрати після мержу фіксу upstream.
+
 ```rust
 struct HarmonicSynth {
     params: Arc<HarmonicSynthParams>,   // + #[persist] editor_state: Arc<ViziaState>

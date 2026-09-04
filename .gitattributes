@@ -1,3 +1,8 @@
 # Normalise line endings — commit LF, check out native.
 # Without this, Windows contributors commit CRLF and Linux/macOS sees churn.
 * text=auto eol=lf
+
+# Vendored upstream (harmonic_synth/vendor/nih-plug) — leave byte-for-byte as
+# cloned so it stays diff-able against the real repo. Our only intended change
+# is the CLAP fix; see docs/10_NIH_PLUG_CLAP_BUGS.md.
+harmonic_synth/vendor/** -text

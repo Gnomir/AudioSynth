@@ -8,10 +8,18 @@ CLAP-обгортка, не наш плагін.
 - **Виявлено на** pinned rev `de421011f41a6d10fc8c7a6084e4f4dee0143683`.
 - **Підтверджено на** `master` (вересень 2026) — код `ext_state_load`
   ідентичний, обидва баги присутні.
-- **Статус:** фікс написаний і локально перевірений (`clap-validator` 35/35),
-  **upstream-PR ще не подано** — чекає на рішення власника репозиторію.
-- Локальний скрипт `harmonic_synth/scripts/validate.{ps1,sh}` поки що
-  `--exclude`ає ці 4 тести (`^state-(reproducibility|invalid-random)`).
+- **Статус: фікс застосовано локально.** Патчена копія pinned-дерева лежить у
+  `harmonic_synth/vendor/nih-plug/`, підключена через `[patch]` у
+  `harmonic_synth/Cargo.toml`. `clap-validator` — **35 / 35, 0 failed,
+  0 warnings**; `--exclude` зі скриптів `validate.{ps1,sh}` **прибрано**.
+  Публічний upstream-PR — за користувачем (`Gnomir`); після мержу: прибрати
+  `vendor/nih-plug` + секцію `[patch]`, бампнути `rev`.
+- **Що у `vendor/nih-plug`:** тільки `nih_plug`, `nih_plug_derive`,
+  `nih_plug_vizia`, `nih_plug_xtask` (без `plugins/`, `nih_plug_egui`,
+  `nih_plug_iced`, `cargo_nih_plug`, `xtask`, `.git`). Зміни від upstream
+  `de421011`: (1) патч нижче у `src/wrapper/clap/wrapper.rs`; (2) два
+  `#[allow]` для чужих ворнінгів (`unused_imports`, `mismatched_lifetime_syntaxes`);
+  (3) вирізаний `[workspace]` з кореневого `Cargo.toml`. Більше нічого.
 
 ---
 
@@ -157,22 +165,28 @@ abort. Жодного довільного ліміту не треба: якщ�
 
 ## Верифікація
 
-Локальний клон nih-plug @ `de421011` + патч, `[patch."…/nih-plug.git"]` на нього
-у `harmonic_synth/Cargo.toml`, ребілд:
+`vendor/nih-plug` (pinned `de421011` + патч) підключено через `[patch]`,
+`--exclude` зі скриптів прибрано, `cargo xtask validate`:
 
 | | до | після |
 |---|---|---|
-| `clap-validator` | 31 passed, **4 failed/crashed**, 9 skipped | **35 passed, 0 failed**, 9 skipped |
-| `pluginval --strictness 8` (VST3) | SUCCESS | SUCCESS (не зачеплено) |
-| `harmonic_core` тести | 50/50 | 50/50 (не залежать від nih-plug) |
+| `clap-validator` | 31 passed, **4 failed/crashed**, 9 skipped | **35 passed, 0 failed, 0 warnings**, 9 skipped |
+| `pluginval --strictness 8` (VST3, з GUI-тестами) | SUCCESS | SUCCESS (не зачеплено) |
+| `harmonic_core` тести | 57/57 | 57/57 (не залежать від nih-plug) |
+
+Регресійного тесту на це немає — воно у скрипті валідації, який не в
+`cargo test` (потребує зовнішніх бінарників). `06_VERIFICATION.md §6` фіксує
+очікуваний результат.
 
 ---
 
 ## Що робити далі
 
-1. **Подати upstream.** Форк `robbert-vdh/nih-plug` → гілка →
-   PR з цим текстом. Після цього — тимчасовий `[patch]` на форк у
-   `harmonic_synth/Cargo.toml` + `xtask/Cargo.toml`, поки PR не змержено.
-2. **Після мержу upstream:** бампнути pinned `rev`, прибрати `[patch]` і
-   `--exclude` зі `scripts/validate.{ps1,sh}`; ціль — `clap-validator` 35/35
-   без винятків. Оновити `06_VERIFICATION.md §6` та `09_ROADMAP.md Б2`.
+1. **Подати upstream (за користувачем).** Форк `robbert-vdh/nih-plug` (напр.
+   `Gnomir/nih-plug`) → гілка → PR з цим текстом і патчем
+   `contrib/nih-plug-clap-state-load-fix.patch`.
+2. **Після мержу upstream:** бампнути pinned `rev` у
+   `harmonic_synth/Cargo.toml` + `xtask/Cargo.toml`, видалити
+   `harmonic_synth/vendor/nih-plug/` та секцію `[patch]`, прибрати рядок
+   `harmonic_synth/vendor/**` з `.gitattributes`. `clap-validator` має
+   лишитися 35/35. Оновити цей файл, `06 §6`, `09 §Б2`.

@@ -66,9 +66,10 @@ nightly.
 
 57 tests pass (53 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3
-(editor tests included); `clap-validator` passes 31/31 on the CLAP (2 state-test
-groups excluded — known `nih-plug` bugs with a ready fix, see
-[`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md)). The plugin has
+(editor tests included); `clap-validator` passes **35/35** on the CLAP — the
+`nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt preset) are
+fixed via a `[patch]` onto a vendored copy, see
+[`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md). The plugin has
 a `nih_plug_vizia` editor (all params + a live spectrum). Not yet validated in a
 live DAW — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) for exactly
 what is and isn't covered.
