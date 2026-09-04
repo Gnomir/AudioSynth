@@ -19,7 +19,7 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 68 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 70 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; відсутність DAW-валідації тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, точний макет пам'яті (512 б, align 8), протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Дорожня карта: 3 вектори (DSP-розширення · оптимізація/портування · GUI/QA), кожен пункт з Проблема/Рішення/Файли/Оцінка/DoD; рекомендована послідовність |
@@ -32,6 +32,7 @@
 | [16_RFC19_AUDIT_DOCS_DC_SH_NOSTD.md](16_RFC19_AUDIT_DOCS_DC_SH_NOSTD.md) | RFC-19 аудит: `.min()` у `no_std` — спростовано з доказом (`core`-safe, список заборонених викликів виправлено); 2 реальних DSP-баги виправлено (DC-blocker rate-scaling, S&H near-zero jitter, обидва з регресійними тестами); PolyBLEP ZOH-пастка — спростована вимірюванням; ADSR/SVF rate «проблема» — спростована; латентність/wording у 04/05/13 виправлено |
 | [17_RFC_AUDIT_STATE_CLAMP_UNISON.md](17_RFC_AUDIT_STATE_CLAMP_UNISON.md) | Наступний аудит: HQ cutoff-стеля `0.45×2fs` vs `0.45×fs` — реальний баг, виправлено (`Svf::base_sample_rate`); DC-blocker reset — переспростовано (той самий хибний закид, що й RFC-12 §1.2); S&H bypass-freeze — залишено з обґрунтуванням; унісон при `detune=0` — спростовано вимірюванням: гасить (аж до тиші), не перевантажує |
 | [18_RFC_AUDIT_DRIFT_SR_STEAL_COMB.md](18_RFC_AUDIT_DRIFT_SR_STEAL_COMB.md) | Гребінчастий фільтр унісону — точна математика додана (`07 §13`); `drift_phase` необмежений ріст і `sample_rate=0` при ігноруванні `initialize→false` — обидва **хибні**, код уже вирішує це (wrap існує; `validate_sample_rate` унеможливлює 0/NaN; плагін завжди повертає `true`); клацання при voice-stealing — реальна, задокументована (не виправлена) плата за компактний `Voice` |
+| [19_INDEPENDENT_AUDIT_REPORT.md](19_INDEPENDENT_AUDIT_REPORT.md) | Формальний незалежний аудит (повний шаблон: критичні проблеми, математичні невідповідності, сигнальний тракт, вимоги, відсутні дані). Знайдено й виправлено: `NaN`-проходження крізь клампи параметрів на межі C-ABI (кат. B), непровірене переповнення в `harmonic_voice_process` (кат. B), дубльована математика `soft_clip`/`tanh_pade` без симетричних тестів (кат. C). Жодної критичної (кат. A) проблеми |
 
 ## Порядок читання
 
@@ -50,7 +51,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус (2026-09-04)
 
-68 тестів проходять (63 юніт + 5 інтеграційних) + 1 `#[ignore]` (дрейф),
+70 тестів проходять (65 юніт + 5 інтеграційних) + 1 `#[ignore]` (дрейф),
 біт-у-біт на `aarch64` + `armv7-hf` під QEMU (`cross-verify.sh`) · clippy чистий (stable +
 `--no-default-features --release` + nightly `--features portable-simd`) ·
 плагін збирається у VST3 + CLAP, має GUI (`nih_plug_vizia`: усі параметри +

@@ -129,7 +129,15 @@ impl Svf {
     #[inline]
     pub fn set_cutoff(&mut self, hz: f64) {
         let hi = Self::MAX_CUTOFF_FRAC * self.base_sample_rate;
-        self.cutoff_t = if hz < Self::MIN_CUTOFF_HZ {
+        // `NaN < lo` / `NaN > hi` are both false, so a bare comparison chain
+        // lets NaN through unchanged (audit finding, mirrors voice::clamp).
+        // `recompute_g`'s `.min(0.225)` happens to absorb a NaN `cutoff_z`
+        // into a defined `g` today (`NaN.min(x) == x` per IEEE `minNum`), and
+        // `process`'s `moving_c` check reads NaN comparisons as "not moving"
+        // so the filter freezes rather than corrupts — but that safety is
+        // two unrelated accidents composing, not a guarantee; reject NaN
+        // here directly instead of depending on it.
+        self.cutoff_t = if hz.is_nan() || hz < Self::MIN_CUTOFF_HZ {
             Self::MIN_CUTOFF_HZ
         } else if hz > hi {
             hi
@@ -178,7 +186,7 @@ impl Svf {
     /// self-oscillate. Smoothed per sample.
     #[inline]
     pub fn set_resonance(&mut self, r: f64) {
-        self.res_t = if r < 0.0 {
+        self.res_t = if r.is_nan() || r < 0.0 {
             0.0
         } else if r > 1.0 {
             1.0
