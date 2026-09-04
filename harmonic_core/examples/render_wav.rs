@@ -6,7 +6,7 @@
 //!
 //! Geometric: a 110 Hz note whose spectral tilt `r` sweeps dark → bright → dark,
 //! so you can hear the O(1) partial count open up without any CPU change.
-//! Saw / triangle: a two-octave pitch glide, so you can hear the BLIT staying
+//! Saw / triangle: a two-octave pitch glide, so you can hear PolyBLEP staying
 //! band-limited (no aliasing whine) as the fundamental climbs.
 
 use harmonic_core::{Voice, Waveform};
@@ -41,7 +41,7 @@ fn main() -> std::io::Result<()> {
                 v.set_rolloff(0.05 + tri * (0.9995 - 0.05));
             }
             _ => {
-                // two-octave pitch glide for the BLIT waves
+                // two-octave pitch glide for the polyBLEP waves
                 v.set_frequency(110.0 * 2.0_f64.powf(2.0 * tri));
             }
         }

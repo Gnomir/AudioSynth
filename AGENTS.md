@@ -4,7 +4,7 @@
 
 `harmonic_core` — a `no_std`, **zero-dependency** Rust DSP crate: band-limited
 additive synthesis from a closed-form Dirichlet-kernel sum
-(`Σ rᵏ·cos(2πkp)`), plus band-limited BLIT saw/triangle (`Waveform` enum),
+(`Σ rᵏ·cos(2πkp)`), plus PolyBLEP saw/triangle (`Waveform` enum),
 character (drive/fold/grit), a ZDF state-variable filter, two ADSRs, a per-voice
 LFO (retrigger/free-run + mod matrix), unison (with a breathing drift), pitch
 bend, equal-power pan.
@@ -35,7 +35,7 @@ diff-able against the real repo.
 
 ```
 cd harmonic_core
-cargo test                                     # all 57 tests (53 unit + tests/spectrum.rs)
+cargo test                                     # all 58 tests (54 unit + tests/spectrum.rs)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0

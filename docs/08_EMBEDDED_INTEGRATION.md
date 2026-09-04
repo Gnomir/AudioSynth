@@ -29,7 +29,7 @@
 ### 2.1. `Voice` — POD, `#[repr(C)] Copy`
 
 ```
-size_of::<Voice>()  = 576 байти     (x86-64; те саме на 64-бітних ARM)
+size_of::<Voice>()  = 512 байти     (x86-64; те саме на 64-бітних ARM)
 align_of::<Voice>() = 8
 ```
 
@@ -65,10 +65,7 @@ align_of::<Voice>() = 8
 | Дрейф унісону | `drift_phase`, `drift_inc`, `drift_depth` | `f64` | Повільна вільна синусоїда `→` фаза осцилятора («дихання» стеку); не ретригериться |
 | Geom-кеш | `geom_r`, `geom_rn1`, `geom_peak` | `f64` | `r^{n+1}` та пік для сталого `(r, n)` — обидва `powi_pos` пропускаються |
 | | `geom_n` | `u32` | друга половина ключа кешу |
-| Осц. форма | `waveform` | `Waveform` (`u32`) | Geometric / Saw / Triangle |
-| BLIT саw/трикутник | `blit_leak`, `tri_leak` | `f64` | Коефіцієнти витоку інтеграторів (стадія 1 / стадія 2) |
-| | `saw_int`, `saw_dc_x1`, `saw_dc_y1` | `f64` | Інтегратор пилки/меандру + стан DC-blockerа |
-| | `tri_int`, `tri_dc_x1`, `tri_dc_y1` | `f64` | Другий інтегратор трикутника + стан DC-blockerа |
+| Осц. форма | `waveform` | `Waveform` (`u32`) | Geometric / Saw / Triangle — Saw/Triangle це PolyBLEP/PolyBLAMP, **без стану** |
 | Нелінійні | `character` | `Character` | drive / bias / fold / crush / downsample |
 | | `filter` | `Svf` (112 б) | ZDF state-variable фільтр |
 
@@ -84,8 +81,8 @@ align_of::<Voice>() = 8
 
 ### 2.3. RAM-бюджет
 
-Один голос — 576 б. Плагін `harmonic_synth` тримає `PolySynth<24>`: масив із
-24 `PolyVoice` (`Voice` + дві `Adsr` + метадані нот), ~15 КБ, статично, без
+Один голос — 512 б. Плагін `harmonic_synth` тримає `PolySynth<24>`: масив із
+24 `PolyVoice` (`Voice` + дві `Adsr` + метадані нот), ~14 КБ, статично, без
 жодної алокації понад те, що розмістив хост. Для MCU обирайте кількість
 голосів під свій RAM.
 
@@ -138,6 +135,9 @@ Rust за замовчуванням не контрактить `a*b + c` у FM
 - **HQ mode** (`harmonic_voice_set_hq(v, 1)`) подвоює вартість осцилятора +
   character та додає 13-тапний half-band FIR — очікуйте ~1.7× CPU на голос.
   Латентність +3 семпли (`Voice::HQ_LATENCY`).
+- **`Waveform::Saw` / `Triangle`** — PolyBLEP / PolyBLAMP: ~6 / ~15 флопів на
+  семпл, без стану, без тригонометрії. Вимірювано **90 / 77 M семплів/с** —
+  дешевше за геометричну несучу. Не HQ (вже band-limited).
 - **Тракт голосу `render_sample` — суто скалярний.** Batch-API
   (`geometric_partials_x4`, `cos4_turns`, `core::simd` за
   `--features portable-simd`) **не інтегрований** у `Voice`: `Svf` та
@@ -155,7 +155,7 @@ Rust за замовчуванням не контрактить `a*b + c` у FM
 ```c
 #include "harmonic_core.h"
 
-size_t sz  = harmonic_voice_size();          /* 576 сьогодні — НЕ хардкодити */
+size_t sz  = harmonic_voice_size();          /* 512 сьогодні — НЕ хардкодити */
 size_t al  = harmonic_voice_align();         /* 8 */
 void  *mem = /* ваша стратегія: арена / пул / стек, >= sz, вирівняно на al */;
 
@@ -228,5 +228,5 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 | Стійкість SVF (`Q≤32`, cutoff-кламп), no-div-by-zero | 4× оверсемплінг · оверсемплінг фільтра (є лише 2× для character) |
 | SR клампиться зі статус-кодом (не тиха підміна) | Кламп-шлях SR у реальному хості не тестований |
 | POD-макет, безпечне побітове копіювання / серіалізація | Валідація в живому DAW / `pluginval` (скрипт готовий) |
-| 57 тестів + дрейф-стрес (математика, стійкість, HQ, BLIT, LFO-матриця, межі) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація |
+| 58 тестів + дрейф-стрес (математика, стійкість, HQ, PolyBLEP, LFO-матриця, межі) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація |
 | Alias-free **чистий** осцилятор під Найквіста | Alias-free при активних `character`/FM — лише в **HQ mode** (2× OS); без нього навмисний «цифровий характер» |
