@@ -871,4 +871,88 @@ mod tests {
         v.reset();
         assert!(mono_peak(&mut v, 96_000) <= 1.5);
     }
+
+    /// Long-run numerical drift of the carrier and FM phase accumulators
+    /// (`phase += step` with a per-period wrap). `#[ignore]` — heavy; run with
+    ///
+    /// ```text
+    /// cargo test --release -p harmonic_core -- --ignored --nocapture drift
+    /// DRIFT_SAMPLES=1000000000 cargo test --release -- --ignored --nocapture drift
+    /// ```
+    ///
+    /// The reference is a Kahan-compensated, exactly-wrapped accumulator, so it
+    /// is accurate to ~1e-16 turns/step and the assertion measures the real
+    /// drift of the production accumulator, not reference noise.
+    #[test]
+    #[ignore]
+    fn phase_accumulators_do_not_drift() {
+        let sr = 48_000.0;
+        let f0 = 220.0;
+        let n: u64 = std::env::var("DRIFT_SAMPLES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(200_000_000);
+
+        let mut v = Voice::new(sr);
+        v.set_frequency(f0);
+        v.set_gain(1.0);
+        v.set_fm(3.0, 0.25); // drive the fm_phase accumulator + its floor-wrap
+        v.reset();
+        for _ in 0..50_000 {
+            v.render_sample(); // lock freq_z to freq exactly
+        }
+
+        let step = v.freq_z * v.bend_z / sr;
+        let fm_step = v.fm_ratio * step;
+
+        // Kahan-compensated references, wrapped exactly to [0, 1+step).
+        let mut rp = v.phase;
+        let mut rpc = 0.0_f64;
+        let mut rf = v.fm_phase;
+        let mut rfc = 0.0_f64;
+        let kahan = |acc: &mut f64, comp: &mut f64, inc: f64| {
+            let y = inc - *comp;
+            let t = *acc + y;
+            *comp = (t - *acc) - y;
+            *acc = t;
+            if *acc >= 1.0 {
+                *acc -= 1.0;
+            }
+        };
+        let circ = |a: f64, b: f64| {
+            let d = (a - b).abs();
+            if d > 0.5 {
+                1.0 - d
+            } else {
+                d
+            }
+        };
+
+        let (mut max_dp, mut max_df) = (0.0_f64, 0.0_f64);
+        for _ in 0..n {
+            v.render_sample();
+            kahan(&mut rp, &mut rpc, step);
+            kahan(&mut rf, &mut rfc, fm_step);
+            max_dp = max_dp.max(circ(v.phase, rp));
+            max_df = max_df.max(circ(v.fm_phase, rf));
+        }
+
+        let hours = n as f64 / sr / 3600.0;
+        // The naive accumulator's error grows linearly (a tiny per-add rounding
+        // bias), so the *frequency* error is what matters — it is N-independent.
+        // A phase deviation of `d` turns over `n` samples = an effective
+        // frequency error of `d/n · sr` Hz.
+        let carrier_ppm = max_dp / n as f64 * sr / f0 * 1.0e6;
+        let fm_ppm = max_df / n as f64 * sr / (v.fm_ratio * f0) * 1.0e6;
+        eprintln!(
+            "drift over {n} samples ({hours:.2} h @ {sr} Hz):\n  \
+             carrier phase max dev {max_dp:.3e} turns  →  {carrier_ppm:.3e} ppm frequency error\n  \
+             FM phase      max dev {max_df:.3e} turns  →  {fm_ppm:.3e} ppm"
+        );
+        // Bound the *rate*, not the absolute deviation. 1e-3 ppm ≈ 2e-6 cents —
+        // some nine orders of magnitude above what is measured, but any real
+        // regression (e.g. dropping the per-period wrap) blows straight past it.
+        assert!(carrier_ppm < 1.0e-3, "carrier frequency drift {carrier_ppm:e} ppm");
+        assert!(fm_ppm < 1.0e-3, "fm frequency drift {fm_ppm:e} ppm");
+    }
 }
