@@ -69,6 +69,9 @@ pub fn midi_to_hz(note: f32) -> f64
 `new_checked(sr) -> (Self, SampleRateStatus)`. `set_sample_rate(sr) ->
 SampleRateStatus` перебудовує (глушить голоси) і повертає статус —
 плагін відхиляє все крім `Ok`. `sample_rate() -> f64` — поточна валідована.
+Константа: `PolySynth::<N>::HQ_LATENCY = 16` — латентність Unified HQ Bus
+(RFC-16, `docs/15_TECHNICAL_SPEC_HQ_BUS.md`), незалежна від `Voice::
+HQ_LATENCY` (=3, лише для прямого `Voice`/C-ABI шляху нижче).
 
 **Тембр / рівень** (RT-fanout):
 ```rust
@@ -82,7 +85,7 @@ set_feedback(fb: f64)
 **Режим голосу** (RT-fanout):
 ```rust
 set_free_running(free: bool)
-set_hq(hq: bool)                                          // 2× оверсемплінг; +3 семпли латентності
+set_hq(hq: bool)                                          // Unified HQ Bus (RFC-16); +PolySynth::HQ_LATENCY (=16) семплів
 set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
 set_unison(count: u32, detune_cents: f64, spread: f64, drift: f64)  // clamp [1,8] · [0,1] · [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси

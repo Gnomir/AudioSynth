@@ -109,6 +109,20 @@ pub struct Voice {
     filter: Svf,
 }
 
+/// Output of [`Voice::tick_modulation`] — the effective, per-sample
+/// pitch/brightness/partial-count/feedback/FM terms shared by both render
+/// paths, computed once from the (possibly LFO-modulated) parameters.
+struct Modulation {
+    roll_eff: f64,
+    n: u32,
+    fb: f64,
+    step: f64,
+    drift: f64,
+    fm_index: f64,
+    fm_term: f64,
+    m: f64, // raw LFO output (0 if nothing is routed) — for lfo_to_cutoff
+}
+
 impl Voice {
     pub const ROLLOFF_MIN: f64 = 1.0e-3;
     pub const ROLLOFF_MAX: f64 = 0.9995;
@@ -313,6 +327,20 @@ impl Voice {
         self.hq = hq;
     }
 
+    /// Reconfigure the filter for [`Voice::render_hq_subsamples`] — `PolySynth`'s
+    /// unified HQ bus, which runs the whole oversampled tract (oscillator →
+    /// `Character` → `Svf`) at `2×` the base rate and decimates once for the
+    /// whole mix rather than once per voice. Independent of [`Voice::set_hq`]:
+    /// that flag governs `render_sample`'s own, unrelated per-voice HQ path
+    /// (still filters once, at `1×`), which stays unaffected — so a standalone
+    /// `Voice` / the C ABI keeps today's HQ behaviour exactly. Only `PolySynth`
+    /// should call this (`pub(crate)` — it is not part of the public API).
+    #[inline]
+    pub(crate) fn set_hq_bus_active(&mut self, active: bool) {
+        let sr = if active { 2.0 * self.sample_rate } else { self.sample_rate };
+        self.filter.set_sample_rate(sr);
+    }
+
     /// Oscillator waveform. `Saw` / `Triangle` are PolyBLEP / PolyBLAMP —
     /// fixed `1/k` / `1/k²` spectra, so they ignore the rolloff/brightness
     /// control and the HQ path.
@@ -417,6 +445,159 @@ impl Voice {
     /// panic path.
     #[inline]
     pub fn render_sample(&mut self) -> [f32; 2] {
+        let mo = self.tick_modulation();
+
+        let shaped = if self.waveform == Waveform::Geometric && self.hq {
+            // 2× oversample: analytic oscillator on-grid + at the half-step,
+            // both through the character stage, then decimate.
+            let (rn1, peak) = self.geom_norm(mo.roll_eff, mo.n);
+            let fm_hi = if mo.fm_index > 0.0 {
+                mo.fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * mo.step)
+            } else {
+                0.0
+            };
+            let osc_lo = geometric_partials_pre(
+                self.phase + mo.fm_term + mo.fb + mo.drift,
+                mo.roll_eff,
+                mo.n,
+                rn1,
+            ) / peak;
+            let osc_hi = geometric_partials_pre(
+                self.phase + 0.5 * mo.step + fm_hi + mo.fb + mo.drift,
+                mo.roll_eff,
+                mo.n,
+                rn1,
+            ) / peak;
+            self.last_osc = osc_lo;
+            self.character.process_hq(osc_lo as f32, osc_hi as f32)
+        } else {
+            let osc = match self.waveform {
+                Waveform::Geometric => {
+                    let (rn1, peak) = self.geom_norm(mo.roll_eff, mo.n);
+                    geometric_partials_pre(
+                        self.phase + mo.fm_term + mo.fb + mo.drift,
+                        mo.roll_eff,
+                        mo.n,
+                        rn1,
+                    ) / peak
+                }
+                Waveform::Saw => {
+                    Self::polyblep_saw(self.phase + mo.fm_term + mo.fb + mo.drift, mo.step)
+                }
+                Waveform::Triangle => {
+                    Self::polyblamp_triangle(self.phase + mo.fm_term + mo.fb + mo.drift, mo.step)
+                }
+            };
+            self.last_osc = osc;
+            self.character.process(osc as f32)
+        };
+
+        // ---- filter ----
+        if self.lfo_to_cutoff != 0.0 {
+            self.filter
+                .set_cutoff(self.filter_cutoff * exp2(self.lfo_to_cutoff * mo.m));
+        }
+        let filtered = self.filter.process(shaped);
+
+        // ---- de-click ----
+        let dg = if self.declick > 0 {
+            self.declick -= 1;
+            (DECLICK_LEN - self.declick) as f32 / DECLICK_LEN as f32
+        } else {
+            1.0
+        };
+        let mono = filtered * self.gain as f32 * dg;
+
+        self.advance_phase_and_pan(mo.step);
+        [mono * self.pan_cos as f32, mono * self.pan_sin as f32]
+    }
+
+    /// Two 2×-rate subsamples for `PolySynth`'s unified HQ bus: oscillator →
+    /// `Character` → `Svf` all run twice per output sample, at `2×` the base
+    /// rate, but *without* per-voice decimation — the caller sums many
+    /// voices' pairs and decimates once for the whole stereo mix
+    /// (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`). `Saw`/`Triangle` (already
+    /// band-limited PolyBLEP/PolyBLAMP, stateless) are not themselves
+    /// oversampled — their single sample is held for both subsamples
+    /// (zero-order hold; harmless, since it adds no new energy for the
+    /// master decimator to need to remove).
+    ///
+    /// Crate-private: only `PolySynth` should call this, and only after
+    /// [`Voice::set_hq_bus_active`] has configured the filter for the `2×`
+    /// rate. A standalone `Voice` / the C ABI keeps using [`Voice::
+    /// render_sample`]'s own, unrelated per-voice HQ path via [`Voice::set_hq`].
+    #[inline]
+    pub(crate) fn render_hq_subsamples(&mut self) -> ([f32; 2], [f32; 2]) {
+        let mo = self.tick_modulation();
+
+        let (osc_lo, osc_hi) = match self.waveform {
+            Waveform::Geometric => {
+                let (rn1, peak) = self.geom_norm(mo.roll_eff, mo.n);
+                let fm_hi = if mo.fm_index > 0.0 {
+                    mo.fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * mo.step)
+                } else {
+                    0.0
+                };
+                let lo = geometric_partials_pre(
+                    self.phase + mo.fm_term + mo.fb + mo.drift,
+                    mo.roll_eff,
+                    mo.n,
+                    rn1,
+                ) / peak;
+                let hi = geometric_partials_pre(
+                    self.phase + 0.5 * mo.step + fm_hi + mo.fb + mo.drift,
+                    mo.roll_eff,
+                    mo.n,
+                    rn1,
+                ) / peak;
+                (lo, hi)
+            }
+            Waveform::Saw | Waveform::Triangle => {
+                let phase = self.phase + mo.fm_term + mo.fb + mo.drift;
+                let x = if self.waveform == Waveform::Saw {
+                    Self::polyblep_saw(phase, mo.step)
+                } else {
+                    Self::polyblamp_triangle(phase, mo.step)
+                };
+                (x, x)
+            }
+        };
+        self.last_osc = osc_lo;
+
+        // ---- filter (twice — the Svf must already be at `2×`, see above) ----
+        if self.lfo_to_cutoff != 0.0 {
+            self.filter
+                .set_cutoff(self.filter_cutoff * exp2(self.lfo_to_cutoff * mo.m));
+        }
+        let (c_lo, c_hi) = self.character.process_hq_pair(osc_lo as f32, osc_hi as f32);
+        let f_lo = self.filter.process(c_lo);
+        let f_hi = self.filter.process(c_hi);
+
+        // ---- de-click (once per output sample, applied to both subsamples) ----
+        let dg = if self.declick > 0 {
+            self.declick -= 1;
+            (DECLICK_LEN - self.declick) as f32 / DECLICK_LEN as f32
+        } else {
+            1.0
+        };
+        let g = self.gain as f32 * dg;
+        let mono_lo = f_lo * g;
+        let mono_hi = f_hi * g;
+
+        self.advance_phase_and_pan(mo.step);
+        (
+            [mono_lo * self.pan_cos as f32, mono_lo * self.pan_sin as f32],
+            [mono_hi * self.pan_cos as f32, mono_hi * self.pan_sin as f32],
+        )
+    }
+
+    /// Shared per-sample parameter smoothing + LFO tick, computing everything
+    /// both [`Voice::render_sample`] and [`Voice::render_hq_subsamples`] need
+    /// before evaluating the oscillator. Advances `self.lfo` / `self.drift_phase`
+    /// — call exactly once per *output* sample (not per 2× subsample), so
+    /// modulation runs at the base rate in both render paths.
+    #[inline]
+    fn tick_modulation(&mut self) -> Modulation {
         // ---- parameter smoothing ----
         self.freq_z += (1.0 - self.smooth_coeff) * (self.freq - self.freq_z);
         self.rolloff_z += (1.0 - self.smooth_coeff) * (self.rolloff - self.rolloff_z);
@@ -456,7 +637,7 @@ impl Voice {
             ((self.sample_rate / (2.0 * f)) as u32).max(1).min(MAX_PARTIALS)
         };
 
-        // ---- oscillator ----
+        // ---- oscillator terms ----
         let fb = self.feedback * self.last_osc;
         let step = f_eff / self.sample_rate; // turns per output sample
         // Slow free-running phase drift (unison "breathing"). Folded into the
@@ -488,58 +669,16 @@ impl Voice {
             0.0
         };
 
-        let shaped = if self.waveform == Waveform::Geometric && self.hq {
-            // 2× oversample: analytic oscillator on-grid + at the half-step,
-            // both through the character stage, then decimate.
-            let (rn1, peak) = self.geom_norm(roll_eff, n);
-            let fm_hi = if fm_index > 0.0 {
-                fm_index * sin_turns(self.fm_phase + 0.5 * self.fm_ratio * step)
-            } else {
-                0.0
-            };
-            let osc_lo =
-                geometric_partials_pre(self.phase + fm_term + fb + drift, roll_eff, n, rn1) / peak;
-            let osc_hi = geometric_partials_pre(
-                self.phase + 0.5 * step + fm_hi + fb + drift,
-                roll_eff,
-                n,
-                rn1,
-            ) / peak;
-            self.last_osc = osc_lo;
-            self.character.process_hq(osc_lo as f32, osc_hi as f32)
-        } else {
-            let osc = match self.waveform {
-                Waveform::Geometric => {
-                    let (rn1, peak) = self.geom_norm(roll_eff, n);
-                    geometric_partials_pre(self.phase + fm_term + fb + drift, roll_eff, n, rn1)
-                        / peak
-                }
-                Waveform::Saw => Self::polyblep_saw(self.phase + fm_term + fb + drift, step),
-                Waveform::Triangle => {
-                    Self::polyblamp_triangle(self.phase + fm_term + fb + drift, step)
-                }
-            };
-            self.last_osc = osc;
-            self.character.process(osc as f32)
-        };
+        Modulation { roll_eff, n, fb, step, drift, fm_index, fm_term, m }
+    }
 
-        // ---- filter ----
-        if self.lfo_to_cutoff != 0.0 {
-            self.filter
-                .set_cutoff(self.filter_cutoff * exp2(self.lfo_to_cutoff * m));
-        }
-        let filtered = self.filter.process(shaped);
-
-        // ---- de-click ----
-        let dg = if self.declick > 0 {
-            self.declick -= 1;
-            (DECLICK_LEN - self.declick) as f32 / DECLICK_LEN as f32
-        } else {
-            1.0
-        };
-        let mono = filtered * self.gain as f32 * dg;
-
-        // ---- advance phases ----
+    /// Advance the carrier/FM phase accumulators by `step` and refresh the
+    /// cached equal-power pan gains if `pan_z` moved. Shared tail of both
+    /// render paths — called once per output sample, after the oscillator/
+    /// filter/de-click work is done (the pan gains are then applied by the
+    /// caller, which knows whether it has one mono sample or a lo/hi pair).
+    #[inline]
+    fn advance_phase_and_pan(&mut self, step: f64) {
         self.fm_phase += self.fm_ratio * step;
         if self.fm_phase >= 1.0 || self.fm_phase <= -1.0 {
             self.fm_phase -= floor_f64(self.fm_phase);
@@ -559,7 +698,6 @@ impl Voice {
             self.pan_cos = c;
             self.pan_cache_z = self.pan_z;
         }
-        [mono * self.pan_cos as f32, mono * self.pan_sin as f32]
     }
 
     /// Fill `left` / `right` with rendered samples (up to the shorter length).

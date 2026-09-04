@@ -121,14 +121,29 @@ impl Character {
     /// 2×; a half-band FIR then decimates back, keeping the alias products
     /// generated above the base Nyquist out of the audible band.
     /// Adds [`HQ_LATENCY`] samples of latency.
+    ///
+    /// This is the standalone per-voice HQ path (used by [`crate::Voice::
+    /// render_sample`] directly, and by the C ABI's `harmonic_voice_process`).
+    /// `PolySynth`'s unified HQ bus uses [`Character::process_hq_pair`]
+    /// instead — it runs the same nonlinear stages but skips this decimation,
+    /// because the bus decimates once for the whole mix, not once per voice.
     #[inline]
     pub fn process_hq(&mut self, lo: f32, hi: f32) -> f32 {
-        let (a, b) = if self.p.is_clean() {
+        let (a, b) = self.process_hq_pair(lo, hi);
+        self.decimate(a, b)
+    }
+
+    /// Like [`Character::process_hq`], but returns both 2×-rate samples
+    /// un-decimated — for `PolySynth`'s unified HQ bus, which sums many
+    /// voices' pairs and decimates once for the whole stereo mix instead of
+    /// once per voice (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`).
+    #[inline]
+    pub fn process_hq_pair(&mut self, lo: f32, hi: f32) -> (f32, f32) {
+        if self.p.is_clean() {
             (lo, hi)
         } else {
             (self.stage(lo, 2.0), self.stage(hi, 2.0))
-        };
-        self.decimate(a, b)
+        }
     }
 
     /// The nonlinear chain for one sample. `sh_mult` scales the sample-and-hold

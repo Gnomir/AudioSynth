@@ -123,6 +123,36 @@ impl Svf {
         };
     }
 
+    /// Reconfigure the filter to run at a different sample rate — for the
+    /// unified HQ bus, which processes two subsamples per output sample at
+    /// `2×` the base rate (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`). Recomputes the
+    /// smoothing time constant and the cutoff clamp bound for the new rate,
+    /// re-clamps the cutoff target/smoothed value against it, and rebuilds
+    /// coefficients immediately (not lazily on the next moving-target check —
+    /// the rate itself changed, not just the target). A no-op when `sample_rate`
+    /// already matches. Integrator state (`ic1`/`ic2`) is left alone: this is a
+    /// discrete mode switch (HQ toggled on/off), not a per-sample operation, so
+    /// a brief settling transient is an acceptable trade against always paying
+    /// for a rate check on every sample.
+    pub fn set_sample_rate(&mut self, sample_rate: f64) {
+        if sample_rate == self.sample_rate {
+            return;
+        }
+        self.sample_rate = sample_rate;
+        let dt = 1.0 / sample_rate;
+        let tau = 0.001;
+        self.smooth = 1.0 - dt / (tau + dt);
+        let hi = Self::MAX_CUTOFF_FRAC * sample_rate;
+        if self.cutoff_t > hi {
+            self.cutoff_t = hi;
+        }
+        if self.cutoff_z > hi {
+            self.cutoff_z = hi;
+        }
+        self.recompute_g();
+        self.recompute_a();
+    }
+
     /// Resonance target `0..1` → Q ∈ `[0.5, 32]`, exponential. Capped; does not
     /// self-oscillate. Smoothed per sample.
     #[inline]
@@ -329,6 +359,44 @@ mod tests {
             let x = ((i as f64 * 0.03).sin() * 0.8) as f32;
             let y = s.process(x);
             assert!(y.is_finite() && y.abs() < 20.0, "blew up at i={i}: {y}");
+        }
+    }
+
+    #[test]
+    fn set_sample_rate_retargets_the_prewarp_and_the_clamp() {
+        // Same Hz cutoff, doubled sample rate: `turns = cutoff/(2*sample_rate)`
+        // halves, so `g = tan_turns_fast(turns)` must (roughly) halve too —
+        // this is the direct, mechanical proof that `recompute_g` re-ran
+        // against the *new* rate rather than a stale one.
+        let mut s = Svf::new(48_000.0);
+        s.set_cutoff(4_000.0);
+        s.reset();
+        let g48 = s.g;
+        s.set_sample_rate(96_000.0);
+        let g96 = s.g;
+        assert!(
+            g96 < g48 * 0.6 && g96 > g48 * 0.4,
+            "g should roughly halve when the rate doubles at a fixed Hz cutoff: {g48} -> {g96}"
+        );
+        // a no-op call at the *new* rate must not perturb it further.
+        s.set_sample_rate(96_000.0);
+        assert_eq!(s.g, g96, "no-op set_sample_rate changed g");
+
+        // the cutoff clamp must also track the new rate: at 96 kHz the old
+        // 0.45*48000 = 21 600 Hz bound no longer applies — a target between the
+        // two bounds must now be accepted, not silently clamped down.
+        s.set_cutoff(30_000.0); // > 0.45*48000, < 0.45*96000
+        assert!((s.cutoff_t - 30_000.0).abs() < 1.0, "clamp still using the old rate: {}", s.cutoff_t);
+
+        // switching back down must re-clamp against the smaller bound.
+        s.set_sample_rate(48_000.0);
+        assert!(s.cutoff_t <= 0.45 * 48_000.0 + 1.0, "old bound not restored: {}", s.cutoff_t);
+
+        // and the filter stays stable and finite through all of this.
+        s.set_mode(FilterMode::Low);
+        for i in 0..1000 {
+            let x = ((i as f64 * 0.05).sin()) as f32;
+            assert!(s.process(x).is_finite());
         }
     }
 }

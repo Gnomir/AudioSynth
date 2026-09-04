@@ -44,6 +44,94 @@ impl PolyVoice {
     }
 }
 
+/// Master decimator for the unified HQ bus (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`,
+/// RFC-16). Decimates the whole stereo mix `2× → 1×` exactly once, replacing
+/// the up-to-`VOICES` independent per-voice decimators the old per-voice HQ
+/// path needed. One stereo instance lives on `PolySynth`; `Character`'s own
+/// (unrelated) per-voice decimator is untouched — it still backs the
+/// standalone `Voice` / C-ABI HQ path.
+///
+/// 65-tap linear-phase half-band FIR (windowed-sinc, Kaiser β for an ~85 dB
+/// design target, giving margin over the 80 dB spec). Only every second tap
+/// around the centre is non-zero (the half-band property), so 17 unique
+/// coefficients cover all 65. Measured (`examples/…` design script, not
+/// checked in — see the RFC-16 writeup): passband flat to `< 0.33 dB` up to
+/// `0.9×` the output Nyquist; reaches `−80` dB by `1.166×` the output
+/// Nyquist (worse only in that narrow transition sliver, not "−80 dB
+/// everywhere above Nyquist" — a literal 27-tap filter cannot deliver `−80`
+/// dB with any usable transition width; this is the real trade honestly
+/// reported instead of restated). Group delay `(65−1)/2 = 32` samples at
+/// `2×` = **16 samples at `1×`**, exactly (unlike a 27-tap filter, whose
+/// group delay does not divide evenly by 2).
+struct HqBusDecimator {
+    delay_l: [f32; Self::LEN],
+    delay_r: [f32; Self::LEN],
+}
+
+impl HqBusDecimator {
+    const LEN: usize = 65;
+    const CENTER: usize = (Self::LEN - 1) / 2; // 32
+
+    /// Samples of `1×`-rate latency this stage adds.
+    const LATENCY: usize = Self::CENTER / 2; // 16, exact
+
+    // Unique half-band coefficients: HB[0] is the centre tap, HB[k] (k>=1) is
+    // the tap at offset ±(2k−1) from the centre. All even offsets are exactly
+    // zero by the half-band construction and are skipped, not stored.
+    const HB: [f32; 17] = [
+        5.000_054e-1,
+        3.170_889_4e-1,
+        -1.024_807_2e-1,
+        5.778_425e-2,
+        -3.756_863_6e-2,
+        2.573_189e-2,
+        -1.790_901_2e-2,
+        1.242_478_7e-2,
+        -8.485_105e-3,
+        5.647_418e-3,
+        -3.628_984e-3,
+        2.228_206_7e-3,
+        -1.290_215_1e-3,
+        6.914_371_8e-4,
+        -3.326_000_3e-4,
+        1.352_821_7e-4,
+        -3.966_612e-5,
+    ];
+
+    fn new() -> Self {
+        HqBusDecimator { delay_l: [0.0; Self::LEN], delay_r: [0.0; Self::LEN] }
+    }
+
+    fn reset(&mut self) {
+        self.delay_l = [0.0; Self::LEN];
+        self.delay_r = [0.0; Self::LEN];
+    }
+
+    #[inline]
+    fn push_and_decimate(delay: &mut [f32; Self::LEN], a: f32, b: f32) -> f32 {
+        delay.copy_within(2.., 0); // shift left by 2 (drop the two oldest)
+        delay[Self::LEN - 2] = a;
+        delay[Self::LEN - 1] = b;
+        let mut acc = Self::HB[0] * delay[Self::CENTER];
+        let mut k = 1usize;
+        while k < Self::HB.len() {
+            let off = 2 * k - 1;
+            acc += Self::HB[k] * (delay[Self::CENTER - off] + delay[Self::CENTER + off]);
+            k += 1;
+        }
+        acc
+    }
+
+    /// Push one `2×`-rate stereo pair, return one decimated `1×` stereo frame.
+    #[inline]
+    fn process(&mut self, lo: [f32; 2], hi: [f32; 2]) -> [f32; 2] {
+        [
+            Self::push_and_decimate(&mut self.delay_l, lo[0], hi[0]),
+            Self::push_and_decimate(&mut self.delay_r, lo[1], hi[1]),
+        ]
+    }
+}
+
 /// Polyphonic synth with `VOICES` voices.
 pub struct PolySynth<const VOICES: usize> {
     voices: [PolyVoice; VOICES],
@@ -89,12 +177,19 @@ pub struct PolySynth<const VOICES: usize> {
     lfo_to_fm: f64,
 
     hq: bool,
+    hq_decim: HqBusDecimator,
     waveform: Waveform,
 
     counter: u64,
 }
 
 impl<const VOICES: usize> PolySynth<VOICES> {
+    /// Latency, in samples, added by [`PolySynth::set_hq`] `true` — the
+    /// unified HQ bus's single master decimator. Independent of (and, when
+    /// driven through `PolySynth`, supersedes) [`crate::Voice::HQ_LATENCY`],
+    /// which only applies to a standalone `Voice`.
+    pub const HQ_LATENCY: usize = HqBusDecimator::LATENCY;
+
     /// Create. Out-of-range / non-finite `sample_rate` is clamped — see
     /// [`PolySynth::new_checked`] to also learn what happened.
     pub fn new(sample_rate: f64) -> Self {
@@ -140,6 +235,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             lfo_to_cutoff: 0.0,
             lfo_to_fm: 0.0,
             hq: false,
+            hq_decim: HqBusDecimator::new(),
             waveform: Waveform::Geometric,
             counter: 0,
         };
@@ -203,15 +299,27 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
-    /// HQ mode: 2×-oversample the oscillator + character stage on every voice
-    /// (no aliasing from the nonlinear stages). Adds
-    /// [`crate::Voice::HQ_LATENCY`] samples of latency — the host should report
-    /// it and re-sync when this toggles.
+    /// Unified HQ bus (RFC-16): every voice's oscillator → `Character` → `Svf`
+    /// runs at `2×` the base rate, all voices sum at `2×`, the master
+    /// saturator runs at `2×`, and the whole mix is decimated back to `1×`
+    /// **once** — instead of each voice decimating independently. Adds
+    /// [`PolySynth::HQ_LATENCY`] samples of latency (constant; the host should
+    /// report it once and re-sync when this toggles — `docs/15
+    /// _TECHNICAL_SPEC_HQ_BUS.md §2.3.4`). `false` is bit-identical to the
+    /// pre-RFC-16 behaviour.
     pub fn set_hq(&mut self, hq: bool) {
         self.hq = hq;
         for v in &mut self.voices {
+            // Kept in sync for anyone introspecting a voice directly, but
+            // `render_sample`'s own internal HQ branch (gated on this flag)
+            // is never reached while `PolySynth` drives the voice — the unified
+            // bus below calls `render_hq_subsamples` instead.
             v.core.set_hq(hq);
+            // Reconfigures the per-voice `Svf` for the `2×`/`1×` rate the bus
+            // will actually drive it at.
+            v.core.set_hq_bus_active(hq);
         }
+        self.hq_decim.reset();
     }
 
     /// Oscillator waveform (Geometric / Saw / Triangle). See [`Voice::set_waveform`].
@@ -490,6 +598,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     /// Render one stereo sample `[left, right]`.
     #[inline]
     pub fn render_sample(&mut self) -> [f32; 2] {
+        if self.hq {
+            return self.render_sample_hq_bus();
+        }
         let mut ml = 0.0_f32;
         let mut mr = 0.0_f32;
         let env_mod = self.filter_env != 0.0;
@@ -511,6 +622,37 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             soft_clip(ml * self.gain as f32),
             soft_clip(mr * self.gain as f32),
         ]
+    }
+
+    /// The unified HQ bus (RFC-16): sum every voice's `2×`-rate subsample pair,
+    /// master-saturate both, decimate once. See [`PolySynth::set_hq`] and
+    /// `docs/15_TECHNICAL_SPEC_HQ_BUS.md`.
+    #[inline]
+    fn render_sample_hq_bus(&mut self) -> [f32; 2] {
+        let mut lo = [0.0_f32; 2];
+        let mut hi = [0.0_f32; 2];
+        let env_mod = self.filter_env != 0.0;
+        for v in &mut self.voices {
+            if !v.amp.is_active() {
+                continue;
+            }
+            let ae = v.amp.tick();
+            let fe = v.filt_env.tick();
+            if env_mod {
+                let oct = self.filter_env * fe as f64;
+                v.core.set_filter_cutoff(self.filter_cutoff * exp2(oct));
+            }
+            let (vl, vh) = v.core.render_hq_subsamples();
+            let g = ae * v.velocity;
+            lo[0] += vl[0] * g;
+            lo[1] += vl[1] * g;
+            hi[0] += vh[0] * g;
+            hi[1] += vh[1] * g;
+        }
+        let gain = self.gain as f32;
+        let clipped_lo = [soft_clip(lo[0] * gain), soft_clip(lo[1] * gain)];
+        let clipped_hi = [soft_clip(hi[0] * gain), soft_clip(hi[1] * gain)];
+        self.hq_decim.process(clipped_lo, clipped_hi)
     }
 
     /// Render a stereo block into `left` / `right` (up to the shorter length).
@@ -717,6 +859,84 @@ mod tests {
         s.set_hq(true);
         s.note_on(64, 1.0);
         assert!(peak(&mut s, 48_000) <= 1.5);
+    }
+
+    /// `|X(f)|` of `x` at absolute frequency `f` Hz, normalised by `N` — a
+    /// single-bin Goertzel-style DFT (no FFT dependency), matching
+    /// `tests/spectrum.rs::dft_bin_mag`.
+    fn dft_bin_mag(x: &[f32], fs: f64, f: f64) -> f64 {
+        let w = core::f64::consts::TAU * f / fs;
+        let (mut re, mut im) = (0.0_f64, 0.0_f64);
+        for (n, &s) in x.iter().enumerate() {
+            let ph = w * n as f64;
+            re += s as f64 * ph.cos();
+            im -= s as f64 * ph.sin();
+        }
+        let nrm = x.len() as f64;
+        ((re * re + im * im).sqrt() / nrm) * 2.0
+    }
+
+    #[test]
+    fn hq_bus_master_clip_stays_under_75db_alias_floor() {
+        // RFC-16 DoD: with HQ on and the master driven ~6 dB into soft_clip,
+        // energy at frequencies that are *not* a harmonic of the fundamental
+        // (i.e. could only be there via aliasing, since a single near-pure
+        // tone through a symmetric saturator produces nothing else) must sit
+        // <= -75 dB below the fundamental.
+        let sr = 48_000.0;
+        let target_f0 = 733.0_f64; // arbitrary, no simple rational relation to `sr`
+        let mut s: PolySynth<4> = PolySynth::new(sr);
+        s.set_rolloff(0.001); // near-pure sine: harmonics below are (almost) all from the clip, not the osc
+        s.set_gain(6.0); // pumps the pre-clip peak well past 1.0 (~6 dB+ overload)
+        s.set_hq(true);
+        s.set_envelope(0.0005, 0.05);
+        let note = (12.0 * (target_f0 / 440.0).log2() + 69.0).round() as u8;
+        s.note_on(note, 1.0);
+        let f0 = midi_to_hz(note as f32); // the note's actual quantised frequency
+
+        // A long, unwindowed capture: the single-bin DTFT probe below needs
+        // enough samples that a strong harmonic's own sidelobe leakage has
+        // decayed well past -75 dB by the time it reaches a probe frequency
+        // (rectangular-window sidelobes fall off only as ~1/Δf) — otherwise
+        // "alias energy" readings are actually leakage from the fundamental,
+        // not aliasing. ~1M samples keeps that leakage below -90 dB at the
+        // exclusion margin used below.
+        let n = 1 << 20;
+        let mut buf = vec![0.0_f32; n];
+        for x in buf.iter_mut() {
+            *x = s.render_sample()[0];
+        }
+
+        let peak_mag = buf.iter().fold(0.0_f32, |m, &x| m.max(x.abs()));
+        assert!(peak_mag.is_finite() && peak_mag > 0.5, "clip never engaged: peak={peak_mag}");
+
+        let e_fund = dft_bin_mag(&buf, sr, f0);
+        assert!(e_fund > 1e-3, "fundamental missing: {e_fund:e}");
+
+        // sanity: odd harmonics of a symmetrically-clipped sine must be present
+        let e_h3 = dft_bin_mag(&buf, sr, f0 * 3.0);
+        assert!(e_h3 > 1e-4, "3rd harmonic (expected from clipping) missing: {e_h3:e}");
+
+        // probe a spread of frequencies that are *not* close to any harmonic
+        // of f0, up to just under the output Nyquist.
+        let mut worst_db = f64::NEG_INFINITY;
+        let mut f = f0 * 1.37; // deliberately off-harmonic offset
+        while f < sr * 0.48 {
+            // skip anything that landed suspiciously close to a real harmonic
+            let nearest_harmonic = (f / f0).round() * f0;
+            if (f - nearest_harmonic).abs() > f0 * 0.15 {
+                let e = dft_bin_mag(&buf, sr, f);
+                let db = 20.0 * (e / e_fund).log10();
+                if db > worst_db {
+                    worst_db = db;
+                }
+            }
+            f += f0 * 1.9; // step by a non-harmonic-related amount
+        }
+        assert!(
+            worst_db <= -75.0,
+            "off-harmonic (alias) energy only {worst_db:.1} dB below the fundamental"
+        );
     }
 
     #[test]
