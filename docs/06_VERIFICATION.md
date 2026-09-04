@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **65 тестів проходять** (60
+Що перевірено, як, і якими числами. Статус: **67 тестів проходять** (62
 юніт + 5 інтеграційних) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
 чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP, увесь набір
 проходить біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
@@ -55,13 +55,15 @@
 | `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно = `geometric_partials`, `n` до 1500, `r` до 1.0 |
 | `geometric_reduces_to_fundamental_for_small_r` | `r = 10⁻³` → нормований вихід ≈ `cos(x)` у межах `5·10⁻³` |
 
-### `character` (7)
+### `character` (9)
 
 | Тест | Що доводить |
 |---|---|
 | `clean_params_are_bit_identity` | `CLEAN` → `process(x) == x` бітово, на 2000 значеннях |
 | `tanh_pade_joins_the_clamp_smoothly` | нахил `tanh_pade` одразу перед клампом `±3` `< 2·10⁻³`, одразу за ним `< 10⁻⁶` (немає зламу першої похідної, який давав кламп `±4`); жодного перельоту `±1` на `x ∈ [0, 50]` |
 | `sample_and_hold_state_is_cleared_on_reset` | після навантаженого drive+downsample та `reset()` перший семпл на тишу = `0` бітово (S&H `hold` не тягне хвіст попередньої ноти) |
+| `dc_blocker_time_constant_matches_between_1x_and_2x_paths` | загасання DC-зсуву через `process` (1×) і `process_hq_pair` (2×) збігається на матчнутих лічильниках викликів — доводить `√`-масштабування коефіцієнта DC-blocker'а на 2×-шляху (RFC-19 аудит; без фіксу падає на семплі 2000 з розбіжністю `0.263` проти `0.097`) |
+| `tiny_downsample_is_bypassed_not_jittered` | `downsample = 9·10⁻⁵` (щойно під bypass-порогом `10⁻⁴`) бітово ідентичний `downsample = 0.0` на 5000 семплах (RFC-19 аудит; без порогу падає точно на семплі 741, де мав би спрацювати пропуск S&H-лічильника) |
 | `drive_adds_energy_but_stays_bounded` | `drive 0.8` піднімає тихий сигнал (пік `> 0.3`), лишається `|y| ≤ 1.05` |
 | `fold_and_grit_stay_finite_and_bounded` | усі 5 стадій разом на 48000 семплів → скінченне, `|y| ≤ 1.2` |
 | `hq_path_is_bounded_and_reduces_alias_energy` | 2×+децимація на near-Nyquist тоні в фолдер → менше LF-енергії (аліасів), ніж 1× |
@@ -246,6 +248,20 @@ master-decimate`, якого вимагав би наївний RFC-14) все �
 був побудований на хибній передумові (що дециматор — вузьке місце), і чесний
 вимір це спростовує.
 
+### RFC-19 аудит: DC-blocker rate-scaling + S&H bypass
+
+| Знахідка | Було | Стало |
+|---|---|---|
+| DC-blocker @ 2× (HQ-шлях) | Коефіцієнт `0.9995` не масштабований → `fc` мовчки подвоюється `3.82 → 7.64` Гц | `0.999_749_97 = √0.9995` (з `R=exp(-2π·fc/f_op)`) — `fc` фіксований в обох шляхах |
+| S&H на мікроскопічному `downsample` | `> 0.0` — тригер спрацьовує майже щосемпла з рідкими пропусками → періодичний «хіккап» (`~700` Гц при `downsample=0.001`@48k) | Bypass поріг `> 10⁻⁴` — бітова ідентичність з `downsample=0.0` нижче порогу |
+
+Обидва — **не нові** баги RFC-16: `stage(x, 2.0)` (по-голосний HQ) існував у
+такому вигляді до цієї сесії; RFC-19-аудит вперше порівняв рейт-залежні
+ефекти по всьому ланцюгу й виявив їх. Стосується обох HQ-шляхів (standalone
+`Voice` і `PolySynth`-шина). Регресії підтверджено ловити відповідні
+розбіжності (тимчасовий відкат фіксу → конкретна, очікувана невдача — не
+просто «тест зелений випадково»). Деталі — `docs/16_RFC19_AUDIT_DOCS_DC_SH_NOSTD.md`.
+
 ### Спектральний ефект character (`examples/character_demo.rs`)
 
 Відношення енергії верх (4–18 kHz) / середина (150–1500 Hz):
@@ -320,7 +336,7 @@ master-decimate`, якого вимагав би наївний RFC-14) все �
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 65 / 65 (60 юніт + 5 інтеграційних) |
+| Тести | `cargo test` | 67 / 67 (62 юніт + 5 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -368,7 +384,7 @@ upstream-PR — за користувачем.
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **65 / 65 pass** (60 юніт + 5 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **67 / 67 pass** (62 юніт + 5 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **62 / 62 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
@@ -396,7 +412,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 65/65, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 67/67, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.

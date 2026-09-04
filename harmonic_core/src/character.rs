@@ -154,8 +154,16 @@ impl Character {
         let pre = (x + self.p.bias * 0.3) * (1.0 + self.p.drive * 8.0);
         let mut y = tanh_pade(pre);
 
-        // 2. DC blocker (bias/asymmetry injects DC)
-        let hp = y - self.dc_x1 + 0.9995 * self.dc_y1;
+        // 2. DC blocker (bias/asymmetry injects DC). The feedback coefficient
+        // sets a fixed real-world cutoff, fc = (1-R)/(2π)·f_op ≈ 3.82 Hz at
+        // 1×. Called at 2× (`sh_mult == 2.0`, inside the HQ path) `f_op`
+        // doubles, so `R` must be √-scaled (from R = exp(-2π·fc/f_op)) to
+        // keep fc fixed — otherwise it silently doubles to ~7.6 Hz, shifting
+        // sub-bass phase whenever HQ toggles on. Only two `sh_mult` values
+        // are ever passed (1.0, 2.0), so a plain branch beats computing a
+        // general `powf` (forbidden in `no_std` anyway).
+        let dc_r = if sh_mult == 2.0 { 0.999_749_97 } else { 0.9995 };
+        let hp = y - self.dc_x1 + dc_r * self.dc_y1;
         self.dc_x1 = y;
         self.dc_y1 = hp;
         y = hp;
@@ -184,8 +192,16 @@ impl Character {
             y = round_f32(y * levels) / levels;
         }
 
-        // 5. sample-rate reduction (sample & hold)
-        if self.p.downsample > 0.0 {
+        // 5. sample-rate reduction (sample & hold). Bypassed below a tiny
+        // epsilon, not just `> 0.0`: the discrete hold/skip counter below is
+        // an event trigger, not a continuous fade — at a downsample value
+        // that's nominally "off" but not exactly 0.0 (LFO/host smoothing
+        // passing through e.g. 0.001), `factor` sits just above `sh_mult`,
+        // so the counter skips an update roughly once every ~1/(factor -
+        // sh_mult) samples: a periodic single-sample "hiccup" (~700 Hz at
+        // downsample=0.001 @ 48 kHz), not an inaudible near-transparent
+        // pass-through as the knob position would suggest.
+        if self.p.downsample > 1.0e-4 {
             let factor = (1.0 + 15.0 * self.p.downsample.min(1.0)) * sh_mult;
             self.hold_ctr += 1.0;
             if self.hold_ctr >= factor {
@@ -300,6 +316,69 @@ mod tests {
         c.reset();
         // first sample after reset, fed silence, must be silence — not the tail
         assert_eq!(c.process(0.0), 0.0, "S&H bled the previous note after reset");
+    }
+
+    #[test]
+    fn dc_blocker_time_constant_matches_between_1x_and_2x_paths() {
+        // `bias` injects a DC offset (only when `drive` is also nonzero — the
+        // whole chain is skipped when clean), which the DC blocker then decays
+        // toward zero. Compare that decay between `process` (1×) and
+        // `process_hq_pair` (2×, one call = one wall-clock 1×-sample worth of
+        // time — its `.1` "hi" output lands at the same instant `process`'s
+        // single output would) at matched call counts. If the 2× coefficient
+        // weren't rate-compensated (RFC-19 audit), the 2× curve would decay
+        // roughly twice as fast and diverge well before either settles.
+        let params = CharParams { drive: 0.6, bias: 0.5, ..CharParams::CLEAN };
+        let mut c1x = Character::new();
+        c1x.set_params(params);
+        let mut c2x = Character::new();
+        c2x.set_params(params);
+
+        let mut worst_mid_transient = 0.0_f32;
+        for i in 0..2000 {
+            let y1x = c1x.process(0.0);
+            let y2x = c2x.process_hq_pair(0.0, 0.0).1;
+            if i == 200 {
+                // deep in the transient (tau ~ 42 ms ~ 2000 samples @ 48k) —
+                // this is exactly where a mismatched time constant would show
+                worst_mid_transient = (y1x - y2x).abs();
+            }
+            if i == 1999 {
+                assert!((y1x - y2x).abs() < 1.0e-4, "1x/2x DC-blocker diverged at settle: {y1x} vs {y2x}");
+            }
+        }
+        assert!(
+            worst_mid_transient < 5.0e-3,
+            "1x/2x DC-blocker time constants disagree mid-transient: delta {worst_mid_transient}"
+        );
+    }
+
+    #[test]
+    fn tiny_downsample_is_bypassed_not_jittered() {
+        // A `downsample` value that's nominally "off" (e.g. mid-LFO-sweep
+        // through near-zero) but not exactly 0.0 must not engage the S&H
+        // counter — that's a discrete event trigger, not a continuous fade,
+        // and just above threshold it skips an update roughly once every
+        // ~1/(factor - sh_mult) samples: a periodic single-sample "hiccup",
+        // not silence. Below the bypass epsilon, output must match the
+        // `downsample == 0.0` case bit-for-bit (drive stays nonzero so the
+        // whole chain isn't skipped by `is_clean()`).
+        let base = CharParams { drive: 0.6, ..CharParams::CLEAN };
+        let mut c_off = Character::new();
+        c_off.set_params(base);
+        let mut c_tiny = Character::new();
+        // just under the bypass epsilon; skip period ~1/(15·downsample) ≈
+        // 740 samples, so 5000 samples reliably crosses it several times —
+        // large enough that a shorter loop could miss the one differing
+        // sample entirely and pass for the wrong reason.
+        c_tiny.set_params(CharParams { downsample: 9.0e-5, ..base });
+
+        for i in 0..5000 {
+            let x = (i as f32 * 0.07).sin() * 0.5;
+            let y_off = c_off.process(x);
+            let y_tiny = c_tiny.process(x);
+            assert_eq!(y_off, y_tiny, "tiny downsample diverged from off at sample {i}");
+        }
     }
 
     #[test]
