@@ -268,11 +268,11 @@ editor_state: Arc<ViziaState>`). Групи параметрів:
 |---|---|
 | Тон | **Oscillator** (enum Geometric/Saw/Triangle), Brightness, Gain |
 | Амплітудна обгинаюча | Attack, Release |
-| Character | Drive, Fold, Grit |
+| Character | Drive, Fold, Grit (`bias` — не окремий слайдер; `CharParams::bias = 0.25·drive`, свідомо прив'язаний до Drive, щоб не роздувати список параметрів понад 33) |
 | FM | FM Amount, FM Ratio, Feedback |
 | Фільтр | Filter (enum Off/LP/BP/HP/Notch), Cutoff, Resonance |
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |
-| Режим голосу | Free-Run Phase, **HQ Mode** (2× OS, +3 семпли латентності, PDC повідомляється) |
+| Режим голосу | Free-Run Phase, **HQ Mode** (Unified HQ Bus, RFC-16 — **+16 семплів** латентності, `PolySynth::HQ_LATENCY`, PDC повідомляється константно; НЕ плутати з `Voice::HQ_LATENCY = 3`, яка стосується лише прямого C-ABI, не плагіна) |
 | Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%), **Uni Drift** (%) |
 | Модуляція | Bend Range (st), LFO Rate, LFO Shape, **LFO Sync** (Retrigger/Free-Run), LFO → Bright, LFO Vibrato (ct), **LFO → Cutoff** (±4 окт), **LFO → FM** (±4) |
 
