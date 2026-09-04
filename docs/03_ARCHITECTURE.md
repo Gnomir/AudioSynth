@@ -51,7 +51,7 @@ trig ──────────────┬──────────
 | `filter` | ~250 | `Svf` — ZDF SVF з посемпловим згладжуванням параметрів |
 | `env` | ~160 | `Adsr` |
 | `lfo` | ~180 | `Lfo` (+ `LfoMode`) |
-| `voice` | ~380 | `Voice` — повний тракт одного голосу, стерео-вихід |
+| `voice` | ~370 | `Voice` — повний тракт одного голосу, стерео-вихід |
 | `poly` | ~450 | `PolySynth<VOICES>` |
 | `ffi` | ~180 | C-ABI |
 
@@ -61,7 +61,7 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **576 байт** (x86-64; `align = 8`), без
+`#[repr(C)] #[derive(Clone, Copy)]`, **512 байт** (x86-64; `align = 8`), без
 `Drop`, без вказівників. Розмір зростав із розвитком рушія — хост має
 викликати `harmonic_voice_size()` у рантаймі, не хардкодити число.
 
@@ -96,11 +96,8 @@ pub struct Voice {
     // --- кеш нормалізації geometric-осцилятора (fast path) ---
     geom_r: f64, geom_n: u32,        // ключ кешу (r, n)
     geom_rn1: f64, geom_peak: f64,   // r^{n+1} та пік — обидва powi_pos пропускаються на сталій ноті
-    // --- BLIT саw / трикутник (leaky-integrated) ---
     waveform: Waveform,              // Geometric (дефолт) / Saw / Triangle
-    blit_leak: f64, tri_leak: f64,   // коеф. витоку інтеграторів
-    saw_int: f64, saw_dc_x1: f64, saw_dc_y1: f64,   // інтегратор + DC-blocker
-    tri_int: f64, tri_dc_x1: f64, tri_dc_y1: f64,   // 2-й інтегратор + DC-blocker
+                                     // Saw/Triangle — PolyBLEP/PolyBLAMP, без стану
     // --- нелінійні стадії ---
     character: Character,            // включно з DC-blocker + S&H стан
     filter: Svf,                     // коеф. a1/a2/a3/k + інтегратори ic1/ic2
@@ -130,8 +127,8 @@ pm = fm_index_eff·sin_turns(fm_phase) + feedback·last_osc + drift  [фазов
 osc = match waveform {                                 [Geometric — дефолт]
         Geometric => geometric_partials_pre(phase+pm, roll_eff, n, rn1) / peak
                      │  (rn1, peak із geom-кешу; hq → 2× оверсемпл + децимація)
-        Saw       => blit_saw(phase+pm, n, f_eff)      [leaky-integrated BLIT]
-        Triangle  => blit_triangle(phase+pm, n, f_eff) [подвійний інтегратор]
+        Saw       => polyblep_saw(phase+pm, step)       [наївний ramp + BLEP]
+        Triangle  => polyblamp_triangle(phase+pm, step) [наївний tri + BLAMP кутів]
       }
 last_osc ← osc
   │
@@ -229,7 +226,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 57 тестів (53 юніт + 4 інтеграційні) |
+| Розробка / тести | `cargo test` | `std` (дефолт), 58 тестів (54 юніт + 4 інтеграційні) |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -246,7 +243,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 576 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 512 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці

@@ -193,7 +193,7 @@ pub unsafe extern "C" fn harmonic_voice_set_hq(ptr: *mut Voice, hq: u32) {
 }
 
 /// Oscillator waveform: `0` geometric (additive core) · `1` sawtooth ·
-/// `2` triangle. Saw/triangle are band-limited leaky-integrated BLITs; they
+/// `2` triangle. Saw/triangle are PolyBLEP / PolyBLAMP (stateless); they
 /// ignore `rolloff` and HQ mode.
 ///
 /// # Safety

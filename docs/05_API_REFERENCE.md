@@ -45,7 +45,7 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_unison_drift_phase(turns: f64)` | setup | стартова фаза дрейфу (декореляція голосів) |
 | `set_character(p: CharParams)` | RT | див. `CharParams` |
 | `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли; лише для `Waveform::Geometric` |
-| `set_waveform(w: Waveform)` | setup | `Geometric` / `Saw` / `Triangle`; Saw+Triangle — band-limited BLIT, ігнорують `rolloff` та HQ |
+| `set_waveform(w: Waveform)` | setup | `Geometric` / `Saw` / `Triangle`; Saw+Triangle — PolyBLEP/PolyBLAMP, ігнорують `rolloff` та HQ |
 | `set_filter_mode(m: FilterMode)` | setup | — |
 | `set_filter_cutoff(hz: f64)` | RT | `[20, 0.45·f_s]` Hz, згладж. ~1 мс всередині |
 | `set_filter_resonance(r: f64)` | RT | `[0, 1]` → `Q [0.5, 32]` |
@@ -144,10 +144,10 @@ impl LfoMode { pub fn from_u32(v: u32) -> Self }      // невідоме → Re
 impl Waveform { pub fn from_u32(v: u32) -> Self }     // невідоме → Geometric
 ```
 
-`Saw` / `Triangle` — leaky-integrated BLIT (Stilson & Smith 1996), стан на
-голос, скидається в `reset()`. Фіксовані спектри `1/k` / `1/k²`; `rolloff` і
-HQ ігноруються. Трикутник: м'який спад баса нижче ~80 Гц. Деталі —
-`01_MATHEMATICS.md` §7, `04_DSP_COMPONENTS.md` §11.
+`Saw` / `Triangle` — **PolyBLEP / PolyBLAMP** (Välimäki & Huovilainen 2007),
+**без стану**. Фіксовані спектри `1/k` / `1/k²` (`rolloff` і HQ ігноруються),
+амплітуда `±1`, відгук **плаский до DC**. Деталі — `01_MATHEMATICS.md` §7,
+`04_DSP_COMPONENTS.md` §11.
 
 ### Низькорівневі (експоновані для тестів / офлайн)
 
@@ -188,7 +188,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 576 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 512 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */

@@ -7,7 +7,7 @@
 
 use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
-use crate::kernel::{dirichlet_blit, geometric_partials_pre, geometric_peak_pre, powi_pos};
+use crate::kernel::{geometric_partials_pre, geometric_peak_pre, powi_pos};
 use crate::lfo::{Lfo, LfoMode, LfoShape};
 use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns, sin_turns_fast};
 use crate::{validate_sample_rate, SampleRateStatus};
@@ -25,9 +25,9 @@ pub enum Waveform {
     /// `Σ rᵏ·cos(2πkp)` — the closed-form additive core (impulse-train → its
     /// geometric-rolloff "darker" versions). The default.
     Geometric = 0,
-    /// Band-limited sawtooth — a leaky-integrated BLIT (Stilson & Smith 1996).
+    /// Band-limited sawtooth — naïve ramp + PolyBLEP step correction.
     Saw = 1,
-    /// Band-limited triangle — the sawtooth integrated once more.
+    /// Band-limited triangle — naïve triangle + PolyBLAMP corner correction.
     Triangle = 2,
 }
 
@@ -102,16 +102,8 @@ pub struct Voice {
     geom_rn1: f64,
     geom_peak: f64,
 
-    // BLIT saw / triangle: leaky integrators + DC blockers
+    // Alternative waveform (Saw / Triangle are stateless PolyBLEP / PolyBLAMP).
     waveform: Waveform,
-    blit_leak: f64,
-    tri_leak: f64,
-    saw_int: f64,
-    saw_dc_x1: f64,
-    saw_dc_y1: f64,
-    tri_int: f64,
-    tri_dc_x1: f64,
-    tri_dc_y1: f64,
 
     character: Character,
     filter: Svf,
@@ -178,14 +170,6 @@ impl Voice {
             geom_rn1: 0.0,
             geom_peak: 1.0,
             waveform: Waveform::Geometric,
-            blit_leak: 1.0 - dt / 0.5, // saw integrator, ~0.5 s
-            tri_leak: 1.0 - dt / 0.02, // triangle stage-2, ~20 ms
-            saw_int: 0.0,
-            saw_dc_x1: 0.0,
-            saw_dc_y1: 0.0,
-            tri_int: 0.0,
-            tri_dc_x1: 0.0,
-            tri_dc_y1: 0.0,
             character: Character::new(),
             filter: Svf::new(sr),
         };
@@ -322,16 +306,16 @@ impl Voice {
     /// HQ mode: 2×-oversample the oscillator + character stage and decimate,
     /// so the nonlinear stages do not alias. Adds [`Voice::HQ_LATENCY`]
     /// samples of latency; `false` is bit-identical to the previous behaviour.
-    /// Only applies to [`Waveform::Geometric`] (the BLIT waves are already
-    /// band-limited).
+    /// Only applies to [`Waveform::Geometric`] (`Saw` / `Triangle` are
+    /// PolyBLEP / PolyBLAMP, already band-limited).
     #[inline]
     pub fn set_hq(&mut self, hq: bool) {
         self.hq = hq;
     }
 
-    /// Oscillator waveform. `Saw` / `Triangle` are leaky-integrated BLITs;
-    /// they ignore the rolloff/brightness control (fixed `1/k` spectra) and
-    /// the HQ path.
+    /// Oscillator waveform. `Saw` / `Triangle` are PolyBLEP / PolyBLAMP —
+    /// fixed `1/k` / `1/k²` spectra, so they ignore the rolloff/brightness
+    /// control and the HQ path.
     #[inline]
     pub fn set_waveform(&mut self, w: Waveform) {
         self.waveform = w;
@@ -369,65 +353,37 @@ impl Voice {
         self.rolloff_z = self.rolloff;
         self.bend_z = self.bend;
         self.pan_z = self.pan;
-        self.saw_int = 0.0;
-        self.saw_dc_x1 = 0.0;
-        self.saw_dc_y1 = 0.0;
-        self.tri_int = 0.0;
-        self.tri_dc_x1 = 0.0;
-        self.tri_dc_y1 = 0.0;
         self.character.reset();
         self.filter.reset();
         self.lfo.retrigger();
     }
 
-    /// One band-limited sawtooth sample: leaky-integrated BLIT with per-sample
-    /// DC removal, so the ramp does not run away. Output ≈ `[-1, 1]`.
+    /// One band-limited sawtooth sample via **PolyBLEP** (Välimäki & Huovilainen
+    /// 2007): the naïve ramp `2p−1` with a 2-sample polynomial step correction
+    /// at the wrap. Stateless, no trig, flat to DC, unconditionally stable.
+    /// `dt` is the phase increment per sample (`f_eff / fs`). Output ≈ `[−1, 1]`.
     #[inline]
-    fn blit_saw(&mut self, phase: f64, n: u32, f_eff: f64) -> f64 {
-        // `inv_period` = 1 / (samples per period). The full Dirichlet comb
-        // D_n = 1 + 2·Σ_{k=1}^{n} cos(2πkp) (`dirichlet_blit` returns the Σcos)
-        // is a unit-area band-limited impulse per period; scaling by
-        // `inv_period` and subtracting it makes the pulse zero-mean, so the
-        // integrator does not run away.
-        let inv_period = f_eff / self.sample_rate;
-        let blit = (1.0 + 2.0 * dirichlet_blit(phase, n)) * inv_period;
-        self.saw_int = self.blit_leak * self.saw_int + blit - inv_period;
-        // one-pole DC blocker (R = 0.9995)
-        let y = self.saw_int - self.saw_dc_x1 + 0.9995 * self.saw_dc_y1;
-        self.saw_dc_x1 = self.saw_int;
-        self.saw_dc_y1 = y;
-        clamp(y * 2.0, -1.5, 1.5)
+    fn polyblep_saw(phase: f64, dt: f64) -> f64 {
+        let p = phase - floor_f64(phase); // → [0, 1)
+        (2.0 * p - 1.0) - poly_blep(p, dt)
     }
 
-    /// One band-limited triangle sample. Built from a **bipolar** BLIT
-    /// (impulse `+` at phase 0, `−` at phase ½ — a zero-mean comb at `f0`)
-    /// integrated twice; because every stage is zero-mean the integrators do
-    /// not drift, unlike integrating the (slightly DC-biased) sawtooth.
-    /// `saw_int` is reused as the first integrator (Saw and Triangle never run
-    /// on the same voice at once).
+    /// One band-limited triangle sample via **PolyBLAMP** (the integral of the
+    /// PolyBLEP step): the naïve triangle with a cubic corner correction at each
+    /// of its two slope discontinuities. Stateless, no integrators, no DC
+    /// blockers — the sub-bass roll-off of the old leaky-BLIT version is gone
+    /// (flat within ~0.1 dB down to 20 Hz). Output ≈ `[−1, 1]`.
     #[inline]
-    fn blit_triangle(&mut self, phase: f64, n: u32, f_eff: f64) -> f64 {
-        let inv_period = f_eff / self.sample_rate;
-        let comb = |p: f64| 1.0 + 2.0 * dirichlet_blit(p, n); // full Dirichlet comb
-        let blit_bi = (comb(phase) - comb(phase - 0.5)) * inv_period;
-
-        // stage 1: integrate the ±1 impulse train → a band-limited square, then
-        // a tight DC blocker (any residual bias here becomes a runaway ramp in
-        // stage 2).
-        self.saw_int = self.blit_leak * self.saw_int + blit_bi * 2.0;
-        let sq = self.saw_int - self.saw_dc_x1 + 0.997 * self.saw_dc_y1;
-        self.saw_dc_x1 = self.saw_int;
-        self.saw_dc_y1 = sq;
-
-        // stage 2: integrate the square → triangle. The leak (~20 ms, ~8 Hz
-        // corner) plus the two DC blockers keep it bounded at every pitch; the
-        // price is a gentle sub-bass roll-off (≈ −1.5 dB at 55 Hz, −5 dB at
-        // 28 Hz), which is fine for a synth triangle.
-        self.tri_int = self.tri_leak * self.tri_int + sq * (2.5 * inv_period);
-        let y = self.tri_int - self.tri_dc_x1 + 0.997 * self.tri_dc_y1;
-        self.tri_dc_x1 = self.tri_int;
-        self.tri_dc_y1 = y;
-        clamp(y, -1.5, 1.5)
+    fn polyblamp_triangle(phase: f64, dt: f64) -> f64 {
+        let p = phase - floor_f64(phase);
+        // naïve triangle in [−1, 1]: +1 at phase 0, −1 at ½, slope ±4 per turn
+        let mut y = 1.0 - 4.0 * fabs(p - 0.5);
+        // corner at p = 0 (a minimum → slope steps by +8·dt/sample)
+        y += 4.0 * dt * poly_blamp(p, dt);
+        // corner at p = ½ (a maximum → slope steps by −8·dt/sample)
+        let ph = if p < 0.5 { p + 0.5 } else { p - 0.5 };
+        y -= 4.0 * dt * poly_blamp(ph, dt);
+        y
     }
 
     /// `(r^{n+1}, peak)` for the geometric oscillator, keyed on `(r, n)`. The
@@ -558,9 +514,9 @@ impl Voice {
                     geometric_partials_pre(self.phase + fm_term + fb + drift, roll_eff, n, rn1)
                         / peak
                 }
-                Waveform::Saw => self.blit_saw(self.phase + fm_term + fb + drift, n, f_eff),
+                Waveform::Saw => Self::polyblep_saw(self.phase + fm_term + fb + drift, step),
                 Waveform::Triangle => {
-                    self.blit_triangle(self.phase + fm_term + fb + drift, n, f_eff)
+                    Self::polyblamp_triangle(self.phase + fm_term + fb + drift, step)
                 }
             };
             self.last_osc = osc;
@@ -626,6 +582,42 @@ fn clamp(x: f64, lo: f64, hi: f64) -> f64 {
         hi
     } else {
         x
+    }
+}
+
+#[inline(always)]
+fn fabs(x: f64) -> f64 {
+    f64::from_bits(x.to_bits() & 0x7fff_ffff_ffff_ffff)
+}
+
+/// PolyBLEP: the residual to *subtract* from a naïve waveform to band-limit a
+/// unit downward step at the phase wrap. `t` is the phase in `[0, 1)`, `dt` the
+/// per-sample increment. Two-sample (2nd-order) kernel; zero outside `±dt`.
+#[inline]
+fn poly_blep(t: f64, dt: f64) -> f64 {
+    if t < dt {
+        let x = t / dt;
+        x + x - x * x - 1.0 // 2x − x² − 1
+    } else if t > 1.0 - dt {
+        let x = (t - 1.0) / dt;
+        x * x + x + x + 1.0 // x² + 2x + 1
+    } else {
+        0.0
+    }
+}
+
+/// PolyBLAMP: `∫ poly_blep` — the correction for a unit *slope* step (a corner),
+/// scaled so the caller multiplies by `Δslope_per_sample`. Cubic, ±`dt` support.
+#[inline]
+fn poly_blamp(t: f64, dt: f64) -> f64 {
+    if t < dt {
+        let x = t / dt - 1.0;
+        -1.0 / 3.0 * x * x * x
+    } else if t > 1.0 - dt {
+        let x = (t - 1.0) / dt + 1.0;
+        1.0 / 3.0 * x * x * x
+    } else {
+        0.0
     }
 }
 
@@ -730,7 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn blit_saw_and_triangle_are_bounded_and_shaped() {
+    fn polyblep_saw_and_triangle_are_bounded_and_shaped() {
         let sr = 48_000.0;
         for wf in [Waveform::Saw, Waveform::Triangle] {
             for &f0 in &[55.0_f64, 220.0, 3000.0] {
@@ -740,7 +732,6 @@ mod tests {
                 v.set_waveform(wf);
                 v.reset();
 
-                // skip the integrator start-up transient
                 for _ in 0..4000 {
                     v.render_sample();
                 }
@@ -789,6 +780,53 @@ mod tests {
                         "triangle f0={f0}: h3/h1 = {h3_ratio:.3}, expected ≈ 1/9"
                     );
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn polyblep_waves_are_flat_into_the_sub_bass() {
+        // The reason for moving off leaky-integrated BLIT: no high-pass anywhere,
+        // so the fundamental must sit at its ideal level right down to ~20 Hz.
+        let sr = 48_000.0;
+        let n = 1 << 15;
+        let mag = |buf: &[f64], f: f64| {
+            let w = core::f64::consts::TAU * f / sr;
+            let (mut re, mut im) = (0.0, 0.0);
+            for (k, &x) in buf.iter().enumerate() {
+                re += x * (w * k as f64).cos();
+                im -= x * (w * k as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+
+        for wf in [Waveform::Saw, Waveform::Triangle] {
+            // ideal fundamental amplitude
+            let ideal = if wf == Waveform::Saw {
+                2.0 / core::f64::consts::PI
+            } else {
+                8.0 / (core::f64::consts::PI * core::f64::consts::PI)
+            };
+            for &f0 in &[27.5_f64, 55.0, 220.0] {
+                let mut v = Voice::new(sr);
+                v.set_frequency(f0);
+                v.set_gain(1.0);
+                v.set_pan(0.0);
+                v.set_waveform(wf);
+                v.set_free_running(true);
+                v.reset();
+                for _ in 0..2000 {
+                    v.render_sample();
+                }
+                let buf: Vec<f64> = (0..n)
+                    .map(|_| v.render_sample()[0] as f64 * core::f64::consts::SQRT_2)
+                    .collect();
+                // single-bin magnitude → amplitude/2, so compare to ideal/2
+                let db = 20.0 * (mag(&buf, f0) / (ideal * 0.5)).log10();
+                assert!(
+                    db.abs() < 0.5,
+                    "{wf:?} f0={f0}: fundamental {db:+.2} dB off ideal (leaky-BLIT was −5 dB @ 28 Hz)"
+                );
             }
         }
     }

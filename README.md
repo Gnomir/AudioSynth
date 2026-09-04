@@ -16,7 +16,7 @@ band-limited impulse train) at the limit:
 
 `r` is a spectral tilt (dark → bright); `n` is clamped to Nyquist so the clean
 oscillator cannot alias. Two extra waveforms — a band-limited **sawtooth** and
-**triangle** via leaky-integrated BLIT (Stilson & Smith 1996) — sit alongside it.
+**triangle** via PolyBLEP / PolyBLAMP (stateless, flat to DC) — sit alongside it.
 On top: a character stage (drive / wavefolder / bit-crush / downsampler), FM with
 operator feedback, a ZDF state-variable filter, two ADSR envelopes, a per-voice
 LFO (retrigger / free-run, routed to brightness / pitch / cutoff / FM index),
@@ -45,7 +45,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 57 (53 unit + 4 integration); + `-- --ignored` drift test
+cargo test                                    # 58 (54 unit + 4 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
 
 # plugin bundle (VST3 + CLAP)
@@ -64,7 +64,7 @@ nightly.
 
 ## Status
 
-57 tests pass (53 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+58 tests pass (54 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3
 (editor tests included); `clap-validator` passes **35/35** on the CLAP — the
 `nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt preset) are

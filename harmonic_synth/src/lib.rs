@@ -52,7 +52,7 @@ impl FilterKind {
 
 /// Oscillator waveform, host-visible. `Geometric` is the closed-form additive
 /// core (Brightness = spectral tilt); `Saw` / `Triangle` are band-limited
-/// leaky-integrated BLITs with fixed `1/k` / `1/k²` spectra (they ignore
+/// PolyBLEP / PolyBLAMP with fixed `1/k` / `1/k²` spectra (they ignore
 /// Brightness and HQ Mode).
 #[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
 enum OscKind {
