@@ -44,7 +44,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 52 unit + 4 integration tests
+cargo test                                    # 56 (52 unit + 4 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
 
 # plugin bundle (VST3 + CLAP)
@@ -62,7 +62,7 @@ nightly.
 
 ## Status
 
-56 tests pass (52 unit + 4 integration); `clippy` clean on `std`, `no_std` and
+56 tests pass (52 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3;
 `clap-validator` passes 31/31 on the CLAP (2 state-test groups excluded — known
 `nih-plug` bugs, see [`docs/09_ROADMAP.md`](docs/09_ROADMAP.md) §Б2). Not yet

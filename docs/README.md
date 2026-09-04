@@ -42,7 +42,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус (2026-09-04)
 
-56 тестів проходять (52 юніт + 4 інтеграційні) · clippy чистий (stable +
+56 тестів проходять (52 юніт + 4 інтеграційні) + 1 `#[ignore]` (дрейф) · clippy чистий (stable +
 `--no-default-features --release` + nightly `--features portable-simd`) ·
 плагін збирається у VST3 + CLAP · **pluginval `--strictness-level 8`: повний
 прохід (VST3)** · **clap-validator: 31/31** (2 групи state-тестів виключено —
