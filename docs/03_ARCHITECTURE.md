@@ -61,8 +61,9 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **512 байт** (x86-64; `align = 8`), без
-`Drop`, без вказівників. Розмір зростав із розвитком рушія — хост має
+`#[repr(C)] #[derive(Clone, Copy)]`, **520 байт** (x86-64; `align = 8`), без
+`Drop`, без вказівників. Розмір зростав із розвитком рушія (востаннє —
+`Svf::base_sample_rate`, RFC-17-подальший аудит, `512→520`) — хост має
 викликати `harmonic_voice_size()` у рантаймі, не хардкодити число.
 
 ```rust
@@ -244,7 +245,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 512 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 520 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці
