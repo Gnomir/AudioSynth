@@ -76,6 +76,7 @@ pub struct PolySynth<const VOICES: usize> {
     unison_count: u32,
     unison_detune: f64, // cents, spread ±
     unison_spread: f64, // 0..1 stereo
+    unison_drift: f64,  // 0..1 → per-voice slow phase-drift depth (breathing)
 
     // modulation
     bend_ratio: f64, // pitch-bend, 2^(st/12)
@@ -129,6 +130,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             unison_count: 1,
             unison_detune: 12.0,
             unison_spread: 0.6,
+            unison_drift: 0.0,
             bend_ratio: 1.0,
             lfo_rate: 5.0,
             lfo_shape: LfoShape::Sine,
@@ -220,11 +222,15 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
-    /// Unison: `count` (1..8) detuned + stereo-spread voices per note.
-    pub fn set_unison(&mut self, count: u32, detune_cents: f64, spread: f64) {
+    /// Unison: `count` (1..8) detuned + stereo-spread voices per note, plus
+    /// `drift` (0..1) — a slow independent per-voice phase drift so the stacked
+    /// image *breathes* instead of sitting still. `drift` applies from the next
+    /// note-on.
+    pub fn set_unison(&mut self, count: u32, detune_cents: f64, spread: f64, drift: f64) {
         self.unison_count = count.clamp(1, MAX_UNISON);
         self.unison_detune = detune_cents;
         self.unison_spread = spread.clamp(0.0, 1.0);
+        self.unison_drift = drift.clamp(0.0, 1.0);
     }
 
     /// Pitch bend in semitones (applied to every sounding voice, smoothed).
@@ -391,6 +397,19 @@ impl<const VOICES: usize> PolySynth<VOICES> {
                 v.core.set_start_phase(frac);
             }
             v.core.set_lfo_phase(frac);
+
+            // slow phase drift: a per-voice rate around ~0.12 Hz (so the
+            // stack never re-locks), depth scaled by the `drift` control,
+            // start phase golden-ratio-spread so voices breathe out of sync.
+            if self.unison_drift > 0.0 {
+                let rate = 0.12 * (0.55 + 0.9 * frac);
+                v.core.set_unison_drift(rate, self.unison_drift * 0.05);
+                v.core.set_unison_drift_phase(idx as f64 * 0.618_034);
+            } else {
+                v.core.set_unison_drift(0.0, 0.0);
+            }
+        } else {
+            v.core.set_unison_drift(0.0, 0.0);
         }
 
         v.amp.set(sr, self.amp_a, self.amp_d, self.amp_s, self.amp_r);
@@ -593,7 +612,7 @@ mod tests {
     fn unison_stacks_voices_and_spreads_stereo() {
         let mut s: PolySynth<8> = PolySynth::new(48_000.0);
         s.set_gain(1.0);
-        s.set_unison(4, 15.0, 0.9);
+        s.set_unison(4, 15.0, 0.9, 0.0);
         s.note_on(57, 1.0);
         assert_eq!(s.active_voice_count(), 4, "unison did not stack 4 voices");
 
@@ -623,10 +642,61 @@ mod tests {
     }
 
     #[test]
+    fn unison_drift_makes_the_image_breathe() {
+        // Per-window stereo width `(L−R)²/(L+R)²`. Detune is kept tiny here so
+        // the baseline (no drift) is a *static* phase-decorrelated comb — its
+        // width barely moves. Turning on drift must set it in motion.
+        let window_widths = |drift: f64| -> Vec<f64> {
+            let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+            s.set_gain(1.0);
+            s.set_unison(6, 0.0, 0.9, drift); // 0 detune → a static comb baseline
+            s.note_on(45, 1.0);
+            for _ in 0..4000 {
+                s.render_sample();
+            }
+            (0..20)
+                .map(|_| {
+                    // side / (mid + side) energy — a stable [0,1] width measure
+                    let (mut mid, mut side) = (0.0f64, 0.0f64);
+                    for _ in 0..24_000 {
+                        // 0.5 s windows
+                        let [l, r] = s.render_sample();
+                        let m = (l + r) as f64 * 0.5;
+                        let d = (l - r) as f64 * 0.5;
+                        mid += m * m;
+                        side += d * d;
+                    }
+                    side / (mid + side).max(1e-12)
+                })
+                .collect()
+        };
+
+        let range = |w: &[f64]| {
+            let (mn, mx) = w
+                .iter()
+                .fold((f64::MAX, f64::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+            mx - mn
+        };
+        let mean = |w: &[f64]| w.iter().sum::<f64>() / w.len() as f64;
+
+        let still = window_widths(0.0);
+        let breathing = window_widths(0.7);
+
+        assert!(range(&still) < 0.06, "static unison width wandered: {:.4}", range(&still));
+        assert!(
+            range(&breathing) > range(&still) * 3.0 && range(&breathing) > 0.05,
+            "drift did not modulate the width: still range {:.4} vs breathing range {:.4}",
+            range(&still),
+            range(&breathing)
+        );
+        assert!(mean(&breathing) > 0.05, "breathing unison collapsed: {:.4}", mean(&breathing));
+    }
+
+    #[test]
     fn pitch_bend_shifts_all_voices() {
         let mut s: PolySynth<8> = PolySynth::new(48_000.0);
         s.set_gain(1.0);
-        s.set_unison(3, 10.0, 0.5);
+        s.set_unison(3, 10.0, 0.5, 0.4);
         s.note_on(60, 1.0);
         s.set_pitch_bend(2.0); // +2 semitones
         assert!(peak(&mut s, 24_000) <= 1.5);

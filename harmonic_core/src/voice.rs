@@ -9,7 +9,7 @@ use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
 use crate::kernel::{dirichlet_blit, geometric_partials_pre, geometric_peak_pre, powi_pos};
 use crate::lfo::{Lfo, LfoMode, LfoShape};
-use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns};
+use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns, sin_turns_fast};
 use crate::{validate_sample_rate, SampleRateStatus};
 
 /// Hard ceiling on partial count (error budget + `r^n` loop length).
@@ -84,6 +84,13 @@ pub struct Voice {
     lfo_to_cutoff: f64,  // octaves on the filter cutoff, ±
     lfo_to_fm: f64,      // added to the FM index, ±
     filter_cutoff: f64,  // last cutoff set by the host — the base for lfo_to_cutoff
+
+    // per-voice slow free-running drift, for a "breathing" unison image: a
+    // very-low-frequency sine added to the oscillator phase. Never retriggered
+    // — its whole job is to keep stacked voices from locking together.
+    drift_phase: f64,
+    drift_inc: f64,   // turns per sample
+    drift_depth: f64, // peak phase excursion, turns
 
     hq: bool, // 2× oversample the oscillator + character stage
 
@@ -162,6 +169,9 @@ impl Voice {
             lfo_to_cutoff: 0.0,
             lfo_to_fm: 0.0,
             filter_cutoff: 0.4 * sr, // matches Svf::new's default target
+            drift_phase: 0.0,
+            drift_inc: 0.0,
+            drift_depth: 0.0,
             hq: false,
             geom_r: f64::NAN, // force a compute on the first sample
             geom_n: 0,
@@ -281,6 +291,25 @@ impl Voice {
     #[inline]
     pub fn set_lfo_phase(&mut self, turns: f64) {
         self.lfo.set_phase(turns);
+    }
+
+    // ---- unison drift ----
+
+    /// Slow free-running phase drift, for a "breathing" unison stack.
+    /// `rate_hz` clamped to `[0, 5]`; `depth_turns` (peak phase excursion)
+    /// clamped to `[0, 0.25]`. Both `0` disables it (no cost per sample).
+    /// Give each stacked voice a different [`Voice::set_unison_drift_phase`]
+    /// (and ideally a slightly different rate) so they decorrelate.
+    #[inline]
+    pub fn set_unison_drift(&mut self, rate_hz: f64, depth_turns: f64) {
+        let r = clamp(rate_hz, 0.0, 5.0);
+        self.drift_inc = r / self.sample_rate;
+        self.drift_depth = clamp(depth_turns, 0.0, 0.25);
+    }
+
+    #[inline]
+    pub fn set_unison_drift_phase(&mut self, turns: f64) {
+        self.drift_phase = turns - floor_f64(turns);
     }
 
     // ---- character / filter ----
@@ -474,6 +503,17 @@ impl Voice {
         // ---- oscillator ----
         let fb = self.feedback * self.last_osc;
         let step = f_eff / self.sample_rate; // turns per output sample
+        // Slow free-running phase drift (unison "breathing"). Folded into the
+        // same phase offset as FM and feedback.
+        let drift = if self.drift_depth != 0.0 {
+            self.drift_phase += self.drift_inc;
+            if self.drift_phase >= 1.0 {
+                self.drift_phase -= 1.0;
+            }
+            self.drift_depth * sin_turns_fast(self.drift_phase)
+        } else {
+            0.0
+        };
         // FM index with the LFO routing folded in (clamped at 0 — a negative
         // effective index is just "off").
         let fm_index = if self.lfo_to_fm != 0.0 {
@@ -502,20 +542,26 @@ impl Voice {
                 0.0
             };
             let osc_lo =
-                geometric_partials_pre(self.phase + fm_term + fb, roll_eff, n, rn1) / peak;
-            let osc_hi =
-                geometric_partials_pre(self.phase + 0.5 * step + fm_hi + fb, roll_eff, n, rn1)
-                    / peak;
+                geometric_partials_pre(self.phase + fm_term + fb + drift, roll_eff, n, rn1) / peak;
+            let osc_hi = geometric_partials_pre(
+                self.phase + 0.5 * step + fm_hi + fb + drift,
+                roll_eff,
+                n,
+                rn1,
+            ) / peak;
             self.last_osc = osc_lo;
             self.character.process_hq(osc_lo as f32, osc_hi as f32)
         } else {
             let osc = match self.waveform {
                 Waveform::Geometric => {
                     let (rn1, peak) = self.geom_norm(roll_eff, n);
-                    geometric_partials_pre(self.phase + fm_term + fb, roll_eff, n, rn1) / peak
+                    geometric_partials_pre(self.phase + fm_term + fb + drift, roll_eff, n, rn1)
+                        / peak
                 }
-                Waveform::Saw => self.blit_saw(self.phase + fm_term + fb, n, f_eff),
-                Waveform::Triangle => self.blit_triangle(self.phase + fm_term + fb, n, f_eff),
+                Waveform::Saw => self.blit_saw(self.phase + fm_term + fb + drift, n, f_eff),
+                Waveform::Triangle => {
+                    self.blit_triangle(self.phase + fm_term + fb + drift, n, f_eff)
+                }
             };
             self.last_osc = osc;
             self.character.process(osc as f32)
