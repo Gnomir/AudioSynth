@@ -211,12 +211,19 @@ impl Default for Character {
 }
 
 /// `tanh` via a Padé approximant. ℝ → (−1, 1), near-identity for small `x`.
+///
+/// `x(27 + x²)/(27 + 9x²)` has `f(±3) = ±1`, `f'(±3) = 0` **and** `f''(±3) = 0`
+/// — beyond `|x| = 3` it turns back up (overshoots 1, then diverges). So the
+/// input is clamped at `±3`, where the join to the flat `±1` region is
+/// C²-continuous: no derivative kink, no high-frequency aliasing when driven
+/// hard. (Clamping further out, e.g. at `±4`, would leave a first-derivative
+/// discontinuity.) This matches [`crate::poly::soft_clip`].
 #[inline]
 pub fn tanh_pade(x: f32) -> f32 {
-    let x = if x > 4.0 {
-        4.0
-    } else if x < -4.0 {
-        -4.0
+    let x = if x > 3.0 {
+        3.0
+    } else if x < -3.0 {
+        -3.0
     } else {
         x
     };
@@ -243,6 +250,41 @@ mod tests {
             let x = i as f32 / 500.0;
             assert_eq!(c.process(x), x);
         }
+    }
+
+    #[test]
+    fn tanh_pade_joins_the_clamp_smoothly() {
+        // No first-derivative kink at the ±3 clamp: the numeric slope just
+        // inside must match the slope just outside (which is 0 — flat ±1).
+        let h = 1.0e-4_f32;
+        let slope_in = (tanh_pade(3.0) - tanh_pade(3.0 - h)) / h;
+        let slope_out = (tanh_pade(3.0 + h) - tanh_pade(3.0)) / h;
+        assert!(slope_in.abs() < 2.0e-3, "slope into the clamp = {slope_in}");
+        assert!(slope_out.abs() < 1.0e-6, "slope past the clamp = {slope_out}");
+        // and it never overshoots ±1
+        for i in 0..5000 {
+            let x = i as f32 * 0.01; // 0 … 50, well past the clamp
+            let y = tanh_pade(x);
+            assert!(y <= 1.0 + 1.0e-6 && tanh_pade(-x) >= -1.0 - 1.0e-6, "overshoot at x={x}: {y}");
+        }
+    }
+
+    #[test]
+    fn sample_and_hold_state_is_cleared_on_reset() {
+        // A driven+downsampled voice, then reset: the S&H `hold` must not bleed
+        // the previous note's tail into the new attack.
+        let mut c = Character::new();
+        c.set_params(CharParams {
+            downsample: 1.0,
+            drive: 0.6,
+            ..CharParams::CLEAN
+        });
+        for i in 0..500 {
+            c.process((i as f32 * 0.3).sin() * 0.8); // load `hold` with something loud
+        }
+        c.reset();
+        // first sample after reset, fed silence, must be silence — not the tail
+        assert_eq!(c.process(0.0), 0.0, "S&H bled the previous note after reset");
     }
 
     #[test]

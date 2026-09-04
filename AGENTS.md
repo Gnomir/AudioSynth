@@ -35,7 +35,7 @@ diff-able against the real repo.
 
 ```
 cd harmonic_core
-cargo test                                     # all 58 tests (54 unit + tests/spectrum.rs)
+cargo test                                     # all 61 tests (57 unit + tests/spectrum.rs)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0

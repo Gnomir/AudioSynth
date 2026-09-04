@@ -157,6 +157,21 @@ pub fn tan_turns(turns: f64) -> f64 {
     s / c
 }
 
+/// `tan(2π·turns)` for `turns ∈ [0, 0.23]` — a single `[3/2]` rational (Remez
+/// minimax), no range reduction, no separate sin/cos. Relative error `< 1e-7`
+/// over that interval, ~4× cheaper than [`tan_turns`]. Only for callers whose
+/// argument is bounded well below `0.25` — the SVF prewarp (`fc ≤ 0.45 fs` ⇒
+/// `turns ≤ 0.225`). Outside `[0, 0.23]` it is unspecified.
+#[inline]
+pub fn tan_turns_fast(turns: f64) -> f64 {
+    // coefficients from examples/fit_coeffs.rs
+    let u = turns * turns;
+    let n = 6.283_185_401_533_712_5_f64
+        + u * (-27.774_478_031_874_615 + u * 10.955_876_613_898_502);
+    let d = 1.0 + u * (-17.579_906_658_962_123 + u * 25.278_587_948_643_107);
+    turns * n / d
+}
+
 #[allow(dead_code)]
 const _MAX_KERNEL_ARG: f64 = FRAC_PI_4; // documents the kernel domain bound
 
@@ -223,12 +238,10 @@ pub fn floor_f64(x: f64) -> f64 {
 /// `2^x` for real `x` (`|x| < 1000`). Replaces `f64::exp2` (std).
 ///
 /// Split `x = ⌊x⌋ + f`: the integer part becomes an exponent field directly,
-/// the fractional part goes through an 8-term (Taylor-through-`f⁷`) Horner
-/// polynomial. Relative error `< 1.5e-6` on `f ∈ [0,1]` — about `2e-3` cents as
-/// a pitch ratio, inaudible.
-// The polynomial coefficients are the Taylor series of 2^f: ln2, (ln2)²/2, …
-// clippy flags the first as "approximately LN_2" — it is exactly that, on purpose.
-#[allow(clippy::approx_constant)]
+/// the fractional part goes through an 8-term (degree-7) Horner polynomial.
+/// The coefficients are a **Remez minimax** fit of `2^f` on `f ∈ [0,1]` (not a
+/// Taylor series): relative error `< 3e-8` — nine orders below a cent, so
+/// integer powers are exact (`c₀ = 1`) and there is no measurable pitch drift.
 #[inline]
 pub fn exp2(x: f64) -> f64 {
     let fl = floor_f64(x);
@@ -246,14 +259,14 @@ pub fn exp2(x: f64) -> f64 {
     };
     let two_fl = f64::from_bits(((e + 1023) as u64) << 52);
 
-    // 2^f, f ∈ [0,1]
-    let p = 0.000_015_252_733_804_f64;
-    let p = p * f + 0.000_154_035_303_934;
-    let p = p * f + 0.001_333_355_814_643;
-    let p = p * f + 0.009_618_129_107_628;
-    let p = p * f + 0.055_504_108_664_822;
-    let p = p * f + 0.240_226_506_959_101;
-    let p = p * f + 0.693_147_180_559_945;
+    // 2^f, f ∈ [0,1] — Remez minimax, degree 7 (see examples/fit_coeffs.rs)
+    let p = 8.568_020_029_104_6e-5_f64;
+    let p = p * f + -8.581_653_953_827_3e-5;
+    let p = p * f + 1.665_468_533_058_2e-3;
+    let p = p * f + 9.388_897_452_886_6e-3;
+    let p = p * f + 5.558_374_723_244_2e-2;
+    let p = p * f + 0.240_214_375_664_654_1;
+    let p = p * f + 0.693_147_677_442_756_6;
     let p = p * f + 1.0;
 
     two_fl * p
@@ -331,6 +344,26 @@ mod tests {
             x += 0.017;
         }
         assert!(max_rel < 1.5e-6, "exp2 max rel error {max_rel:e}");
+        // the minimax fit is far tighter than the old Taylor 1.5e-6
+        assert!(max_rel < 5.0e-8, "exp2 minimax regressed: {max_rel:e}");
+        // integer powers stay exact
+        for k in -20..=20 {
+            assert_eq!(exp2(k as f64), (k as f64).exp2(), "exp2({k})");
+        }
+    }
+
+    #[test]
+    fn tan_turns_fast_accurate_on_the_svf_domain() {
+        // domain: cutoff ∈ [20, 0.45·fs] ⇒ turns = fc/(2 fs) ∈ [~1e-5, 0.225]
+        let mut max_rel = 0.0_f64;
+        let mut t = 1.0e-5_f64;
+        while t <= 0.225 {
+            let got = tan_turns_fast(t);
+            let want = (t * core::f64::consts::TAU).tan();
+            max_rel = max_rel.max(((got - want) / want).abs());
+            t += 1.3e-4;
+        }
+        assert!(max_rel < 2.0e-7, "tan_turns_fast rel error {max_rel:e}");
     }
 
     #[test]

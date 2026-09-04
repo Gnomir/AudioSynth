@@ -11,7 +11,7 @@
 //! envelope can drop them per sample — with no zipper. Coefficients are
 //! rebuilt only on the samples where a target is actually moving.
 
-use crate::trig::{exp2, tan_turns};
+use crate::trig::{exp2, tan_turns_fast};
 
 /// Filter response.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -138,8 +138,10 @@ impl Svf {
 
     #[inline]
     fn recompute_g(&mut self) {
-        // g = tan(π fc / fs) ; angle in turns is fc / (2 fs) ≤ 0.225 (clamp)
-        self.g = tan_turns(self.cutoff_z / (2.0 * self.sample_rate));
+        // g = tan(π fc / fs) ; angle in turns is fc / (2 fs) ∈ [~1e-5, 0.225]
+        // (cutoff clamped to `[20, 0.45 fs]`), so the fast bounded-domain
+        // rational is exact enough here and ~4× cheaper on a modulated cutoff.
+        self.g = tan_turns_fast(self.cutoff_z / (2.0 * self.sample_rate));
     }
 
     #[inline]

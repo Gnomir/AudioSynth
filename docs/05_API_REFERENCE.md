@@ -168,6 +168,7 @@ pub fn cos_turns(turns: f64) -> f64
 pub fn sin_turns(turns: f64) -> f64
 pub fn sin_cos_turns(turns: f64) -> (f64, f64)     // (sin, cos)
 pub fn tan_turns(turns: f64) -> f64                // |turns| < 0.25
+pub fn tan_turns_fast(turns: f64) -> f64           // turns ∈ [0, 0.23] — [3/2] rational, ~4× cheaper
 pub fn floor_f64(x: f64) -> f64
 pub fn exp2(x: f64) -> f64
 pub fn cos_turns_branchless(x: f64) -> f64
