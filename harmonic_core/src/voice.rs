@@ -714,7 +714,17 @@ impl Voice {
 
 #[inline(always)]
 fn clamp(x: f64, lo: f64, hi: f64) -> f64 {
-    if x < lo {
+    // NaN compares false against everything, so a plain `<`/`>` chain lets it
+    // fall through to the `else` arm unchanged — every one of this fn's ~14
+    // call sites (freq, gain, pan, feedback, FM, LFO routing depths, drift...)
+    // would silently latch NaN into voice state and propagate it into audio
+    // forever, from any hostile/buggy caller of the public setters (this is
+    // the C-ABI's argument-clamping helper, not just an internal convenience
+    // — `harmonic_voice_set_*` hands caller-supplied f64s straight to it).
+    // Default to `lo`: for every current call site that's a silent/inaudible
+    // value (freq floor, 0 gain, 0 feedback/FM, hard-left pan), never a loud
+    // or surprising one.
+    if x.is_nan() || x < lo {
         lo
     } else if x > hi {
         hi

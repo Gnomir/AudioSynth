@@ -227,11 +227,22 @@ pub unsafe extern "C" fn harmonic_voice_process(
     out: *mut f32,
     num_frames: usize,
 ) {
+    // `num_frames * 2` wraps silently in a release build if a hostile or
+    // buggy caller passes something near `usize::MAX / 2` — the resulting
+    // slice would claim a far shorter length than the loop below (which
+    // uses the original, un-wrapped `num_frames`) then indexes past, so the
+    // failure mode is an unbounded-index panic deep in the audio callback
+    // rather than a clean rejection. No real host ever calls with anything
+    // but a small frame count, but this is the caller-hostile-input C ABI —
+    // reject overflow the same way the null/zero checks already do.
+    let Some(len) = num_frames.checked_mul(2) else {
+        return;
+    };
     if ptr.is_null() || out.is_null() || num_frames == 0 {
         return;
     }
     let v = unsafe { &mut *ptr };
-    let buf = unsafe { core::slice::from_raw_parts_mut(out, num_frames * 2) };
+    let buf = unsafe { core::slice::from_raw_parts_mut(out, len) };
     for f in 0..num_frames {
         let [l, r] = v.render_sample();
         buf[2 * f] = l;

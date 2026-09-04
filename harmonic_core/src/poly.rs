@@ -266,7 +266,11 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     }
 
     pub fn set_gain(&mut self, g: f64) {
-        self.gain = if g < 0.0 { 0.0 } else { g };
+        // `NaN < 0.0` is false, so a bare comparison lets NaN straight
+        // through (RFC-19-followup audit) — this is the master gain, so a
+        // latched NaN here would silence/poison the *entire* mix, not just
+        // one voice.
+        self.gain = if g.is_nan() || g < 0.0 { 0.0 } else { g };
     }
 
     pub fn set_character(&mut self, p: CharParams) {
@@ -683,7 +687,11 @@ pub fn soft_clip(x: f32) -> f32 {
 
 #[inline(always)]
 fn clamp01(x: f32) -> f32 {
-    if x < 0.0 {
+    // See env::clamp01 — same NaN-passthrough fix. This particular call site
+    // (`note_on`'s velocity) happens to be masked today by a chained
+    // `.max(0.02)` (`f32::max` returns the non-NaN operand), but fixing the
+    // shared helper directly is the robust choice, not relying on that.
+    if x.is_nan() || x < 0.0 {
         0.0
     } else if x > 1.0 {
         1.0
@@ -1009,5 +1017,47 @@ mod tests {
         assert!((soft_clip(0.1) - 0.1).abs() < 2e-3);
         assert!(soft_clip(1000.0) <= 1.0);
         assert!(soft_clip(-1000.0) >= -1.0);
+    }
+
+    #[test]
+    fn soft_clip_joins_the_clamp_smoothly() {
+        // `poly::soft_clip` is a textual duplicate of `character::tanh_pade`
+        // (same Padé rational, same ±3 clamp) — kept as two separate copies
+        // deliberately (master limiter vs. per-voice saturator are different
+        // roles that may want to diverge later), which means a future edit
+        // to just one of them (e.g. "raise the master clip's clamp to ±4")
+        // would silently reintroduce the exact C¹-kink RFC-12 fixed, and
+        // nothing in this file would catch it — `tanh_pade_joins_the_clamp_
+        // smoothly` in character.rs only exercises the other copy. Mirrors
+        // that test here so both copies are independently regression-tested.
+        let h = 1.0e-4_f32;
+        let slope_in = (soft_clip(3.0) - soft_clip(3.0 - h)) / h;
+        let slope_out = (soft_clip(3.0 + h) - soft_clip(3.0)) / h;
+        assert!(slope_in.abs() < 2.0e-3, "slope into the clamp = {slope_in}");
+        assert!(slope_out.abs() < 1.0e-6, "slope past the clamp = {slope_out}");
+        for i in 0..5000 {
+            let x = i as f32 * 0.01;
+            let y = soft_clip(x);
+            assert!(y <= 1.0 + 1.0e-6 && soft_clip(-x) >= -1.0 - 1.0e-6, "overshoot at x={x}: {y}");
+        }
+    }
+
+    #[test]
+    fn clamps_reject_nan_instead_of_latching_it() {
+        // RFC-19-followup audit: the shared `clamp`/`clamp01` helpers used
+        // by every public setter across `voice.rs`/`env.rs`/`poly.rs` used to
+        // let NaN fall straight through (`NaN < lo` and `NaN > hi` are both
+        // false in IEEE-754). A hostile or buggy C-ABI caller passing NaN to
+        // e.g. `harmonic_voice_set_frequency` would have latched NaN into
+        // voice state and propagated it into every rendered sample from then
+        // on. Exercise it at the PolySynth level: NaN gain/velocity must not
+        // poison the mix.
+        let mut s: PolySynth<4> = PolySynth::new(48_000.0);
+        s.set_gain(f32::NAN as f64);
+        s.note_on(60, f32::NAN);
+        for _ in 0..4800 {
+            let [l, r] = s.render_sample();
+            assert!(l.is_finite() && r.is_finite(), "NaN input latched into the output");
+        }
     }
 }
