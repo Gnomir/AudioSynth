@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **62 тести проходять** (57
+Що перевірено, як, і якими числами. Статус: **63 тести проходять** (58
 юніт + 5 інтеграційних) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
 чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP, увесь набір
 проходить біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
@@ -114,7 +114,7 @@
 | `pitch_bend_and_lfo_stay_finite` | bend `+2 st` + LFO вібрато `25 ct` → пік `≤ 1.5` на 96000 семплів |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (10)
+### `poly` (11)
 
 | Тест | Що доводить |
 |---|---|
@@ -127,6 +127,7 @@
 | `hq_mode_stays_bounded_and_adds_latency` | `set_hq(true)` + drive+fold → пік `≤ 1.5` на 48000 |
 | `lfo_modulation_stays_bounded` | LFO triangle `→bright 0.35` + вібрато `30 ct` → пік `≤ 1.5` на 96000 |
 | `filter_envelope_is_independent_of_amp_envelope` | фільтровий свіп (`sustain 0`) закриває HF `> 1.5×`, поки амплітудна ADSR тримає ноту |
+| `extreme_cutoff_modulation_never_destabilises_the_filter` | база 12 кГц + LFO→cutoff на клампі `±8` окт + envelope `+6` окт + res `0.02` (найбільше `k`, найнебезпечніший режим для полюса `tan_turns_fast` на `0.25`) — скінченне, `< 20` на 48000 семплів (RFC-17 аудит) |
 | `soft_clip_is_gentle_and_bounded` | `≈` identity при `x ≤ 0.1`; `|soft_clip(±1000)| ≤ 1` |
 
 ### `tests/spectrum.rs` — інтеграційні (4)
@@ -279,7 +280,7 @@ RFC-пункт 2.2 Path B (половинна степінь `exp2`) — від�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 61 / 61 (57 юніт + 4 інтеграційні) |
+| Тести | `cargo test` | 63 / 63 (58 юніт + 5 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -327,7 +328,7 @@ upstream-PR — за користувачем.
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **62 / 62 pass** (57 юніт + 5 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **63 / 63 pass** (58 юніт + 5 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **62 / 62 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
@@ -355,7 +356,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 62/62, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 63/63, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.

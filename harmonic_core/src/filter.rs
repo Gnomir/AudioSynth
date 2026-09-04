@@ -138,10 +138,17 @@ impl Svf {
 
     #[inline]
     fn recompute_g(&mut self) {
-        // g = tan(π fc / fs) ; angle in turns is fc / (2 fs) ∈ [~1e-5, 0.225]
-        // (cutoff clamped to `[20, 0.45 fs]`), so the fast bounded-domain
-        // rational is exact enough here and ~4× cheaper on a modulated cutoff.
-        self.g = tan_turns_fast(self.cutoff_z / (2.0 * self.sample_rate));
+        // g = tan(π fc / fs) ; angle in turns is fc / (2 fs). `set_cutoff` clamps
+        // fc to `[20, 0.45 fs]`, so this already lands in `[~1e-5, 0.225]` and the
+        // fast bounded-domain rational is exact enough (~4× cheaper on a modulated
+        // cutoff than `tan_turns`). The extra `.min(0.225)` is defence in depth:
+        // `tan_turns_fast` has a pole at 0.25 turns (by construction — it mirrors
+        // `tan` at Nyquist) and returns a *negative* g just past it, which would
+        // destabilise the SVF. Rather than trust every future writer of `cutoff_z`
+        // to clamp, cap it here — two instructions, and it also turns a stray NaN
+        // cutoff into a defined (very dark) filter instead of NaN integrator state.
+        let turns = (self.cutoff_z / (2.0 * self.sample_rate)).min(0.225);
+        self.g = tan_turns_fast(turns);
     }
 
     #[inline]

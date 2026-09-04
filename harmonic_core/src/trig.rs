@@ -181,6 +181,19 @@ const _MAX_KERNEL_ARG: f64 = FRAC_PI_4; // documents the kernel domain bound
 
 /// Round-to-nearest without a branch (`|x| < 2^51`). Round-half-to-even; the
 /// tiny difference from [`round_int`] at exact halves does not matter for phase.
+///
+/// **Assumes the FPU's default round-to-nearest mode.** Unlike [`round_int`]
+/// (a truncating `as i64` cast — fixed by the language, ignores the FPU
+/// rounding-mode control bits entirely), this add-then-subtract trick reuses
+/// whatever the *current* rounding mode is, so a host that leaves MXCSR (or
+/// the ARM FPCR) in a non-default mode would shift it. That is why it is
+/// confined to [`cos_turns_branchless`] / [`cos4_turns`] — the SIMD-shaped
+/// batch path — which `Voice`/`PolySynth` never call; the scalar hot path
+/// (`cos_turns`, and every `f64 as i64` cast) is rounding-mode-immune. A
+/// truncating cast would fix that dependence too, but `as i64` on `f64` has
+/// no packed form below AVX-512 and would de-vectorise this function's whole
+/// reason to exist — so if the branchless path ever lands on the audio
+/// thread, save/restore MXCSR around the callback instead of changing this.
 #[inline(always)]
 fn round_bias(x: f64) -> f64 {
     const MAGIC: f64 = 6_755_399_441_055_744.0; // 1.5 · 2^52
