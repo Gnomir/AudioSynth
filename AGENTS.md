@@ -6,7 +6,8 @@
 additive synthesis from a closed-form Dirichlet-kernel sum
 (`Σ rᵏ·cos(2πkp)`), plus band-limited BLIT saw/triangle (`Waveform` enum),
 character (drive/fold/grit), a ZDF state-variable filter, two ADSRs, a per-voice
-LFO (retrigger/free-run + mod matrix), unison, pitch bend, equal-power pan.
+LFO (retrigger/free-run + mod matrix), unison (with a breathing drift), pitch
+bend, equal-power pan.
 `harmonic_synth` — a 24-voice polyphonic VST3 + CLAP plugin over it, via
 `nih-plug`. Full design docs: `docs/` (start at `docs/README.md`).
 
@@ -24,7 +25,7 @@ Rust stable (1.97 known-good). `harmonic_core` has no dependencies.
 
 ```
 cd harmonic_core
-cargo test                                     # all 56 tests (52 unit + tests/spectrum.rs)
+cargo test                                     # all 57 tests (53 unit + tests/spectrum.rs)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0

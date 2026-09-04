@@ -20,7 +20,8 @@ oscillator cannot alias. Two extra waveforms — a band-limited **sawtooth** and
 On top: a character stage (drive / wavefolder / bit-crush / downsampler), FM with
 operator feedback, a ZDF state-variable filter, two ADSR envelopes, a per-voice
 LFO (retrigger / free-run, routed to brightness / pitch / cutoff / FM index),
-unison, pitch bend and equal-power pan.
+unison with a slow per-voice drift so the stack breathes, pitch bend and
+equal-power pan.
 
 > Cost is **Θ(log n)** per sample (one `rⁿ` by exponentiation-by-squaring),
 > **Θ(1)** at fixed partial count — measured ~26 M samples/s per clean voice, flat
@@ -44,7 +45,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 56 (52 unit + 4 integration); + `-- --ignored` drift test
+cargo test                                    # 57 (53 unit + 4 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
 
 # plugin bundle (VST3 + CLAP)
@@ -62,7 +63,7 @@ nightly.
 
 ## Status
 
-56 tests pass (52 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+57 tests pass (53 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3;
 `clap-validator` passes 31/31 on the CLAP (2 state-test groups excluded — known
 `nih-plug` bugs, see [`docs/09_ROADMAP.md`](docs/09_ROADMAP.md) §Б2). Not yet

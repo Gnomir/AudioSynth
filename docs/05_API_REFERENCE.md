@@ -41,6 +41,8 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_lfo_mode(m: LfoMode)` | setup | `Retrigger` (фаза → 0 на note-on) / `FreeRun` |
 | `set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm)` | RT | `[−0.9,0.9]` · `[−1200,1200]` центів · `[−8,8]` окт · `[−8,8]`; кожна `0` = не застосовується |
 | `set_lfo_phase(turns: f64)` | setup | — |
+| `set_unison_drift(rate_hz: f64, depth_turns: f64)` | setup | `rate [0,5]` Гц · `depth [0,0.25]` обертів; обидва `0` = вимк |
+| `set_unison_drift_phase(turns: f64)` | setup | стартова фаза дрейфу (декореляція голосів) |
 | `set_character(p: CharParams)` | RT | див. `CharParams` |
 | `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли; лише для `Waveform::Geometric` |
 | `set_waveform(w: Waveform)` | setup | `Geometric` / `Saw` / `Triangle`; Saw+Triangle — band-limited BLIT, ігнорують `rolloff` та HQ |
@@ -82,7 +84,7 @@ set_feedback(fb: f64)
 set_free_running(free: bool)
 set_hq(hq: bool)                                          // 2× оверсемплінг; +3 семпли латентності
 set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
-set_unison(count: u32, detune_cents: f64, spread: f64)   // count clamp [1,8], spread [0,1]
+set_unison(count: u32, detune_cents: f64, spread: f64, drift: f64)  // clamp [1,8] · [0,1] · [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
 set_lfo(rate_hz, shape: LfoShape, mode: LfoMode,
         to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm)   // 0 = target off
@@ -186,7 +188,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 552 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 576 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */
@@ -253,7 +255,7 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 
 ## 3. Параметри плагіна `harmonic_synth`
 
-32 параметри (host-generic UI, без власного GUI). Групи:
+33 параметри (host-generic UI, без власного GUI). Групи:
 
 | Група | Параметри |
 |---|---|
@@ -264,7 +266,7 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 | Фільтр | Filter (enum Off/LP/BP/HP/Notch), Cutoff, Resonance |
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |
 | Режим голосу | Free-Run Phase, **HQ Mode** (2× OS, +3 семпли латентності, PDC повідомляється) |
-| Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%) |
+| Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%), **Uni Drift** (%) |
 | Модуляція | Bend Range (st), LFO Rate, LFO Shape, **LFO Sync** (Retrigger/Free-Run), LFO → Bright, LFO Vibrato (ct), **LFO → Cutoff** (±4 окт), **LFO → FM** (±4) |
 
 `Grit` мапиться на `crush` + `downsample·0.8` разом. `Bend Range` мапить

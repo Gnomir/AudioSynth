@@ -17,7 +17,7 @@ fn main() -> std::io::Result<()> {
     s.set_gain(0.7);
     s.set_rolloff(0.55_f64.powi(2) * (0.9995 - 0.02) + 0.02);
     s.set_free_running(true);
-    s.set_unison(7, 18.0, 0.95);
+    s.set_unison(7, 18.0, 0.95, 0.6); // + slow per-voice drift → breathing image
     s.set_lfo(4.5, LfoShape::Sine, LfoMode::Retrigger, 0.0, 8.0, 0.0, 0.0); // 8-cent vibrato
     s.set_amp_adsr(0.35, 0.2, 0.8, 1.2);
     s.set_filter(FilterMode::Low, 700.0, 0.55, 2.6);

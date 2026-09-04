@@ -213,6 +213,10 @@ struct HarmonicSynthParams {
     unison_detune: FloatParam,
     #[id = "unispr"]
     unison_spread: FloatParam,
+    /// Slow per-voice phase drift so the unison stack breathes instead of
+    /// sitting still. 0 = static.
+    #[id = "unidrift"]
+    unison_drift: FloatParam,
 
     // --- pitch bend + LFO ---
     #[id = "bendrng"]
@@ -437,6 +441,14 @@ impl Default for HarmonicSynthParams {
             .with_value_to_string(formatters::v2s_f32_percentage(0))
             .with_string_to_value(formatters::s2v_f32_percentage()),
 
+            unison_drift: FloatParam::new(
+                "Uni Drift",
+                0.0,
+                FloatRange::Linear { min: 0.0, max: 1.0 },
+            )
+            .with_value_to_string(formatters::v2s_f32_percentage(0))
+            .with_string_to_value(formatters::s2v_f32_percentage()),
+
             bend_range: IntParam::new("Bend Range", 2, IntRange::Linear { min: 1, max: 24 })
                 .with_unit(" st"),
 
@@ -588,6 +600,7 @@ impl Plugin for HarmonicSynth {
             self.params.unison_voices.value() as u32,
             self.params.unison_detune.value() as f64,
             self.params.unison_spread.value() as f64,
+            self.params.unison_drift.value() as f64,
         );
         self.engine.set_lfo(
             self.params.lfo_rate.value() as f64,
