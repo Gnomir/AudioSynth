@@ -45,8 +45,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 61 (57 unit + 4 integration); + `-- --ignored` drift test
+cargo test                                    # 62 (57 unit + 5 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
+bash scripts/cross-verify.sh                   # 62/62 bit-identical on ARM (Docker + QEMU)
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -64,8 +65,11 @@ nightly.
 
 ## Status
 
-61 tests pass (57 unit + 4 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
-nightly `portable-simd`. `pluginval --strictness-level 8` passes on the VST3
+62 tests pass (57 unit + 5 integration), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+nightly `portable-simd`. The whole suite — including a whole-signal-path hash
+compared against an x86-64 reference — passes bit-for-bit on
+`aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU
+(`harmonic_core/scripts/cross-verify.sh`). `pluginval --strictness-level 8` passes on the VST3
 (editor tests included); `clap-validator` passes **35/35** on the CLAP — the
 `nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt preset) are
 fixed via a `[patch]` onto a vendored copy, see

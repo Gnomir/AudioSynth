@@ -1,13 +1,14 @@
 # 09 — Дорожня карта розвитку
 
-**Поточний стан:** core stable, 61/61 тестів green (+1 `#[ignore]` дрейф),
-clippy чистий (std / no_std / nightly-simd). VST3 — `pluginval` strictness 8
-повний прохід (з GUI-тестами). CLAP — `clap-validator` **35/35** (баг
-`ext_state_load` виправлено через `[patch]` на `vendor/nih-plug`, §Б2). Плагін
-має GUI (`nih_plug_vizia`). Роадмапа закрита; лишилось В2 (ручна DAW-валідація)
-та публічний upstream-PR по Б2.
+**Поточний стан:** core stable, 62/62 тестів green (+1 `#[ignore]` дрейф),
+проходять біт-у-біт на `aarch64` + `armv7-hf` під QEMU. clippy чистий
+(std / no_std / nightly-simd). VST3 — `pluginval` strictness 8 повний прохід
+(з GUI-тестами). CLAP — `clap-validator` **35/35** (баг `ext_state_load`
+виправлено через `[patch]` на `vendor/nih-plug`, §Б2). Плагін має GUI
+(`nih_plug_vizia`). Роадмапа закрита; лишилось В2 (ручна DAW-валідація) та
+публічний upstream-PR по Б2.
 
-**Прогрес:** ✅ Б3-крок-1 (крос-компіляція) · ✅ А1 (PolyBLEP пила/трикутник) ·
+**Прогрес:** ✅ Б3 (крос-компіляція + bit-exact на ARM, RFC-15) · ✅ А1 (PolyBLEP пила/трикутник) ·
 ✅ Б2 (фікс CLAP-обгортки nih-plug: `[patch]` на vendor → `clap-validator`
 35/35; публічний PR — за користувачем) ·
 ✅ Б1 (clean-voice fast path: +25 % на голос, +80 % поліфонії) ·
@@ -151,21 +152,22 @@ clippy чистий (std / no_std / nightly-simd). VST3 — `pluginval` strictne
 - **DoD.** ✅ `clap-validator` 35/35 без винятків, без збоїв, без ворнінгів.
   Після мержу upstream — видалити `vendor/nih-plug` + `[patch]`, бампнути `rev`.
 
-### Б3. Фізична верифікація на залізі
+### Б3. Фізична верифікація на залізі ✅ КРОК 1+2 ВИКОНАНО (RFC-15)
 
-- **Проблема.** Бітова ідентичність `no_std`-коду поза x86_64 — очікувана
-  гіпотеза (`08 §3`), ядро жодного разу не збиралось під ARM/RISC-V.
-- **Рішення.** Крок 1 (зроблено, §нижче): крос-**компіляція** під
-  `thumbv7em-none-eabihf` (Cortex-M4F), `aarch64-unknown-none`,
-  `riscv32imac-unknown-none-elf`. Крок 2: прогін тестів на реальному
-  Cortex-M / Apple Silicon (QEMU або залізо), порівняння результатів синтезу
-  з x86-еталоном bit-for-bit через C-ABI + статичну `.a`.
-- **Файли.** CI-матрицю (`.github/workflows` — коли буде CI), тестовий
-  харнес на цільовій платі.
-- **Оцінка.** S для крос-компіляції; L для прогону на залізі.
-- **DoD.** `cargo build --target …` зелений для 3 таргетів (крок 1).
-  Bit-exact порівняння синтезу на ≥1 не-x86 (крок 2) → зняти застереження
-  в `08 §3` / `07 §6`.
+- **Проблема.** Бітова ідентичність `no_std`-коду поза x86_64 — була
+  очікувана гіпотеза (`08 §3`).
+- **Крок 1 ✅.** Крос-**компіляція** чиста під `thumbv7em-none-eabihf`,
+  `thumbv6m-none-eabi`, `aarch64-unknown-none`, `riscv32imac-unknown-none-elf`.
+- **Крок 2 ✅ (RFC-15).** `scripts/cross-verify.{sh,ps1}` (Docker + QEMU)
+  проганяє **весь набір 62/62** на `aarch64-unknown-linux-gnu` та
+  `armv7-unknown-linux-gnueabihf` (VFP `f64` тотожний Cortex-M4F). Новий
+  інтеграційний тест `cross_platform_bit_exact` звіряє хеш 100-мс рендеру
+  всього тракту з x86-64 референсом — **дельта `= 0.0`** на всіх трьох
+  архітектурах; дрейф фази теж збігається до останньої цифри.
+- **Не зроблено.** Реальне залізо Cortex-M, soft-float `thumbv6m` (M0 без
+  FPU), прогін під RISC-V. CI-матриця (`.github/workflows`) — коли буде CI.
+- **DoD.** ✅ 3 таргети крос-компілюються; ✅ bit-exact синтез на 2 не-x86
+  (aarch64 + armv7-hf) → застереження в `08 §3` / `07 §12` знято.
 
 ---
 
@@ -224,7 +226,8 @@ clippy чистий (std / no_std / nightly-simd). VST3 — `pluginval` strictne
 
 ## Рекомендована послідовність
 
-1. ~~**Б3 крок 1** (крос-компіляція)~~ — виконано (4 таргети чисто).
+1. ~~**Б3** (крос-компіляція + bit-exact на ARM)~~ — ✅ виконано (RFC-15:
+   4 таргети чисто; 62/62 біт-у-біт на `aarch64` + `armv7-hf` під QEMU).
 2. ~~**А1** (PolyBLEP пила/трикутник)~~ — ✅ виконано (плаский бас, ~3× швидше).
 3. ~~**Б2** (фікс CLAP-обгортки)~~ — ✅ `[patch]` на `vendor/nih-plug` →
    `clap-validator` 35/35; лишається лише публічний upstream-PR.
