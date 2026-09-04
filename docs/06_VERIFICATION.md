@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **58 тестів проходять** (54
+Що перевірено, як, і якими числами. Статус: **61 тест проходить** (57
 юніт + 4 інтеграційні) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
 чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP.
 
@@ -24,14 +24,15 @@
 
 ## 2. Каталог тестів
 
-### `trig` (6)
+### `trig` (7)
 
 | Тест | Що доводить |
 |---|---|
 | `cos_matches_reference_across_many_turns` | `cos_turns` vs `std`, макс. похибка `< 2·10⁻¹¹` абс. на `t ∈ [−37, 37]` |
 | `sin_matches_reference_across_many_turns` | те саме для `sin_turns` |
 | `fast_trig_is_16bit_accurate` | `cos/sin_turns_fast` vs `std`, макс. похибка `< 5·10⁻⁶` (для LFO/панорами) |
-| `exp2_matches_reference` | `exp2` vs `std`, макс. відн. похибка `< 1.5·10⁻⁶` на `x ∈ [−60, 60]` |
+| `exp2_matches_reference` | `exp2` vs `std`, макс. відн. похибка **`< 5·10⁻⁸`** (Remez мінімакс) на `x ∈ [−60, 60]`; `exp2(k) == 2ᵏ` точно для `k ∈ [−20, 20]` |
+| `tan_turns_fast_accurate_on_the_svf_domain` | `tan_turns_fast` vs `std` на `turns ∈ [10⁻⁵, 0.225]` (домен SVF): відн. похибка `< 2·10⁻⁷` |
 | `floor_f64_matches_reference` | точна відповідність `f64::floor` |
 | `exact_at_cardinal_points` | `cos_turns` у `{0, 0.25, 0.5, 2.5}` = `{1, 0, −1, −1}` |
 
@@ -52,11 +53,13 @@
 | `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно = `geometric_partials`, `n` до 1500, `r` до 1.0 |
 | `geometric_reduces_to_fundamental_for_small_r` | `r = 10⁻³` → нормований вихід ≈ `cos(x)` у межах `5·10⁻³` |
 
-### `character` (5)
+### `character` (7)
 
 | Тест | Що доводить |
 |---|---|
 | `clean_params_are_bit_identity` | `CLEAN` → `process(x) == x` бітово, на 2000 значеннях |
+| `tanh_pade_joins_the_clamp_smoothly` | нахил `tanh_pade` одразу перед клампом `±3` `< 2·10⁻³`, одразу за ним `< 10⁻⁶` (немає зламу першої похідної, який давав кламп `±4`); жодного перельоту `±1` на `x ∈ [0, 50]` |
+| `sample_and_hold_state_is_cleared_on_reset` | після навантаженого drive+downsample та `reset()` перший семпл на тишу = `0` бітово (S&H `hold` не тягне хвіст попередньої ноти) |
 | `drive_adds_energy_but_stays_bounded` | `drive 0.8` піднімає тихий сигнал (пік `> 0.3`), лишається `|y| ≤ 1.05` |
 | `fold_and_grit_stay_finite_and_bounded` | усі 5 стадій разом на 48000 семплів → скінченне, `|y| ≤ 1.2` |
 | `hq_path_is_bounded_and_reduces_alias_energy` | 2×+децимація на near-Nyquist тоні в фолдер → менше LF-енергії (аліасів), ніж 1× |
@@ -177,6 +180,23 @@ fast path**: LFO не тикається, equal-power гейни та `powi_pos(
 поліноміальної апроксимації; нечутно в музиці. `Voice` зменшився `576 → 512` б
 (мінус 8 полів стану інтеграторів/DC-blockerів).
 
+### Тригонометричні ядра — оптимізація `12_TECHNICAL_SPEC_RFC`
+
+| Ядро | Було | Стало | Ефект |
+|---|---|---|---|
+| `exp2` (`2^f`, `f ∈ [0,1]`) | Тейлор, макс. відн. похибка `1.5·10⁻⁶` | Remez мінімакс тієї ж степені 7, `2.2·10⁻⁸` | `×70` точніше, **та сама вартість** (8 членів Горнера); `~3·10⁻⁵` цента — за межею вимірності |
+| `tan_turns_fast` (прогин SVF) | `sin_turns / cos_turns` (2 редукції + ділення) | один `[3/2]` рац. мінімакс на `[0, 0.23]`, `< 10⁻⁷` | `~4×` менше флопів; повністю модульований `Svf` **`41.2 → 86.9 M` семпл/с (`2.1×`)** — виміряно `git stash` до/після на `examples/bench_filt.rs` |
+
+RFC заявляв `3×` для SVF — фактично `2.1×` (решта часу — не `tan`, а сам
+2-полюсний TPT-крок і згладжування коефіцієнтів). RFC-пункт 1.1 (`tanh_pade`
+кламп `4 → 3`) — усунення C¹-зламу, який давав аліасинг на жорсткому drive;
+регресія `character::tanh_pade_joins_the_clamp_smoothly`. RFC-пункт 1.2
+(клік S&H на note-on) — відхилено: `Character::reset()` вже обнуляє `hold`
+/ `hold_ctr` / `decim`; додано регресію
+`character::sample_and_hold_state_is_cleared_on_reset`, що це фіксує.
+RFC-пункт 2.2 Path B (половинна степінь `exp2`) — відхилено: економія `~0.3 %`
+загального CPU не варта втрати точності до `10⁻⁵` відн.
+
 ### Спектральний ефект character (`examples/character_demo.rs`)
 
 Відношення енергії верх (4–18 kHz) / середина (150–1500 Hz):
@@ -251,7 +271,7 @@ fast path**: LFO не тикається, equal-power гейни та `powi_pos(
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 49 / 49 |
+| Тести | `cargo test` | 61 / 61 (57 юніт + 4 інтеграційні) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
