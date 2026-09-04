@@ -732,6 +732,27 @@ mod tests {
     }
 
     #[test]
+    fn extreme_cutoff_modulation_never_destabilises_the_filter() {
+        // Stack every cutoff modulator at its extreme at once: base cutoff near
+        // Nyquist, filter envelope swinging +6 oct, LFO→cutoff at its ±8 oct
+        // clamp, and resonance near the low end (the SVF's `k` is largest
+        // there — the one regime where a hypothetically unclamped
+        // `tan_turns_fast` past its 0.25-turn pole, which returns a *negative*
+        // g, could destabilise `1 + g·(g+k)`). Every write to the filter's
+        // cutoff goes through `Svf::set_cutoff`, which clamps to
+        // `[20, 0.45·fs]` before it ever reaches `recompute_g`, so this should
+        // never come close — but it's exactly the composite the RFC-17 audit
+        // worried about, so it's worth locking in.
+        let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+        s.set_gain(1.0);
+        s.set_filter(FilterMode::Low, 12_000.0, 0.02, 6.0);
+        s.set_filter_envelope(0.0005, 0.02, 1.0, 0.01);
+        s.set_lfo(11.0, LfoShape::Saw, LfoMode::FreeRun, 0.0, 0.0, 8.0, 0.0);
+        s.note_on(96, 1.0);
+        assert!(peak(&mut s, 48_000) < 20.0, "blew up under extreme cutoff modulation");
+    }
+
+    #[test]
     fn filter_envelope_is_independent_of_amp_envelope() {
         let sr = 48_000.0;
         let mut s: PolySynth<8> = PolySynth::new(sr);
