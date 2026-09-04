@@ -2,12 +2,14 @@
 
 **Поточний стан:** core stable, 57/57 тестів green (+1 `#[ignore]` дрейф),
 clippy чистий (std / no_std / nightly-simd). VST3 — `pluginval` strictness 8
-повний прохід (з GUI-тестами). CLAP — `clap-validator` 31/31 (2 групи
-state-тестів блоковані багами nih-plug, §Б2). Плагін має GUI (`nih_plug_vizia`).
+повний прохід (з GUI-тестами). CLAP — `clap-validator` **35/35** (баг
+`ext_state_load` виправлено через `[patch]` на `vendor/nih-plug`, §Б2). Плагін
+має GUI (`nih_plug_vizia`). Роадмапа закрита; лишилось В2 (ручна DAW-валідація)
+та публічний upstream-PR по Б2.
 
 **Прогрес:** ✅ Б3-крок-1 (крос-компіляція) · ✅ А1 (BLIT саw/трикутник) ·
-🔶 Б2 (фікс CLAP-обгортки nih-plug: патч готовий і перевірений 35/35,
-публічний PR — за користувачем, `10_NIH_PLUG_CLAP_BUGS.md`) ·
+✅ Б2 (фікс CLAP-обгортки nih-plug: `[patch]` на vendor → `clap-validator`
+35/35; публічний PR — за користувачем) ·
 ✅ Б1 (clean-voice fast path: +25 % на голос, +80 % поліфонії) ·
 ✅ А2 (LFO retrigger/free-run + матриця: LFO→cutoff, LFO→FM index) ·
 ✅ В3 (числовий дрейф виміряно: `5·10⁻⁹` ppm за 5.8 год) ·
@@ -121,29 +123,31 @@ state-тестів блоковані багами nih-plug, §Б2). Плагі�
   плагін рендерить посемплово (sample-accurate MIDI), тож блок-шлях не на
   гарячому шляху; лишається як опція для офлайн/`render_block`-споживачів.
 
-### Б2. Внесок в upstream — фікс CLAP-обгортки nih-plug 🔶 ПАТЧ ГОТОВИЙ, PR НЕ ПОДАНО
+### Б2. Фікс CLAP-обгортки nih-plug ✅ ВИКОНАНО (локальний `[patch]`; публічний PR — за користувачем)
 
 - **Проблема.** `src/wrapper/clap/wrapper.rs` (rev `de421011`, і на `master`):
-  (1) `ext_state_load` викликає `set_state_inner` напряму, **не постить**
-  `Task::RescanParamValues` → хост не отримує
+  (1) `ext_state_load` не постить `Task::RescanParamValues` → хост не отримує
   `clap_host_params::rescan(CLAP_PARAM_RESCAN_VALUES)` після `load`
   (`state-reproducibility-{basic,binary,buffered}` FAIL);
   (2) `Vec::with_capacity(length as usize)` з невалідованим `length` зі
-  стріму → alloc-abort (`0xc0000409`) на випадкових байтах
-  (`state-invalid-random` CRASH). VST3-шлях стану проходить `pluginval` —
+  стріму → **alloc-abort (`0xc0000409`) — жорсткий crash DAW** на пошкодженому
+  пресеті (`state-invalid-random`). VST3-шлях стану проходить `pluginval` —
   тобто це саме CLAP-обгортка.
-- **Зроблено.** Корінь, репро, патч і верифікація — `10_NIH_PLUG_CLAP_BUGS.md`.
-  Фікс: (1) `wrapper.schedule_gui(Task::RescanParamValues)` після успішного
-  `set_state_inner`, як у `set_state_object_from_gui`; (2) `try_reserve_exact`
-  замість `Vec::with_capacity`. Перевірено локально через `[patch]` на клон
-  nih-plug: **`clap-validator` 35/35, 0 fail** (було 31/4/9); VST3
-  `pluginval --strictness 8` не зачеплено.
-- **Не зроблено (потребує рішення користувача).** Публічний форк
-  `robbert-vdh/nih-plug` + PR; далі — `[patch]` на форк у
-  `harmonic_synth/Cargo.toml` + `xtask/Cargo.toml`.
-- **Оцінка.** S (патч тривіальний) + невизначений час на review.
-- **DoD.** PR відкрито; після мержу — бампнути `rev`, прибрати `--exclude` зі
-  `scripts/validate.*` і `[patch]`; `clap-validator` 35/35 без винятків.
+- **Зроблено.** Патчена копія pinned-дерева у `harmonic_synth/vendor/nih-plug/`
+  (тільки `nih_plug` + `_derive` + `_vizia` + `_xtask`), підключена через
+  `[patch."…/nih-plug.git"]` у `harmonic_synth/Cargo.toml` (покриває й
+  workspace-member `xtask`). Фікс: (1) `wrapper.schedule_gui(Task::RescanParamValues)`
+  після успішного `set_state_inner`, як у `set_state_object_from_gui`;
+  (2) `try_reserve_exact` замість `Vec::with_capacity`. `--exclude` зі
+  `scripts/validate.{ps1,sh}` **прибрано** (заодно `--skip-gui-tests`).
+- **Результат.** `cargo xtask validate`: `clap-validator` **35 / 35, 0 failed,
+  0 warnings** (було 31 / 4 / 9); `pluginval --strictness 8` (VST3, з
+  GUI-тестами) SUCCESS. Корінь, репро, склад vendor — `10_NIH_PLUG_CLAP_BUGS.md`.
+- **Не зроблено.** Публічний форк `robbert-vdh/nih-plug` + PR — за
+  користувачем. `contrib/nih-plug-clap-state-load-fix.patch` — готовий,
+  застосовується на `de421011` і `master`.
+- **DoD.** ✅ `clap-validator` 35/35 без винятків, без збоїв, без ворнінгів.
+  Після мержу upstream — видалити `vendor/nih-plug` + `[patch]`, бампнути `rev`.
 
 ### Б3. Фізична верифікація на залізі
 
@@ -220,8 +224,8 @@ state-тестів блоковані багами nih-plug, §Б2). Плагі�
 
 1. ~~**Б3 крок 1** (крос-компіляція)~~ — виконано (4 таргети чисто).
 2. ~~**А1** (BLIT пила/трикутник)~~ — ✅ виконано.
-3. **Б2** (nih-plug PR) — 🔶 патч готовий і перевірений (35/35), лишилось
-   подати публічний PR (рішення користувача).
+3. ~~**Б2** (фікс CLAP-обгортки)~~ — ✅ `[patch]` на `vendor/nih-plug` →
+   `clap-validator` 35/35; лишається лише публічний upstream-PR.
 4. ~~**Б1** (fast path)~~ — ✅ виконано (+25 % голос / +80 % поліфонія).
 5. ~~**А2** (LFO retrigger + матриця)~~ — ✅ виконано.
 6. ~~**В3** (drift-тест)~~ — ✅ виконано (`5·10⁻⁹` ppm).

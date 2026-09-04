@@ -45,9 +45,9 @@ cd harmonic_core && cargo doc --no-deps --open
 57 тестів проходять (53 юніт + 4 інтеграційні) + 1 `#[ignore]` (дрейф) · clippy чистий (stable +
 `--no-default-features --release` + nightly `--features portable-simd`) ·
 плагін збирається у VST3 + CLAP, має GUI (`nih_plug_vizia`: усі параметри +
-живий спектр) · **pluginval `--strictness-level 8`: повний прохід (VST3),
-включно з GUI-тестами** · **clap-validator: 31/31** (2 групи state-тестів
-виключено — баги nih-plug, фікс готовий, `10_NIH_PLUG_CLAP_BUGS.md`) ·
+живий спектр) · **pluginval `--strictness-level 8`: повний прохід (VST3, з
+GUI-тестами)** · **clap-validator: 35/35** (баг `ext_state_load` виправлено
+через `[patch]` на `vendor/nih-plug`, `10_NIH_PLUG_CLAP_BUGS.md`) ·
 осцилятор: closed-form additive + band-limited BLIT саw/трикутник · clean-voice
 fast path (~+25 % на голос, ~+80 % поліфонії) · LFO: retrigger/free-run +
 матриця (→ brightness / pitch / cutoff / FM index) · унісон з «диханням».

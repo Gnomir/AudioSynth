@@ -38,15 +38,14 @@ bundled="$synth_dir/target/bundled"
 failed=0
 
 echo; echo "=== pluginval (strictness $strictness): harmonic_synth.vst3 ==="
-"$pluginval" --strictness-level "$strictness" --validate-in-process --skip-gui-tests \
+"$pluginval" --strictness-level "$strictness" --validate-in-process \
              --timeout-ms 120000 --validate "$bundled/harmonic_synth.vst3" || failed=1
 
-# state-{reproducibility,invalid-random} excluded — nih-plug's CLAP state
-# wrapper (rev de421011) skips the post-load host param rescan and doesn't
-# bound-check the state length. VST3 state is fine (pluginval above).
+# The CLAP wrapper's `ext_state_load` fix (bounded allocation + post-load host
+# param rescan) is carried by `vendor/nih-plug` via [patch], so the full
+# state-* suite runs — no `--exclude`. See docs/10_NIH_PLUG_CLAP_BUGS.md.
 echo; echo "=== clap-validator: harmonic_synth.clap ==="
-"$clapval" validate --exclude '^state-(reproducibility|invalid-random)' \
-           "$bundled/harmonic_synth.clap" || failed=1
+"$clapval" validate "$bundled/harmonic_synth.clap" || failed=1
 
 if [ "$failed" -ne 0 ]; then echo "validation reported failures" >&2; exit 1; fi
-echo; echo "All validations passed (excluded CLAP state tests — see note)."
+echo; echo "All validations passed."

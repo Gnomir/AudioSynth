@@ -7,6 +7,9 @@ description = "Polyphonic MIDI synth: band-limited additive synthesis via the Di
 
 [workspace]
 members = ["xtask"]
+# `vendor/nih-plug` is our patched copy of the framework, pulled in through the
+# `[patch]` section below — it must not be treated as a workspace member.
+exclude = ["vendor"]
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -16,6 +19,16 @@ harmonic_core = { path = "../harmonic_core" }
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
 atomic_float = "0.1"
+
+# TEMPORARY: redirect nih-plug to `vendor/nih-plug`, our copy of the pinned
+# `de421011` tree with the CLAP `ext_state_load` fix applied (unvalidated
+# `Vec::with_capacity` → alloc-abort; missing host param rescan after a preset
+# load). Full analysis and the patch: `docs/10_NIH_PLUG_CLAP_BUGS.md`. Remove
+# this section and bump the `rev` above once the fix lands upstream.
+[patch."https://github.com/robbert-vdh/nih-plug.git"]
+nih_plug = { path = "vendor/nih-plug" }
+nih_plug_vizia = { path = "vendor/nih-plug/nih_plug_vizia" }
+nih_plug_xtask = { path = "vendor/nih-plug/nih_plug_xtask" }
 
 [profile.release]
 lto = "thin"

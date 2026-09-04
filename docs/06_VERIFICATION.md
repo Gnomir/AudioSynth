@@ -263,23 +263,17 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 
 | Формат | Утиліта | Результат |
 |---|---|---|
-| VST3 | `pluginval --strictness-level 8 --validate-in-process` | **SUCCESS — повний прохід**, включно з `Editor` / `Open editor whilst processing` / `Editor Automation` (редактор `nih_plug_vizia` тепер є, тож ці тести не пропускаються) та Plugin state / state restoration |
-| CLAP | `clap-validator` | **31 / 31** з виключеними `state-reproducibility-*` та `state-invalid-random` (9 skipped — N/A: note-ports тощо) |
+| VST3 | `pluginval --strictness-level 8 --validate-in-process` | **SUCCESS — повний прохід**, включно з `Editor` / `Open editor whilst processing` / `Editor Automation` (редактор `nih_plug_vizia`) та Plugin state / state restoration |
+| CLAP | `clap-validator` (без `--exclude`) | **35 / 35, 0 failed, 0 warnings** (9 skipped — N/A: note-ports тощо) |
 
-**Виключені CLAP-тести — це баги nih-plug, не наші** (rev `de421011`,
-`src/wrapper/clap/wrapper.rs`):
-1. `ext_state_load` викликає `set_state_inner` напряму й **не постить
-   `Task::RescanParamValues`** → хост не дізнається, що значення параметрів
-   змінились після `load`. (VST3-шлях `pluginval` це проходить — стан
-   круглить нормально.)
-2. `ext_state_load`: `Vec::with_capacity(length as usize)` з невалідованим
-   `length` зі стріму → alloc-abort (`0xc0000409`) на випадкових байтах
-   (`state-invalid-random`).
-
-Обидва підтверджені на `master`. Фікс написаний і перевірений локально
-(`[patch]` на клон nih-plug → **`clap-validator` 35/35, 0 fail**); корінь,
-репро та патч — **`10_NIH_PLUG_CLAP_BUGS.md`**. Публічний upstream-PR ще не
-подано. Після мержу — прибрати `--exclude` зі скриптів.
+Раніше 4 тести стану (`state-reproducibility-{basic,binary,buffered}` FAIL,
+`state-invalid-random` — жорсткий alloc-abort `0xc0000409`) блокувалися двома
+багами `ext_state_load` у CLAP-обгортці nih-plug (`de421011` і `master`):
+відсутній `rescan(CLAP_PARAM_RESCAN_VALUES)` після `load` та
+`Vec::with_capacity` на невалідованій довжині зі стріму. **Виправлено** через
+`[patch]` на `harmonic_synth/vendor/nih-plug/` (пропатчена копія pinned-дерева);
+корінь, патч, склад vendor — **`10_NIH_PLUG_CLAP_BUGS.md`**. Публічний
+upstream-PR — за користувачем.
 
 Апаратура: Windows 11 x86-64, pluginval 1.0.4, clap-validator 0.4.1.
 
@@ -289,7 +283,8 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 
 - **Живий DAW** (Ableton, Bitwig, Reaper, Logic) — не запускалось (лише
   pluginval / clap-validator, §6).
-- **CLAP state round-trip** — блокований багами nih-plug (§6); VST3 state — ок.
+- **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
+  лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
 - **Не-x86 таргети** (ARM Cortex-M4F/M0, AArch64, RISC-V) — `no_std`-збірка
   **компілюється чисто** під усі чотири (`cargo build --no-default-features
   --release --target …`); прогін тестів на реальному залізі / QEMU — ні.

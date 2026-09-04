@@ -14,15 +14,22 @@ bend, equal-power pan.
 Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs`
 · `harmonic_core/tests/spectrum.rs` (integration) ·
 `harmonic_synth/src/{lib,editor,analyzer}.rs` (host glue + `nih_plug_vizia` GUI +
-a cheap filter-bank spectrum display) · `harmonic_synth/xtask/` (bundler).
+a cheap filter-bank spectrum display) · `harmonic_synth/xtask/` (bundler) ·
+`harmonic_synth/vendor/nih-plug/` (patched framework copy, see below).
 
 ## Setup
 
 Rust stable (1.97 known-good). `harmonic_core` has **no dependencies** — keep it
 that way. `harmonic_synth` pulls `nih-plug` + `nih_plug_vizia` (heavy tree:
-baseview, vizia/femtovg, fonts) from git at **one** pinned rev, plus
-`atomic_float` — **first build needs network** and takes a few minutes. The
-`portable-simd` feature (core) needs nightly.
+baseview, vizia/femtovg, fonts) at **one** pinned rev, plus `atomic_float` —
+**first build needs network** and takes a few minutes. The `portable-simd`
+feature (core) needs nightly.
+
+`harmonic_synth/vendor/nih-plug/` is a **trimmed, patched copy** of that pinned
+tree, wired in via `[patch]` in `harmonic_synth/Cargo.toml` — it carries the
+CLAP `ext_state_load` fix until it lands upstream (`docs/10_NIH_PLUG_CLAP_BUGS.md`).
+Don't edit it beyond that fix; it's `-text` in `.gitattributes` to stay
+diff-able against the real repo.
 
 ## Build & test
 
@@ -94,6 +101,7 @@ Ask first before:
 
 - adding a dependency to `harmonic_core`, or dropping `panic = "abort"` / the
   `no_std` build;
-- changing the pinned `nih_plug` rev in `harmonic_synth/Cargo.toml`;
+- changing the pinned `nih_plug` rev, or the `[patch]` / `vendor/nih-plug`
+  contents in `harmonic_synth/`;
 - deleting files, `git init`, force-push, or setting up CI;
 - restructuring `docs/` (a numbered, cross-referenced set).

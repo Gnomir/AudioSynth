@@ -157,11 +157,11 @@ nightly Rust**. На stable явного `core::simd` шляху немає; п�
 - **VST3: `pluginval --strictness-level 8` — повний прохід** (`cargo xtask
   validate`). Включно з Plugin state / state restoration, зміною блоку та SR
   на льоту, перевіркою алокацій, автоматизацією, потокобезпекою, fuzzing.
-- **CLAP: `clap-validator` — 31/31**, але тести `state-reproducibility-*` та
-  `state-invalid-random` **виключені** — це баги CLAP-обгортки nih-plug
-  (`ext_state_load` не постить `Task::RescanParamValues`; не валідує `length`
-  стріму → OOM-abort). Не наш код; VST3-шлях стану проходить. Деталі —
-  `06_VERIFICATION.md §6`.
+- **CLAP: `clap-validator` — 35/35, без винятків.** Два баги `ext_state_load`
+  CLAP-обгортки nih-plug (немає `rescan` після `load`; `Vec::with_capacity`
+  на невалідованій довжині → OOM-abort) виправлено через `[patch]` на
+  `harmonic_synth/vendor/nih-plug/`. Upstream-PR — за користувачем.
+  `06 §6` / `10_NIH_PLUG_CLAP_BUGS.md`.
 - Реальні DAW (Ableton, Bitwig, Reaper, Logic) **ще не тестувались**.
 
 ---

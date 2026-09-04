@@ -62,20 +62,17 @@ $failed = $false
 
 # --- VST3: pluginval ---
 Write-Host "`n=== pluginval (strictness $Strictness): harmonic_synth.vst3 ===" -ForegroundColor Cyan
-& $pluginval --strictness-level $Strictness --validate-in-process --skip-gui-tests `
+& $pluginval --strictness-level $Strictness --validate-in-process `
              --timeout-ms 120000 --validate (Join-Path $bundled "harmonic_synth.vst3")
 if ($LASTEXITCODE -ne 0) { $failed = $true }
 
 # --- CLAP: clap-validator ---
-# state-{reproducibility,invalid-random} are excluded: they exercise nih-plug's
-# CLAP state wrapper, which (as of rev de421011) does not notify the host to
-# rescan params after `ext_state_load` and does not bound-check the state
-# length. VST3 state round-trips fine in pluginval above. Re-enable once
-# nih-plug is fixed upstream.
+# The CLAP wrapper's `ext_state_load` fix (bounded allocation + post-load host
+# param rescan) is carried by `vendor/nih-plug` via [patch], so the full
+# state-* suite runs with no `--exclude`. See docs/10_NIH_PLUG_CLAP_BUGS.md.
 Write-Host "`n=== clap-validator: harmonic_synth.clap ===" -ForegroundColor Cyan
-& $clapval validate --exclude "^state-(reproducibility|invalid-random)" `
-           (Join-Path $bundled "harmonic_synth.clap")
+& $clapval validate (Join-Path $bundled "harmonic_synth.clap")
 if ($LASTEXITCODE -ne 0) { $failed = $true }
 
 if ($failed) { throw "validation reported failures" }
-Write-Host "`nAll validations passed (see note above re: excluded CLAP state tests)." -ForegroundColor Green
+Write-Host "`nAll validations passed." -ForegroundColor Green
