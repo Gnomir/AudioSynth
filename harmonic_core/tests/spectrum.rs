@@ -104,6 +104,72 @@ fn rendered_voice_does_not_alias() {
 }
 
 #[test]
+fn partial_limit_truncates_the_spectrum_cleanly() {
+    let fs = 48_000.0;
+    let f0 = 220.0;
+    let limit = 12_u32;
+
+    let mut v = Voice::new(fs);
+    v.set_frequency(f0);
+    v.set_rolloff(0.995); // bright — every partial up to the limit is loud
+    v.set_gain(1.0);
+    v.set_partial_limit(limit);
+    v.reset();
+
+    let mut buf = vec![0.0_f32; 1 << 16];
+    let mut scratch = vec![0.0_f32; 1 << 16];
+    v.render_block(&mut buf, &mut scratch);
+
+    // Nyquist alone would allow 48000/(2*220) ≈ 109 partials — the limit is
+    // the binding constraint here.
+    assert!((fs / (2.0 * f0)) as u32 > limit);
+
+    // Energy present at the fundamental and right up to the limit...
+    assert!(dft_bin_mag(&buf, fs, f0) > 1e-3, "fundamental missing");
+    assert!(
+        dft_bin_mag(&buf, fs, f0 * limit as f64) > 1e-4,
+        "{limit}th partial missing — truncated too early"
+    );
+    // ...and effectively nothing from the (limit+1)th partial upward. Because
+    // the cap is applied *after* the Nyquist clamp, this is real truncation,
+    // not folding: there is no alias energy anywhere above it either.
+    for k in (limit + 1)..(limit + 10) {
+        let f = f0 * k as f64;
+        if f >= fs / 2.0 {
+            break;
+        }
+        assert!(
+            dft_bin_mag(&buf, fs, f) < 1e-4,
+            "partial {k} at {f:.0} Hz survived the limit: {:e}",
+            dft_bin_mag(&buf, fs, f)
+        );
+    }
+}
+
+#[test]
+fn default_partial_limit_is_bit_identical() {
+    // The default (MAX_PARTIALS) must be a no-op: `.min(partial_limit)` after
+    // `.min(MAX_PARTIALS)` changes nothing, so an untouched voice and one
+    // explicitly set to the max must render the exact same bits. (This is what
+    // keeps the cross-platform bit-exact hash unaffected by the feature.)
+    let mk = |set_max: bool| {
+        let mut v = Voice::new(44_100.0);
+        v.set_frequency(196.0);
+        v.set_rolloff(0.9);
+        v.set_gain(1.0);
+        if set_max {
+            v.set_partial_limit(2048);
+        }
+        v.reset();
+        let mut a = vec![0.0_f32; 4096];
+        let mut b = vec![0.0_f32; 4096];
+        v.render_block(&mut a, &mut b);
+        a
+    };
+    assert_eq!(mk(false), mk(true));
+}
+
+#[test]
 fn cost_is_flat_in_partial_count() {
     // Not a hard perf assertion (CI machines vary) — just confirms the call
     // does not scale with n the way an O(n) oscillator bank would.

@@ -99,6 +99,7 @@ pub struct Voice {
     geom_rn1: f64, geom_peak: f64,   // r^{n+1} та пік — обидва powi_pos пропускаються на сталій ноті
     waveform: Waveform,              // Geometric (дефолт) / Saw / Triangle
                                      // Saw/Triangle — PolyBLEP/PolyBLAMP, без стану
+    partial_limit: u32,             // стеля на кількість гармонік (деф. 2048 = без ефекту)
     // --- нелінійні стадії ---
     character: Character,            // включно з DC-blocker + S&H стан
     filter: Svf,                     // коеф. a1/a2/a3/k + інтегратори ic1/ic2
@@ -120,7 +121,7 @@ m = if lfo_routed { LFO.tick() ∈ [−1,1] } else { 0 }   [не тикаєть�
   ├─ fm_index_eff = [max(fm_index + lfo_to_fm·m, 0) якщо ≠ 0]
   └─ якщо lfo_to_cutoff ≠ 0: filter.set_cutoff(filter_cutoff · 2^(lfo_to_cutoff·m))
   │
-n = clamp(⌊f_s / (2·f_eff)⌋, 1, 2048)                  [Найквіст-кламп по f_eff]
+n = min(⌊f_s / (2·f_eff)⌋, 2048, partial_limit)        [Найквіст-кламп, тоді користувацька стеля]
 (geom-кеш: r^{n+1} та пік перераховуються лише коли (roll_eff, n) змінились)
   │
 drift = drift_depth·sin_turns_fast(drift_phase++)     [повільний дрейф фази, якщо depth≠0]
@@ -157,6 +158,7 @@ pub struct PolySynth<const VOICES: usize> {
     rolloff, gain,
     amp_a/d/s/r,                   // амплітудна ADSR
     character, fm_ratio, fm_index, feedback, free_running,
+    waveform, partial_limit,       // осцилятор: форма + стеля на гармоніки
     filter_mode, filter_cutoff, filter_res, filter_env,   // env_octaves
     fenv_a/d/s/r,                  // фільтрова ADSR
     unison_count, unison_detune, unison_spread, unison_drift,
@@ -237,8 +239,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 70 тести (65 юніт + 5 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 70/70, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 74 тести (67 юніт + 7 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 74/74, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |

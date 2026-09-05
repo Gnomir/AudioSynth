@@ -105,6 +105,15 @@ pub struct Voice {
     // Alternative waveform (Saw / Triangle are stateless PolyBLEP / PolyBLAMP).
     waveform: Waveform,
 
+    // User ceiling on the partial count. The effective count per sample is
+    // `min(partial_limit, ⌊fs / 2f_eff⌋, MAX_PARTIALS)`, so a "Partials"
+    // control can sweep the tone from a pure fundamental to the full bright
+    // pulse — at a flat cost (the closed form is O(log n) regardless) and with
+    // no aliasing at any setting (it is always ≤ the Nyquist clamp). Default
+    // `MAX_PARTIALS` = no effect. Ignored by Saw / Triangle (they are PolyBLEP,
+    // not the additive sum).
+    partial_limit: u32,
+
     character: Character,
     filter: Svf,
 }
@@ -184,6 +193,7 @@ impl Voice {
             geom_rn1: 0.0,
             geom_peak: 1.0,
             waveform: Waveform::Geometric,
+            partial_limit: MAX_PARTIALS,
             character: Character::new(),
             filter: Svf::new(sr),
         };
@@ -349,6 +359,19 @@ impl Voice {
         self.waveform = w;
     }
 
+    /// Upper bound on the number of partials in the geometric oscillator,
+    /// clamped to `[1, MAX_PARTIALS]`. The effective count is still capped at
+    /// the Nyquist limit `⌊fs / 2f_eff⌋`, so lowering this only ever makes the
+    /// tone darker — never aliased. Cost is flat in the partial count (the
+    /// closed form is `O(log n)` either way), so this is a free brightness
+    /// axis distinct from `rolloff`: `rolloff` tilts the spectrum, this
+    /// truncates it. Default `MAX_PARTIALS` = no effect. `Saw` / `Triangle`
+    /// ignore it.
+    #[inline]
+    pub fn set_partial_limit(&mut self, limit: u32) {
+        self.partial_limit = limit.clamp(1, MAX_PARTIALS);
+    }
+
     #[inline]
     pub fn set_filter_mode(&mut self, mode: FilterMode) {
         self.filter.set_mode(mode);
@@ -430,10 +453,15 @@ impl Voice {
         (self.geom_rn1, self.geom_peak)
     }
 
+    /// The partial count in effect right now: the Nyquist clamp
+    /// `⌊fs / 2f⌋`, further capped by [`Voice::set_partial_limit`].
     #[inline]
     pub fn max_partials(&self) -> u32 {
         let f = if self.freq_z > 1.0 { self.freq_z } else { 1.0 };
-        ((self.sample_rate / (2.0 * f)) as u32).max(1).min(MAX_PARTIALS)
+        ((self.sample_rate / (2.0 * f)) as u32)
+            .max(1)
+            .min(MAX_PARTIALS)
+            .min(self.partial_limit)
     }
 
     #[inline]
@@ -631,10 +659,17 @@ impl Voice {
             self.rolloff_z
         };
 
-        // Nyquist partial clamp tracks the effective (bent + vibrato) pitch.
+        // Nyquist partial clamp tracks the effective (bent + vibrato) pitch,
+        // then the user's `partial_limit` ceiling (default MAX_PARTIALS = none).
+        // Because the cap is applied *after* the Nyquist clamp, a lower limit
+        // only ever removes real harmonics — the result stays exactly
+        // band-limited, never aliased.
         let n = {
             let f = if f_eff > 1.0 { f_eff } else { 1.0 };
-            ((self.sample_rate / (2.0 * f)) as u32).max(1).min(MAX_PARTIALS)
+            ((self.sample_rate / (2.0 * f)) as u32)
+                .max(1)
+                .min(MAX_PARTIALS)
+                .min(self.partial_limit)
         };
 
         // ---- oscillator terms ----
@@ -793,6 +828,33 @@ mod tests {
             let p = mono_peak(&mut v, 48_000);
             assert!(p <= 1.5 && p > 0.05, "f={f} peak={p}");
         }
+    }
+
+    #[test]
+    fn partial_limit_caps_but_nyquist_still_wins() {
+        let mut v = Voice::new(48_000.0);
+        v.set_frequency(110.0);
+        for _ in 0..4000 {
+            v.render_sample();
+        } // freq_z fully settled
+        let nyq = v.max_partials(); // Nyquist-only (limit is default MAX)
+        assert!((150..260).contains(&nyq), "unexpected Nyquist count {nyq}");
+
+        v.set_partial_limit(50); // below Nyquist → binds
+        assert_eq!(v.max_partials(), 50);
+
+        v.set_partial_limit(nyq + 1000); // above Nyquist → moot (also clamped to MAX_PARTIALS)
+        assert_eq!(v.max_partials(), nyq);
+
+        v.set_partial_limit(0); // out of range → clamped to 1
+        assert_eq!(v.max_partials(), 1);
+
+        v.set_frequency(15_000.0); // Nyquist gives 1 partial here
+        for _ in 0..4000 {
+            v.render_sample();
+        }
+        v.set_partial_limit(200);
+        assert_eq!(v.max_partials(), 1);
     }
 
     #[test]

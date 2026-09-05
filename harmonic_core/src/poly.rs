@@ -176,6 +176,7 @@ pub struct PolySynth<const VOICES: usize> {
     hq: bool,
     hq_decim: HqBusDecimator,
     waveform: Waveform,
+    partial_limit: u32,
 
     counter: u64,
 }
@@ -234,6 +235,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             hq: false,
             hq_decim: HqBusDecimator::new(),
             waveform: Waveform::Geometric,
+            partial_limit: crate::voice::MAX_PARTIALS,
             counter: 0,
         };
         (s, status)
@@ -327,6 +329,16 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.waveform = w;
         for v in &mut self.voices {
             v.core.set_waveform(w);
+        }
+    }
+
+    /// Upper bound on the geometric oscillator's partial count, `[1, 2048]`.
+    /// Lowering it darkens the tone without aliasing and at a flat cost.
+    /// See [`Voice::set_partial_limit`].
+    pub fn set_partial_limit(&mut self, limit: u32) {
+        self.partial_limit = limit.clamp(1, crate::voice::MAX_PARTIALS);
+        for v in &mut self.voices {
+            v.core.set_partial_limit(self.partial_limit);
         }
     }
 
@@ -481,6 +493,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         v.core.set_free_running(self.free_running);
         v.core.set_hq(self.hq);
         v.core.set_waveform(self.waveform);
+        v.core.set_partial_limit(self.partial_limit);
         v.core.set_pitch_bend(self.bend_ratio);
         v.core.set_character(self.character);
         v.core.set_fm(self.fm_ratio, self.fm_index);
@@ -1004,6 +1017,65 @@ mod tests {
         let closed = hf(&mut s, (sr * 0.35) as usize, 4000);
         assert_eq!(s.active_voice_count(), 1, "amp env died early");
         assert!(open > closed * 1.5, "filter env not independent: {open:.5} vs {closed:.5}");
+    }
+
+    #[test]
+    fn set_partial_limit_darkens_the_whole_synth() {
+        let sr = 48_000.0;
+        let note = 40_u8; // ~82.4 Hz → the 24th partial (~1977 Hz) is well
+        let hi_partial = 24.0; // above a 6-partial cap and loud at rolloff 0.97
+
+        // |X(f)| of a rendered mono block at absolute frequency `f`.
+        let bin_mag = |buf: &[f32], f: f64| -> f64 {
+            let w = core::f64::consts::TAU * f / sr;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+        let render = |limit: Option<u32>, set_before_note: bool| -> Vec<f32> {
+            let mut s: PolySynth<8> = PolySynth::new(sr);
+            s.set_gain(1.0);
+            s.set_rolloff(0.97);
+            if set_before_note {
+                if let Some(l) = limit {
+                    s.set_partial_limit(l);
+                }
+                s.note_on(note, 1.0);
+            } else {
+                s.note_on(note, 1.0);
+                for _ in 0..400 {
+                    s.render_sample();
+                }
+                if let Some(l) = limit {
+                    s.set_partial_limit(l); // fan-out to the held voice
+                }
+            }
+            for _ in 0..400 {
+                s.render_sample();
+            }
+            (0..16384).map(|_| s.render_sample()[0]).collect()
+        };
+
+        let f_hi = midi_to_hz(note as f32) * hi_partial;
+
+        // held note, limit applied mid-flight
+        let full = bin_mag(&render(None, true), f_hi);
+        let capped = bin_mag(&render(Some(6), false), f_hi);
+        assert!(full > 5.0e-4, "24th partial missing at full range: {full:e}");
+        assert!(
+            capped < full * 0.05,
+            "partial limit did not remove the 24th partial from a held note: {capped:e} vs {full:e}"
+        );
+
+        // note triggered after the limit is set (exercises `trigger_one`)
+        let capped_fresh = bin_mag(&render(Some(6), true), f_hi);
+        assert!(
+            capped_fresh < full * 0.05,
+            "a fresh note ignored the partial limit: {capped_fresh:e}"
+        );
     }
 
     #[test]

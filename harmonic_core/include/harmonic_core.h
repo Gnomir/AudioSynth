@@ -78,6 +78,12 @@ void harmonic_voice_set_hq(HarmonicVoice *voice, unsigned int hq);
  * Unknown values fall back to geometric. */
 void harmonic_voice_set_waveform(HarmonicVoice *voice, unsigned int waveform);
 
+/* Upper bound on the geometric oscillator's partial count -> [1, 2048].
+ * Still capped at the Nyquist limit, so lowering it only darkens the tone
+ * (never aliases) and costs the same at any setting. 2048 (default) = no
+ * limit. Ignored by the sawtooth / triangle waveforms. */
+void harmonic_voice_set_partial_limit(HarmonicVoice *voice, unsigned int limit);
+
 /* Reset phase + smoothers + filter state (call on note-on). Honors
  * free_running: in that mode the oscillator phase keeps running. */
 void harmonic_voice_reset(HarmonicVoice *voice);
