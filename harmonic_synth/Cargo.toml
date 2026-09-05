@@ -34,6 +34,18 @@ nih_plug_xtask = { path = "vendor/nih-plug/nih_plug_xtask" }
 lto = "thin"
 opt-level = 3
 strip = "symbols"
+# nih-plug's CLAP/VST3 `extern "C"` entry points (wrapper.rs's `process`,
+# `activate`, etc.) call straight into Rust with no `catch_unwind` at the
+# boundary (checked: no such call anywhere in vendor/nih-plug/src/wrapper).
+# Unwinding across an `extern "C"` fn on stable Rust is UB, not merely
+# "unsafe" — so if a panic is ever reached here (harmonic_core's own
+# panic-free contract already covers its side; this covers nih-plug's glue
+# and this crate's), aborting the process is the well-defined outcome,
+# matching harmonic_core's own no_std panic_handler philosophy ("hanging is
+# safer than unwinding through a C ABI"). `cargo test`/`--release` are
+# unaffected: Cargo always builds `--test`/`--bench` harnesses with unwind
+# regardless of this setting, to keep per-test isolation.
+panic = "abort"
 
 [profile.release.package."*"]
 opt-level = 3

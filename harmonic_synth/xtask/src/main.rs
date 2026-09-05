@@ -1,10 +1,13 @@
 //! `cargo xtask <cmd>`.
 //!
 //! * `bundle harmonic_synth --release` — the nih-plug bundler (delegated).
-//! * `validate [--strictness N] [--pluginval PATH]` — build the VST3 + CLAP
-//!   bundles and run Tracktion `pluginval` against them (state recall,
-//!   block-size / sample-rate changes on the fly, allocation checks,
-//!   parameter automation, fuzzing). Shells out to `scripts/validate.*`.
+//! * `validate [--strictness N]` — build the VST3 + CLAP bundles and run
+//!   Tracktion `pluginval` (VST3) + `clap-validator` (CLAP) against them
+//!   (state recall, block-size / sample-rate changes on the fly, allocation
+//!   checks, parameter automation, fuzzing). Shells out to
+//!   `scripts/validate.{ps1,sh}`, which resolve both tools from `PATH` or
+//!   `harmonic_synth/tools/` (`-Fetch`/pwsh-only auto-downloads them there —
+//!   there is no flag to point at an arbitrary tool path).
 
 use std::path::Path;
 use std::process::Command;
