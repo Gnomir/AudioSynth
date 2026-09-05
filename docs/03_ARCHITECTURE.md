@@ -62,9 +62,9 @@ trig ──────────────┬──────────
 ## 2. `Voice` — стан одного голосу
 
 `#[repr(C)] #[derive(Clone, Copy)]`, **520 байт** (x86-64; `align = 8`), без
-`Drop`, без вказівників. Розмір зростав із розвитком рушія (востаннє —
-`Svf::base_sample_rate`, RFC-17-подальший аудит, `512→520`) — хост має
-викликати `harmonic_voice_size()` у рантаймі, не хардкодити число.
+`Drop`, без вказівників. Розмір може змінюватись між версіями — хост
+**обов'язково** викликає `harmonic_voice_size()` у рантаймі, не хардкодить
+число.
 
 ```rust
 pub struct Voice {
@@ -216,27 +216,20 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 - шляхів до паніки — `grep` не знаходить `unwrap`/`expect`/`panic!` у
   не-тестовому коді; усі ділення захищені за побудовою
   (`04_DSP_COMPONENTS.md`, `07_LIMITATIONS.md`);
-- `panic = "abort"` у `[profile.release]`.
+- `panic = "abort"`.
 
 У плагіні ввімкнена дефолтна фіча `nih-plug` **`assert_process_allocs`** —
 будь-яка алокація в `process()` панікує в хості (рантайм-контроль).
 
-**Аудит-21, фаза 3 — реальна прогалина, виправлено:** `panic = "abort"` у
-`[profile.release]` `harmonic_core` діяв лише коли крейт збирається як
-корінь workspace (`cd harmonic_core && cargo build --release`) — налашту-
-вання `[profile.*]` застосовуються тільки з КОРЕНЯ workspace, тож зібраний
-плагін (`harmonic_synth` — корінь) успадковував панічну стратегію ЗІ СВОГО
-`Cargo.toml`, де `panic=abort` не було задано взагалі (лише `lto`/
-`opt-level`/`strip`). nih-plug's `extern "C" fn process`/`activate` (тощо,
-`vendor/nih-plug/src/wrapper/*`) не мають `catch_unwind` на межі виклику
-(перевірено — `catch_unwind` немає ніде в `wrapper/`), тож розкрутка стека
-крізь `extern "C"` межу — undefined behavior, а не просто "небезпечно".
-Додано `panic = "abort"` у `harmonic_synth/Cargo.toml`'s `[profile.release]`
-— той самий принцип, що вже explicit у `no_std`-панік-хендлері
-harmonic_core ("hanging is safer than unwinding through a C ABI"), тепер
-і для фактично зібраного VST3/CLAP-бінарника, а не лише для standalone
-C-ABI шляху. `cargo xtask validate` (pluginval + clap-validator 35/35) і
-`cargo test`/`clippy` перевірено після зміни — без регресій.
+**`panic = "abort"` заданий у `[profile.release]` ОБОХ `Cargo.toml`** —
+`harmonic_core/` і `harmonic_synth/` окремо. Cargo застосовує `[profile.*]`
+лише з кореня активного workspace, а це два різні корені: без окремого рядка
+в `harmonic_synth/Cargo.toml` зібраний плагін успадковував би `panic=unwind`.
+Це важливо, бо `extern "C"` точки входу nih-plug (`process`/`activate` у
+`vendor/nih-plug/src/wrapper/`) **не мають** `catch_unwind` — паніка на
+аудіо-шляху інакше розкручувалася б крізь C-межу, що є UB. Той самий
+принцип, що й у `no_std`-панік-хендлері `harmonic_core` («зависання
+безпечніше за розкрутку крізь C ABI»).
 
 ---
 

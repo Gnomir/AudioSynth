@@ -158,9 +158,9 @@ fn fmax(a: f64, b: f64) -> f64 {
 #[inline(always)]
 fn clamp01(x: f32) -> f32 {
     // NaN compares false against everything and falls through unchanged
-    // without this check (RFC-19-followup audit) — a NaN `sustain` would
-    // otherwise latch permanently into the envelope's Sustain stage, which
-    // assigns `self.level = self.sustain` every tick with no other guard.
+    // without this check — a NaN `sustain` would otherwise latch permanently
+    // into the envelope's Sustain stage, which assigns `self.level =
+    // self.sustain` every tick with no other guard.
     if x.is_nan() || x < 0.0 {
         0.0
     } else if x > 1.0 {

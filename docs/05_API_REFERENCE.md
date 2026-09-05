@@ -72,8 +72,8 @@ SampleRateStatus` перебудовує (глушить голоси) і пов
 повертає `true` з `initialize` (`harmonic_synth/src/lib.rs`; `07 §11`
 має причину). `sample_rate() -> f64` — поточна валідована.
 Константа: `PolySynth::<N>::HQ_LATENCY = 16` — латентність Unified HQ Bus
-(RFC-16, `docs/15_TECHNICAL_SPEC_HQ_BUS.md`), незалежна від `Voice::
-HQ_LATENCY` (=3, лише для прямого `Voice`/C-ABI шляху нижче).
+(`04 §1.7`), незалежна від `Voice::HQ_LATENCY` (=3, лише для прямого
+`Voice`/C-ABI шляху нижче).
 
 **Тембр / рівень** (RT-fanout):
 ```rust
@@ -87,7 +87,7 @@ set_feedback(fb: f64)
 **Режим голосу** (RT-fanout):
 ```rust
 set_free_running(free: bool)
-set_hq(hq: bool)                                          // Unified HQ Bus (RFC-16); +PolySynth::HQ_LATENCY (=16) семплів
+set_hq(hq: bool)                                          // Unified HQ Bus; +PolySynth::HQ_LATENCY (=16) семплів
 set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
 set_unison(count: u32, detune_cents: f64, spread: f64, drift: f64)  // clamp [1,8] · [0,1] · [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
@@ -274,7 +274,7 @@ editor_state: Arc<ViziaState>`). Групи параметрів:
 | FM | FM Amount, FM Ratio, Feedback |
 | Фільтр | Filter (enum Off/LP/BP/HP/Notch), Cutoff, Resonance |
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |
-| Режим голосу | Free-Run Phase, **HQ Mode** (Unified HQ Bus, RFC-16 — **+16 семплів** латентності, `PolySynth::HQ_LATENCY`, PDC повідомляється константно; НЕ плутати з `Voice::HQ_LATENCY = 3`, яка стосується лише прямого C-ABI, не плагіна) |
+| Режим голосу | Free-Run Phase, **HQ Mode** (Unified HQ Bus — **+16 семплів** латентності, `PolySynth::HQ_LATENCY`, PDC повідомляється константно; НЕ плутати з `Voice::HQ_LATENCY = 3`, яка стосується лише прямого C-ABI, не плагіна) |
 | Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%), **Uni Drift** (%) |
 | Модуляція | Bend Range (st), LFO Rate, LFO Shape, **LFO Sync** (Retrigger/Free-Run), LFO → Bright, LFO Vibrato (ct), **LFO → Cutoff** (±4 окт), **LFO → FM** (±4) |
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cross-platform bit-exactness verification (RFC-15).
+# Cross-platform bit-exactness verification.
 #
 # Runs the full `harmonic_core` test suite — including the
 # `cross_platform_bit_exact` integration test, which compares the rendered

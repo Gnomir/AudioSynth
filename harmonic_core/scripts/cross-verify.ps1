@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Cross-platform bit-exactness verification (RFC-15).
+Cross-platform bit-exactness verification.
 
 .DESCRIPTION
 Runs the full harmonic_core test suite — including the cross_platform_bit_exact

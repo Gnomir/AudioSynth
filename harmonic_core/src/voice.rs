@@ -516,7 +516,7 @@ impl Voice {
     /// `Character` → `Svf` all run twice per output sample, at `2×` the base
     /// rate, but *without* per-voice decimation — the caller sums many
     /// voices' pairs and decimates once for the whole stereo mix
-    /// (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`). `Saw`/`Triangle` (already
+    /// (`docs/04_DSP_COMPONENTS.md` §1.7). `Saw`/`Triangle` (already
     /// band-limited PolyBLEP/PolyBLAMP, stateless) are not themselves
     /// oversampled — their single sample is held for both subsamples
     /// (zero-order hold; harmless, since it adds no new energy for the

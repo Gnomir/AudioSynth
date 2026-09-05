@@ -1,4 +1,4 @@
-//! Cross-platform bit-exactness (RFC-15).
+//! Cross-platform bit-exactness.
 //!
 //! `harmonic_core` uses no `libm` and no FMA (`docs/08 §3`): every hot-path
 //! operation is an IEEE-754 `+ − × ÷` or a bit reinterpret / saturating cast.

@@ -189,4 +189,4 @@ abort. Жодного довільного ліміту не треба: якщ�
    `harmonic_synth/Cargo.toml` + `xtask/Cargo.toml`, видалити
    `harmonic_synth/vendor/nih-plug/` та секцію `[patch]`, прибрати рядок
    `harmonic_synth/vendor/**` з `.gitattributes`. `clap-validator` має
-   лишитися 35/35. Оновити цей файл, `06 §6`, `09 §Б2`.
+   лишитися 35/35. Оновити цей файл, `06 §6`, `09` (пункт «Б2»).

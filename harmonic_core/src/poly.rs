@@ -44,23 +44,20 @@ impl PolyVoice {
     }
 }
 
-/// Master decimator for the unified HQ bus (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`,
-/// RFC-16). Decimates the whole stereo mix `2× → 1×` exactly once, replacing
-/// the up-to-`VOICES` independent per-voice decimators the old per-voice HQ
-/// path needed. One stereo instance lives on `PolySynth`; `Character`'s own
-/// (unrelated) per-voice decimator is untouched — it still backs the
-/// standalone `Voice` / C-ABI HQ path.
+/// Master decimator for the unified HQ bus (`docs/04_DSP_COMPONENTS.md` §1.7).
+/// Decimates the whole stereo mix `2× → 1×` exactly once, instead of one
+/// decimator per voice. One stereo instance lives on `PolySynth`; `Character`'s
+/// own (unrelated) per-voice decimator backs the standalone `Voice` / C-ABI
+/// HQ path.
 ///
 /// 65-tap linear-phase half-band FIR (windowed-sinc, Kaiser β for an ~85 dB
 /// design target, giving margin over the 80 dB spec). Only every second tap
 /// around the centre is non-zero (the half-band property), so 17 unique
-/// coefficients cover all 65. Measured (`examples/…` design script, not
-/// checked in — see the RFC-16 writeup): passband flat to `< 0.33 dB` up to
-/// `0.9×` the output Nyquist; reaches `−80` dB by `1.166×` the output
-/// Nyquist (worse only in that narrow transition sliver, not "−80 dB
-/// everywhere above Nyquist" — a literal 27-tap filter cannot deliver `−80`
-/// dB with any usable transition width; this is the real trade honestly
-/// reported instead of restated). Group delay `(65−1)/2 = 32` samples at
+/// coefficients cover all 65. Measured (design script, not checked in):
+/// passband flat to `< 0.33 dB` up to `0.9×` the output Nyquist; reaches
+/// `−80` dB by `1.166×` the output Nyquist (worse only in that narrow
+/// transition sliver — a 27-tap filter cannot deliver `−80` dB with any
+/// usable transition width). Group delay `(65−1)/2 = 32` samples at
 /// `2×` = **16 samples at `1×`**, exactly (unlike a 27-tap filter, whose
 /// group delay does not divide evenly by 2).
 struct HqBusDecimator {
@@ -267,8 +264,8 @@ impl<const VOICES: usize> PolySynth<VOICES> {
 
     pub fn set_gain(&mut self, g: f64) {
         // `NaN < 0.0` is false, so a bare comparison lets NaN straight
-        // through (RFC-19-followup audit) — this is the master gain, so a
-        // latched NaN here would silence/poison the *entire* mix, not just
+        // through — this is the master gain, so a latched NaN here would
+        // silence/poison the *entire* mix, not just
         // one voice.
         self.gain = if g.is_nan() || g < 0.0 { 0.0 } else { g };
     }
@@ -303,14 +300,13 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
-    /// Unified HQ bus (RFC-16): every voice's oscillator → `Character` → `Svf`
-    /// runs at `2×` the base rate, all voices sum at `2×`, the master
-    /// saturator runs at `2×`, and the whole mix is decimated back to `1×`
-    /// **once** — instead of each voice decimating independently. Adds
-    /// [`PolySynth::HQ_LATENCY`] samples of latency (constant; the host should
-    /// report it once and re-sync when this toggles — `docs/15
-    /// _TECHNICAL_SPEC_HQ_BUS.md §2.3.4`). `false` is bit-identical to the
-    /// pre-RFC-16 behaviour.
+    /// Unified HQ bus (`docs/04_DSP_COMPONENTS.md` §1.7): every voice's
+    /// oscillator → `Character` → `Svf` runs at `2×` the base rate, all voices
+    /// sum at `2×`, the master saturator runs at `2×`, and the whole mix is
+    /// decimated back to `1×` **once** — instead of each voice decimating
+    /// independently. Adds [`PolySynth::HQ_LATENCY`] samples of latency
+    /// (constant; the host reports it once and re-syncs when this toggles).
+    /// `false` is bit-identical to leaving HQ off.
     pub fn set_hq(&mut self, hq: bool) {
         self.hq = hq;
         for v in &mut self.voices {
@@ -628,9 +624,8 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         ]
     }
 
-    /// The unified HQ bus (RFC-16): sum every voice's `2×`-rate subsample pair,
-    /// master-saturate both, decimate once. See [`PolySynth::set_hq`] and
-    /// `docs/15_TECHNICAL_SPEC_HQ_BUS.md`.
+    /// The unified HQ bus: sum every voice's `2×`-rate subsample pair,
+    /// master-saturate both, decimate once. See [`PolySynth::set_hq`].
     #[inline]
     fn render_sample_hq_bus(&mut self) -> [f32; 2] {
         let mut lo = [0.0_f32; 2];
@@ -886,7 +881,7 @@ mod tests {
 
     #[test]
     fn hq_bus_master_clip_stays_under_75db_alias_floor() {
-        // RFC-16 DoD: with HQ on and the master driven ~6 dB into soft_clip,
+        // With HQ on and the master driven ~6 dB into soft_clip,
         // energy at frequencies that are *not* a harmonic of the fundamental
         // (i.e. could only be there via aliasing, since a single near-pure
         // tone through a symmetric saturator produces nothing else) must sit
@@ -969,8 +964,8 @@ mod tests {
         // g, could destabilise `1 + g·(g+k)`). Every write to the filter's
         // cutoff goes through `Svf::set_cutoff`, which clamps to
         // `[20, 0.45·fs]` before it ever reaches `recompute_g`, so this should
-        // never come close — but it's exactly the composite the RFC-17 audit
-        // worried about, so it's worth locking in.
+        // never come close — but it's the weakest-margin composite, so it's
+        // worth locking in.
         let mut s: PolySynth<8> = PolySynth::new(48_000.0);
         s.set_gain(1.0);
         s.set_filter(FilterMode::Low, 12_000.0, 0.02, 6.0);
@@ -1026,8 +1021,8 @@ mod tests {
         // deliberately (master limiter vs. per-voice saturator are different
         // roles that may want to diverge later), which means a future edit
         // to just one of them (e.g. "raise the master clip's clamp to ±4")
-        // would silently reintroduce the exact C¹-kink RFC-12 fixed, and
-        // nothing in this file would catch it — `tanh_pade_joins_the_clamp_
+        // would silently reintroduce the exact C¹-kink the ±3 clamp prevents,
+        // and nothing in this file would catch it — `tanh_pade_joins_the_clamp_
         // smoothly` in character.rs only exercises the other copy. Mirrors
         // that test here so both copies are independently regression-tested.
         let h = 1.0e-4_f32;
@@ -1044,10 +1039,10 @@ mod tests {
 
     #[test]
     fn clamps_reject_nan_instead_of_latching_it() {
-        // RFC-19-followup audit: the shared `clamp`/`clamp01` helpers used
-        // by every public setter across `voice.rs`/`env.rs`/`poly.rs` used to
-        // let NaN fall straight through (`NaN < lo` and `NaN > hi` are both
-        // false in IEEE-754). A hostile or buggy C-ABI caller passing NaN to
+        // The shared `clamp`/`clamp01` helpers used by every public setter
+        // across `voice.rs`/`env.rs`/`poly.rs` must not let NaN fall straight
+        // through (`NaN < lo` and `NaN > hi` are both false in IEEE-754). A
+        // hostile or buggy C-ABI caller passing NaN to
         // e.g. `harmonic_voice_set_frequency` would have latched NaN into
         // voice state and propagated it into every rendered sample from then
         // on. Exercise it at the PolySynth level: NaN gain/velocity must not
