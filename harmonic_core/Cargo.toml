@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Honest O(1)/O(log n) band-limited additive synthesis via the Dirichlet kernel. no_std, zero-dependency DSP core."
-repository = "https://example.invalid/harmonic_core"
+repository = "https://github.com/Gnomir/AudioSynth.git"
 keywords = ["dsp", "synthesis", "audio", "no_std", "additive"]
 categories = ["multimedia::audio", "no-std"]
 
