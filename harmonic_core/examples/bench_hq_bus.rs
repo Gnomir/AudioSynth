@@ -1,9 +1,8 @@
-//! RFC-16 DoD #4: measures the CPU cost of HQ mode, old architecture (each
-//! voice decimates independently, via `Voice::render_sample`'s own still-
-//! intact per-voice HQ path — the standalone/C-ABI path, and exactly what
-//! `PolySynth` used to do internally) vs new (`PolySynth`'s unified HQ bus:
-//! every voice emits an un-decimated `2×` subsample pair, one master
-//! decimator for the whole stereo mix).
+//! Measures the CPU cost of HQ mode: per-voice decimation (each voice
+//! decimates independently, via `Voice::render_sample`'s per-voice HQ path —
+//! the standalone/C-ABI path) vs the unified HQ bus (`PolySynth`: every voice
+//! emits an un-decimated `2×` subsample pair, one master decimator for the
+//! whole stereo mix). See `docs/06_VERIFICATION.md` — "Unified HQ Bus".
 //!
 //!   cargo run --example bench_hq_bus --release
 //!
@@ -25,11 +24,9 @@ fn hq_params() -> CharParams {
     CharParams { drive: 0.6, fold: 0.4, ..CharParams::CLEAN }
 }
 
-/// Old architecture, reconstructed faithfully from primitives that are still
-/// live in the crate: `n` independent `Voice`s, each with its own HQ path
-/// (own 2× oversample + own decimate, exactly `Voice::render_sample`'s
-/// intact standalone behaviour), manually summed and clipped once — this is
-/// exactly what `PolySynth::render_sample` did before RFC-16.
+/// Per-voice decimation: `n` independent `Voice`s, each with its own HQ path
+/// (own 2× oversample + own decimate — `Voice::render_sample`'s standalone
+/// behaviour), manually summed and clipped once.
 fn bench_old_per_voice_decimation(n: usize) -> f64 {
     let fs = 48_000.0;
     let mut voices: Vec<Voice> = (0..n)

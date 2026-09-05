@@ -194,9 +194,8 @@ sqrt, floor, ceil, round, trunc, mul_add}`,
 `String`. `grep` це підтверджує (`06_VERIFICATION.md §5`). Профіль релізу —
 `panic = "abort"`.
 
-**`abs`, `clamp`, `max`, `min` — НЕ заборонені** (виправлено після RFC-19
-аудиту, який хибно зарахував їх сюди). Це не транscendentні функції — на
-rustc 1.97 усі чотири реалізовані в `core` (intrinsics `minnumf64`/
+**`abs`, `clamp`, `max`, `min` — НЕ заборонені.** Це не трансцендентні
+функції — на rustc 1.97 усі чотири реалізовані в `core` (intrinsics `minnumf64`/
 `maxnumf64` тощо, компілюються в одну апаратну інструкцію `MINSD`/`MAXSD`/
 `ANDPD` тощо, без жодного символу `libm`). Перевірено емпірично: мінімальний
 `#![no_std] #![no_main]` бінарник під `thumbv6m-none-eabi` (Cortex-M0, без

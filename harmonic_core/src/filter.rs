@@ -44,7 +44,7 @@ pub struct Svf {
     // at construction, never touched by `set_sample_rate` — unlike
     // `sample_rate`, this must NOT double when HQ turns the filter's
     // operating rate to 2×, or the same modulation sweep would open the
-    // filter twice as far in HQ mode as at 1× (RFC-19 audit). `sample_rate`
+    // filter twice as far in HQ mode as at 1×. `sample_rate`
     // itself still has to track the real operating rate for prewarp
     // (`recompute_g`) and the smoother's timing — those need the true rate,
     // only the musical clamp doesn't.
@@ -122,10 +122,10 @@ impl Svf {
     /// Cutoff target in Hz. Clamped to `[20, 0.45·fs_base]` — against the
     /// *base* rate, not the current operating rate, so the same modulation
     /// sweep reaches the same ceiling whether or not the HQ bus has this
-    /// filter running at `2×` (RFC-19 audit: clamping against the doubled
-    /// operating rate let HQ-on sweeps open twice as far as HQ-off, an
-    /// audible tonal difference the HQ toggle is supposed to be silent
-    /// about). Smoothed toward per sample inside [`Self::process`].
+    /// filter running at `2×`. Clamping against the doubled operating rate
+    /// would let HQ-on sweeps open twice as far as HQ-off — an audible tonal
+    /// difference the HQ toggle is supposed to be silent about. Smoothed
+    /// toward per sample inside [`Self::process`].
     #[inline]
     pub fn set_cutoff(&mut self, hz: f64) {
         let hi = Self::MAX_CUTOFF_FRAC * self.base_sample_rate;
@@ -148,7 +148,7 @@ impl Svf {
 
     /// Reconfigure the filter to run at a different sample rate — for the
     /// unified HQ bus, which processes two subsamples per output sample at
-    /// `2×` the base rate (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`). Recomputes the
+    /// `2×` the base rate (`docs/04_DSP_COMPONENTS.md` §1.7). Recomputes the
     /// smoothing time constant and the cutoff clamp bound for the new rate,
     /// re-clamps the cutoff target/smoothed value against it, and rebuilds
     /// coefficients immediately (not lazily on the next moving-target check —
@@ -411,10 +411,10 @@ mod tests {
         s.set_sample_rate(96_000.0);
         assert_eq!(s.g, g96, "no-op set_sample_rate changed g");
 
-        // the musical cutoff ceiling must NOT track the new operating rate
-        // (RFC-19 audit): it stays pinned to the *base* rate (0.45*48000 =
-        // 21 600 Hz) even while running at 2x, so the same modulation sweep
-        // opens the filter to the same absolute Hz whether or not HQ is on.
+        // the musical cutoff ceiling must NOT track the new operating rate:
+        // it stays pinned to the *base* rate (0.45*48000 = 21 600 Hz) even
+        // while running at 2x, so the same modulation sweep opens the filter
+        // to the same absolute Hz whether or not HQ is on.
         s.set_cutoff(30_000.0); // > 0.45*48000 — must clamp down, not pass through
         assert!(
             (s.cutoff_t - 0.45 * 48_000.0).abs() < 1.0,
@@ -436,12 +436,12 @@ mod tests {
 
     #[test]
     fn cutoff_ceiling_is_identical_at_1x_and_hq_2x() {
-        // RFC-19 audit: the same requested cutoff — including one far past
-        // the 1x ceiling, as a fast LFO/envelope sweep would send — must
-        // clamp to the *same* Hz value whether the filter is running at its
-        // base rate or the HQ bus's 2x. Before this fix, HQ let the same
-        // sweep reach twice as far (a real, audible HQ-on/off tonal
-        // difference), because the clamp tracked the operating rate.
+        // The same requested cutoff — including one far past the 1x ceiling,
+        // as a fast LFO/envelope sweep would send — must clamp to the *same*
+        // Hz value whether the filter is running at its base rate or the HQ
+        // bus's 2x. If the clamp tracked the operating rate, HQ would let the
+        // same sweep reach twice as far — an audible HQ-on/off tonal
+        // difference.
         let base = 44_100.0;
         for requested in [8_000.0, 19_845.0, 25_000.0, 60_000.0, 500_000.0] {
             let mut s1x = Svf::new(base);

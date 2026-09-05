@@ -38,8 +38,9 @@ conditioned at every phase.
 - **Not** a general O(1) additive synth. Arbitrary per-partial envelopes cost
   O(n). The trick only works for spectra with a closed-form sum (flat,
   geometric). That is the real, narrow, defensible claim.
-- **Not** a sawtooth. `Σ sin(kx)/k` has no elementary closed form; the standard
-  O(1) route is leaky-integrated BLIT (Stilson & Smith 1996) — future work.
+- The geometric core is **not** a sawtooth — `Σ sin(kx)/k` has no elementary
+  closed form. Saw and triangle are provided separately as stateless
+  PolyBLEP / PolyBLAMP (`Waveform::Saw` / `Triangle`), not from the closed form.
 
 ## Build
 

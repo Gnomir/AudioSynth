@@ -136,7 +136,7 @@ impl Character {
     /// Like [`Character::process_hq`], but returns both 2×-rate samples
     /// un-decimated — for `PolySynth`'s unified HQ bus, which sums many
     /// voices' pairs and decimates once for the whole stereo mix instead of
-    /// once per voice (`docs/15_TECHNICAL_SPEC_HQ_BUS.md`).
+    /// once per voice (`docs/04_DSP_COMPONENTS.md` §1.7).
     #[inline]
     pub fn process_hq_pair(&mut self, lo: f32, hi: f32) -> (f32, f32) {
         if self.p.is_clean() {
@@ -326,8 +326,8 @@ mod tests {
         // `process_hq_pair` (2×, one call = one wall-clock 1×-sample worth of
         // time — its `.1` "hi" output lands at the same instant `process`'s
         // single output would) at matched call counts. If the 2× coefficient
-        // weren't rate-compensated (RFC-19 audit), the 2× curve would decay
-        // roughly twice as fast and diverge well before either settles.
+        // weren't rate-compensated, the 2× curve would decay roughly twice as
+        // fast and diverge well before either settles.
         let params = CharParams { drive: 0.6, bias: 0.5, ..CharParams::CLEAN };
         let mut c1x = Character::new();
         c1x.set_params(params);

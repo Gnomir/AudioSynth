@@ -119,11 +119,11 @@ impl LfoSync {
 }
 
 /// The plugin reports this constant latency (the unified HQ bus's master
-/// decimator group delay — `PolySynth::HQ_LATENCY`, RFC-16; *not*
-/// `Voice::HQ_LATENCY`, which is the smaller, unrelated per-voice figure for
-/// a standalone `Voice` driven directly, not through `PolySynth`). With HQ
-/// off, `HarmonicSynth::dly` re-adds the matching delay so the reported
-/// figure stays honest without ever *changing* at runtime.
+/// decimator group delay — `PolySynth::HQ_LATENCY`; *not* `Voice::HQ_LATENCY`,
+/// which is the smaller, unrelated per-voice figure for a standalone `Voice`
+/// driven directly, not through `PolySynth`). With HQ off, `HarmonicSynth::dly`
+/// re-adds the matching delay so the reported figure stays honest without ever
+/// *changing* at runtime.
 const HQ_LAT: usize = PolySynth::<MAX_VOICES>::HQ_LATENCY;
 
 struct HarmonicSynth {
