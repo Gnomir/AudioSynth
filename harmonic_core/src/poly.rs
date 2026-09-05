@@ -176,7 +176,7 @@ pub struct PolySynth<const VOICES: usize> {
     hq: bool,
     hq_decim: HqBusDecimator,
     waveform: Waveform,
-    partial_limit: u32,
+    partial_limit: f32,
 
     counter: u64,
 }
@@ -235,7 +235,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             hq: false,
             hq_decim: HqBusDecimator::new(),
             waveform: Waveform::Geometric,
-            partial_limit: crate::voice::MAX_PARTIALS,
+            partial_limit: crate::voice::MAX_PARTIALS as f32,
             counter: 0,
         };
         (s, status)
@@ -332,11 +332,12 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
-    /// Upper bound on the geometric oscillator's partial count, `[1, 2048]`.
-    /// Lowering it darkens the tone without aliasing and at a flat cost.
-    /// See [`Voice::set_partial_limit`].
-    pub fn set_partial_limit(&mut self, limit: u32) {
-        self.partial_limit = limit.clamp(1, crate::voice::MAX_PARTIALS);
+    /// Upper bound on the geometric oscillator's partial count, fractional,
+    /// `[1.0, 2048.0]`. Lowering it darkens the tone without aliasing and at a
+    /// flat cost; the fractional part gives a smooth (not stepped) sweep. See
+    /// [`Voice::set_partial_limit`].
+    pub fn set_partial_limit(&mut self, limit: f32) {
+        self.partial_limit = limit.clamp(1.0, crate::voice::MAX_PARTIALS as f32);
         for v in &mut self.voices {
             v.core.set_partial_limit(self.partial_limit);
         }
@@ -1035,7 +1036,7 @@ mod tests {
             }
             (re * re + im * im).sqrt() / buf.len() as f64
         };
-        let render = |limit: Option<u32>, set_before_note: bool| -> Vec<f32> {
+        let render = |limit: Option<f32>, set_before_note: bool| -> Vec<f32> {
             let mut s: PolySynth<8> = PolySynth::new(sr);
             s.set_gain(1.0);
             s.set_rolloff(0.97);
@@ -1063,7 +1064,7 @@ mod tests {
 
         // held note, limit applied mid-flight
         let full = bin_mag(&render(None, true), f_hi);
-        let capped = bin_mag(&render(Some(6), false), f_hi);
+        let capped = bin_mag(&render(Some(6.0), false), f_hi);
         assert!(full > 5.0e-4, "24th partial missing at full range: {full:e}");
         assert!(
             capped < full * 0.05,
@@ -1071,7 +1072,7 @@ mod tests {
         );
 
         // note triggered after the limit is set (exercises `trigger_one`)
-        let capped_fresh = bin_mag(&render(Some(6), true), f_hi);
+        let capped_fresh = bin_mag(&render(Some(6.0), true), f_hi);
         assert!(
             capped_fresh < full * 0.05,
             "a fresh note ignored the partial limit: {capped_fresh:e}"

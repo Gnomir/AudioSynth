@@ -113,7 +113,7 @@ fn partial_limit_truncates_the_spectrum_cleanly() {
     v.set_frequency(f0);
     v.set_rolloff(0.995); // bright — every partial up to the limit is loud
     v.set_gain(1.0);
-    v.set_partial_limit(limit);
+    v.set_partial_limit(limit as f32);
     v.reset();
 
     let mut buf = vec![0.0_f32; 1 << 16];
@@ -158,7 +158,7 @@ fn default_partial_limit_is_bit_identical() {
         v.set_rolloff(0.9);
         v.set_gain(1.0);
         if set_max {
-            v.set_partial_limit(2048);
+            v.set_partial_limit(2048.0);
         }
         v.reset();
         let mut a = vec![0.0_f32; 4096];

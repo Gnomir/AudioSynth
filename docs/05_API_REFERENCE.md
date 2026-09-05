@@ -46,7 +46,7 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_character(p: CharParams)` | RT | див. `CharParams` |
 | `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли; лише для `Waveform::Geometric` |
 | `set_waveform(w: Waveform)` | setup | `Geometric` / `Saw` / `Triangle`; Saw+Triangle — PolyBLEP/PolyBLAMP, ігнорують `rolloff` та HQ |
-| `set_partial_limit(limit: u32)` | setup | стеля на кількість гармонік, `[1, 2048]`, деф. 2048 = без ефекту; застосована після Найквіст-клампу (не аліасить), плоска вартість; лише `Waveform::Geometric` (`04 §0`) |
+| `set_partial_limit(limit: f32)` | setup | стеля на гармоніки, `[1.0, 2048.0]`, фракційна (гладкий свіп), деф. 2048 = без ефекту; після Найквіст-клампу (не аліасить), плоска вартість; лише `Waveform::Geometric` (`04 §0`) |
 | `set_filter_mode(m: FilterMode)` | setup | — |
 | `set_filter_cutoff(hz: f64)` | RT | `[20, 0.45·f_s]` Hz, згладж. ~1 мс всередині |
 | `set_filter_resonance(r: f64)` | RT | `[0, 1]` → `Q [0.5, 32]` |
@@ -90,7 +90,7 @@ set_feedback(fb: f64)
 set_free_running(free: bool)
 set_hq(hq: bool)                                          // Unified HQ Bus; +PolySynth::HQ_LATENCY (=16) семплів
 set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
-set_partial_limit(limit: u32)                             // стеля на гармоніки [1,2048], деф. 2048; після Найквіста; плоска вартість
+set_partial_limit(limit: f32)                            // стеля на гармоніки [1.0,2048.0], фракційна, деф. 2048; після Найквіста; плоска вартість
 set_unison(count: u32, detune_cents: f64, spread: f64, drift: f64)  // clamp [1,8] · [0,1] · [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
 set_lfo(rate_hz, shape: LfoShape, mode: LfoMode,
@@ -196,7 +196,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 520 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 528 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */
@@ -222,7 +222,7 @@ void harmonic_voice_set_lfo(HarmonicVoice*, double rate_hz,
                             double to_cutoff_oct, double to_fm);  /* 0 = target off */
 void harmonic_voice_set_hq(HarmonicVoice*, unsigned int hq);  /* !=0 → 2× OS, +3 семпли латентності */
 void harmonic_voice_set_waveform(HarmonicVoice*, unsigned int waveform); /* 0 geom / 1 saw / 2 tri */
-void harmonic_voice_set_partial_limit(HarmonicVoice*, unsigned int limit); /* [1,2048], 2048=none; after Nyquist, no alias, flat cost */
+void harmonic_voice_set_partial_limit(HarmonicVoice*, float limit); /* [1.0,2048.0] fractional, 2048=none; after Nyquist, no alias, flat cost */
 ```
 
 ### Робота

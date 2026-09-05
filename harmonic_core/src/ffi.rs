@@ -205,16 +205,18 @@ pub unsafe extern "C" fn harmonic_voice_set_waveform(ptr: *mut Voice, waveform: 
     }
 }
 
-/// Upper bound on the geometric oscillator's partial count, clamped to
-/// `[1, 2048]`. The effective count is still capped at the Nyquist limit,
-/// so lowering this only darkens the tone — it never aliases — and it costs
-/// the same at any setting. `2048` (the default) means no limit. Ignored by
-/// the sawtooth / triangle waveforms.
+/// Upper bound on the geometric oscillator's partial count, **fractional**,
+/// clamped to `[1.0, 2048.0]`. The integer part is the hard cap; the fraction
+/// fades the next partial in for a smooth, non-stepped sweep. The effective
+/// count is still capped at the Nyquist limit, so lowering this only darkens
+/// the tone — it never aliases — and it costs the same at any setting.
+/// `2048.0` (the default) means no limit. Ignored by the sawtooth / triangle
+/// waveforms.
 ///
 /// # Safety
 /// `ptr` must come from a successful [`harmonic_voice_init`].
 #[no_mangle]
-pub unsafe extern "C" fn harmonic_voice_set_partial_limit(ptr: *mut Voice, limit: u32) {
+pub unsafe extern "C" fn harmonic_voice_set_partial_limit(ptr: *mut Voice, limit: f32) {
     if let Some(v) = unsafe { ptr.as_mut() } {
         v.set_partial_limit(limit);
     }

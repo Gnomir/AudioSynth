@@ -7,7 +7,9 @@
 
 use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
-use crate::kernel::{geometric_partials_pre, geometric_peak_pre, powi_pos};
+use crate::kernel::{
+    geometric_partials_pre, geometric_partials_pre_frac, geometric_peak_pre, powi_pos,
+};
 use crate::lfo::{Lfo, LfoMode, LfoShape};
 use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns, sin_turns_fast};
 use crate::{validate_sample_rate, SampleRateStatus};
@@ -105,14 +107,16 @@ pub struct Voice {
     // Alternative waveform (Saw / Triangle are stateless PolyBLEP / PolyBLAMP).
     waveform: Waveform,
 
-    // User ceiling on the partial count. The effective count per sample is
-    // `min(partial_limit, ⌊fs / 2f_eff⌋, MAX_PARTIALS)`, so a "Partials"
-    // control can sweep the tone from a pure fundamental to the full bright
-    // pulse — at a flat cost (the closed form is O(log n) regardless) and with
-    // no aliasing at any setting (it is always ≤ the Nyquist clamp). Default
-    // `MAX_PARTIALS` = no effect. Ignored by Saw / Triangle (they are PolyBLEP,
-    // not the additive sum).
+    // User ceiling on the partial count — the "Partials" control. The integer
+    // part caps the count at `min(partial_limit, ⌊fs / 2f_eff⌋, MAX_PARTIALS)`;
+    // the fractional part fades the *next* partial in continuously, so the
+    // control is smooth across its whole 1.0..2048.0 range, not stepped. Flat
+    // cost (the closed form is O(log n) regardless), never aliases (the count
+    // is always ≤ the Nyquist clamp, and the fade is suppressed when Nyquist
+    // is the binding constraint). Default `2048.0` = no effect. Ignored by
+    // Saw / Triangle (they are PolyBLEP, not the additive sum).
     partial_limit: u32,
+    partial_frac: f32,
 
     character: Character,
     filter: Svf,
@@ -124,6 +128,7 @@ pub struct Voice {
 struct Modulation {
     roll_eff: f64,
     n: u32,
+    frac: f64, // fractional weight of the (n+1)-th partial, 0 unless the "Partials" ceiling binds
     fb: f64,
     step: f64,
     drift: f64,
@@ -194,6 +199,7 @@ impl Voice {
             geom_peak: 1.0,
             waveform: Waveform::Geometric,
             partial_limit: MAX_PARTIALS,
+            partial_frac: 0.0,
             character: Character::new(),
             filter: Svf::new(sr),
         };
@@ -360,16 +366,21 @@ impl Voice {
     }
 
     /// Upper bound on the number of partials in the geometric oscillator,
-    /// clamped to `[1, MAX_PARTIALS]`. The effective count is still capped at
-    /// the Nyquist limit `⌊fs / 2f_eff⌋`, so lowering this only ever makes the
-    /// tone darker — never aliased. Cost is flat in the partial count (the
-    /// closed form is `O(log n)` either way), so this is a free brightness
-    /// axis distinct from `rolloff`: `rolloff` tilts the spectrum, this
-    /// truncates it. Default `MAX_PARTIALS` = no effect. `Saw` / `Triangle`
-    /// ignore it.
+    /// **fractional**, clamped to `[1.0, MAX_PARTIALS as f32]`. The integer
+    /// part is the hard cap; the fractional part fades the next partial in
+    /// continuously, so the control is smooth across its whole range, not
+    /// stepped. The effective count is still capped at the Nyquist limit
+    /// `⌊fs / 2f_eff⌋`, so lowering this only ever darkens the tone — never
+    /// aliases (and the fractional fade is dropped when Nyquist binds). Cost
+    /// is flat in the partial count (the closed form is `O(log n)` either
+    /// way), so this is a free brightness axis distinct from `rolloff`:
+    /// `rolloff` tilts the spectrum, this truncates it. Default
+    /// `MAX_PARTIALS as f32` = no effect. `Saw` / `Triangle` ignore it.
     #[inline]
-    pub fn set_partial_limit(&mut self, limit: u32) {
-        self.partial_limit = limit.clamp(1, MAX_PARTIALS);
+    pub fn set_partial_limit(&mut self, limit: f32) {
+        let limit = limit.clamp(1.0, MAX_PARTIALS as f32);
+        self.partial_limit = limit as u32; // floor (limit ≥ 1.0)
+        self.partial_frac = limit - self.partial_limit as f32;
     }
 
     #[inline]
@@ -407,6 +418,19 @@ impl Voice {
         self.character.reset();
         self.filter.reset();
         self.lfo.retrigger();
+    }
+
+    /// The geometric oscillator sum at phase `ph`, normalised by `peak`. Uses
+    /// the integer closed form when `frac == 0` (the common case: default
+    /// setting, or the Nyquist clamp binding) so that path stays bit-identical;
+    /// otherwise fades the `(n+1)`-th partial in at weight `frac`.
+    #[inline]
+    fn geom_osc(ph: f64, r: f64, n: u32, rn1: f64, frac: f64, peak: f64) -> f64 {
+        if frac != 0.0 {
+            geometric_partials_pre_frac(ph, r, n, rn1, frac) / peak
+        } else {
+            geometric_partials_pre(ph, r, n, rn1) / peak
+        }
     }
 
     /// One band-limited sawtooth sample via **PolyBLEP** (Välimäki & Huovilainen
@@ -484,30 +508,36 @@ impl Voice {
             } else {
                 0.0
             };
-            let osc_lo = geometric_partials_pre(
+            let osc_lo = Self::geom_osc(
                 self.phase + mo.fm_term + mo.fb + mo.drift,
                 mo.roll_eff,
                 mo.n,
                 rn1,
-            ) / peak;
-            let osc_hi = geometric_partials_pre(
+                mo.frac,
+                peak,
+            );
+            let osc_hi = Self::geom_osc(
                 self.phase + 0.5 * mo.step + fm_hi + mo.fb + mo.drift,
                 mo.roll_eff,
                 mo.n,
                 rn1,
-            ) / peak;
+                mo.frac,
+                peak,
+            );
             self.last_osc = osc_lo;
             self.character.process_hq(osc_lo as f32, osc_hi as f32)
         } else {
             let osc = match self.waveform {
                 Waveform::Geometric => {
                     let (rn1, peak) = self.geom_norm(mo.roll_eff, mo.n);
-                    geometric_partials_pre(
+                    Self::geom_osc(
                         self.phase + mo.fm_term + mo.fb + mo.drift,
                         mo.roll_eff,
                         mo.n,
                         rn1,
-                    ) / peak
+                        mo.frac,
+                        peak,
+                    )
                 }
                 Waveform::Saw => {
                     Self::polyblep_saw(self.phase + mo.fm_term + mo.fb + mo.drift, mo.step)
@@ -566,18 +596,22 @@ impl Voice {
                 } else {
                     0.0
                 };
-                let lo = geometric_partials_pre(
+                let lo = Self::geom_osc(
                     self.phase + mo.fm_term + mo.fb + mo.drift,
                     mo.roll_eff,
                     mo.n,
                     rn1,
-                ) / peak;
-                let hi = geometric_partials_pre(
+                    mo.frac,
+                    peak,
+                );
+                let hi = Self::geom_osc(
                     self.phase + 0.5 * mo.step + fm_hi + mo.fb + mo.drift,
                     mo.roll_eff,
                     mo.n,
                     rn1,
-                ) / peak;
+                    mo.frac,
+                    peak,
+                );
                 (lo, hi)
             }
             Waveform::Saw | Waveform::Triangle => {
@@ -663,13 +697,18 @@ impl Voice {
         // then the user's `partial_limit` ceiling (default MAX_PARTIALS = none).
         // Because the cap is applied *after* the Nyquist clamp, a lower limit
         // only ever removes real harmonics — the result stays exactly
-        // band-limited, never aliased.
-        let n = {
+        // band-limited, never aliased. `frac` fades the (n+1)-th partial in,
+        // but only when the user's ceiling is what binds: if Nyquist is the
+        // limit, fading in partial n+1 would put energy above it, so drop it.
+        let nyq = {
             let f = if f_eff > 1.0 { f_eff } else { 1.0 };
-            ((self.sample_rate / (2.0 * f)) as u32)
-                .max(1)
-                .min(MAX_PARTIALS)
-                .min(self.partial_limit)
+            ((self.sample_rate / (2.0 * f)) as u32).max(1).min(MAX_PARTIALS)
+        };
+        let n = nyq.min(self.partial_limit);
+        let frac = if self.partial_limit < nyq {
+            self.partial_frac as f64
+        } else {
+            0.0
         };
 
         // ---- oscillator terms ----
@@ -704,7 +743,7 @@ impl Voice {
             0.0
         };
 
-        Modulation { roll_eff, n, fb, step, drift, fm_index, fm_term, m }
+        Modulation { roll_eff, n, frac, fb, step, drift, fm_index, fm_term, m }
     }
 
     /// Advance the carrier/FM phase accumulators by `step` and refresh the
@@ -840,21 +879,54 @@ mod tests {
         let nyq = v.max_partials(); // Nyquist-only (limit is default MAX)
         assert!((150..260).contains(&nyq), "unexpected Nyquist count {nyq}");
 
-        v.set_partial_limit(50); // below Nyquist → binds
+        v.set_partial_limit(50.7); // below Nyquist → binds (integer part)
         assert_eq!(v.max_partials(), 50);
 
-        v.set_partial_limit(nyq + 1000); // above Nyquist → moot (also clamped to MAX_PARTIALS)
+        v.set_partial_limit((nyq + 1000) as f32); // above Nyquist → moot (also clamped to MAX_PARTIALS)
         assert_eq!(v.max_partials(), nyq);
 
-        v.set_partial_limit(0); // out of range → clamped to 1
+        v.set_partial_limit(0.0); // out of range → clamped to 1
         assert_eq!(v.max_partials(), 1);
 
         v.set_frequency(15_000.0); // Nyquist gives 1 partial here
         for _ in 0..4000 {
             v.render_sample();
         }
-        v.set_partial_limit(200);
+        v.set_partial_limit(200.5);
         assert_eq!(v.max_partials(), 1);
+    }
+
+    #[test]
+    fn partial_frac_fades_in_the_next_partial() {
+        // With the ceiling at n.frac, the (n+1)-th harmonic should be present
+        // at roughly `frac` of its full amplitude — a continuous sweep, not a
+        // step. And when Nyquist is what binds, the fraction must be dropped
+        // (fading in a partial above Nyquist would alias).
+        let fs = 48_000.0;
+        let f0 = 220.0; // Nyquist allows ~109 partials — the ceiling binds
+        let mag7 = |limit: f32| -> f64 {
+            let mut v = Voice::new(fs);
+            v.set_frequency(f0);
+            v.set_rolloff(0.995);
+            v.set_gain(1.0);
+            v.set_partial_limit(limit);
+            v.reset();
+            let mut buf = vec![0.0_f32; 1 << 15];
+            let mut scr = vec![0.0_f32; 1 << 15];
+            v.render_block(&mut buf, &mut scr);
+            let w = core::f64::consts::TAU * (f0 * 7.0) / fs;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+        let none = mag7(6.0); // 7th partial absent
+        let half = mag7(6.5); // ~half in
+        let full = mag7(7.0); // fully in
+        assert!(none < full * 0.05, "7th partial present at limit 6.0: {none:e}");
+        assert!(half > full * 0.25 && half < full * 0.75, "fade not ~half: {half:e} vs {full:e}");
     }
 
     #[test]

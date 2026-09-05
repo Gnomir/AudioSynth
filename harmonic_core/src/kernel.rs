@@ -107,6 +107,23 @@ pub fn geometric_partials_pre(p: f64, r: f64, n: u32, rn1: f64) -> f64 {
     num / den
 }
 
+/// [`geometric_partials_pre`] with the `(n+1)`-th partial faded in at weight
+/// `frac ∈ [0, 1)` — a continuous partial count. `S_{n+frac}(p) = S_n(p) +
+/// frac · r^{n+1} · cos(2π(n+1)p)`, the exact next term of the finite sum. Costs
+/// one extra `cos` over the integer form. `frac = 0` is **not** special-cased
+/// here — callers gate on it so `frac = 0` takes [`geometric_partials_pre`]
+/// verbatim (bit-exactness).
+#[inline]
+pub fn geometric_partials_pre_frac(p: f64, r: f64, n: u32, rn1: f64, frac: f64) -> f64 {
+    let base = geometric_partials_pre(p, r, n, rn1);
+    if n == 0 || r >= 1.0 || r <= 0.0 {
+        // degenerate branches of `geometric_partials_pre` — no well-defined
+        // `r^{n+1}` partial to add (or `rn1` is not `r^{n+1}`).
+        return base;
+    }
+    base + frac * rn1 * cos_turns((n as f64 + 1.0) * p)
+}
+
 /// Peak amplitude of [`geometric_partials`] for the given `r`, `n` — used for
 /// normalisation so the rendered signal sits in `[-1, 1]`-ish.
 #[inline]
@@ -354,6 +371,29 @@ mod tests {
                         "n={n} r={r} p={p}"
                     );
                     p += 0.017;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn frac_partial_at_one_equals_the_next_integer_partial() {
+        // `geometric_partials_pre_frac(.., frac=1.0)` adds a full r^{n+1}
+        // partial, so it must equal S_{n+1} — proving the fractional term is
+        // *exactly* the next member of the finite sum, not an approximation.
+        for &n in &[1u32, 3, 27, 200, 1000] {
+            for &r in &[0.3_f64, 0.7, 0.9, 0.99] {
+                let rn1 = powi_pos(r, n + 1);
+                let rn2 = powi_pos(r, n + 2);
+                let mut p = 0.003_f64;
+                while p < 1.0 {
+                    let faded = geometric_partials_pre_frac(p, r, n, rn1, 1.0);
+                    let next = geometric_partials_pre(p, r, n + 1, rn2);
+                    // the two paths reach cos(2π(n+1)p) by different routes, so
+                    // they differ by a few ULP of trig noise at large n·p, not
+                    // by a whole partial.
+                    assert!((faded - next).abs() < 1e-9, "n={n} r={r} p={p}: {faded} vs {next}");
+                    p += 0.019;
                 }
             }
         }

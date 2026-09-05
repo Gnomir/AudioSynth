@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **74 тести проходять** (67
+Що перевірено, як, і якими числами. Статус: **76 тестів проходять** (69
 юніт + 7 інтеграційних) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
 чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP, увесь набір
 проходить біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
@@ -44,7 +44,7 @@
 |---|---|
 | `sample_rate_validation_reports_instead_of_substituting` | `validate_sample_rate` клампить (не підставляє 48k) і повертає `Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`; `Voice::new_checked` та `PolySynth::set_sample_rate` пробрасують статус |
 
-### `kernel` (6)
+### `kernel` (7)
 
 | Тест | Що доводить |
 |---|---|
@@ -53,6 +53,7 @@
 | `geometric_matches_naive_sum` | `S_n` vs `Σ rᵏ cos(kx)` для `r ∈ {0.3…0.999}`, `n` до 1024 |
 | `dirichlet_peak_and_dc` | пік = `n`, середнє за період `< 10⁻²` |
 | `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно = `geometric_partials`, `n` до 1500, `r` до 1.0 |
+| `frac_partial_at_one_equals_the_next_integer_partial` | `geometric_partials_pre_frac(…, frac=1.0)` == `S_{n+1}` (`< 10⁻⁹`) — доводить, що дробовий член це **точно** наступна гармоніка скінченної суми, не апроксимація |
 | `geometric_reduces_to_fundamental_for_small_r` | `r = 10⁻³` → нормований вихід ≈ `cos(x)` у межах `5·10⁻³` |
 
 ### `character` (9)
@@ -101,7 +102,7 @@
 | `triangle_and_saw_hit_their_peaks` | пік `> 0.95`, мін `< −0.95` |
 | `free_run_mode_survives_retrigger` | `FreeRun` — `retrigger()` не чіпає фазу; `Retrigger` (дефолт) — скидає в 0 |
 
-### `voice` (12 + 1 `#[ignore]`)
+### `voice` (13 + 1 `#[ignore]`)
 
 | Тест | Що доводить |
 |---|---|
@@ -116,7 +117,8 @@
 | `free_running_phase_survives_note_on` | `free_running=true` → фаза не змінилась на `reset()`; `false` → фаза = 0 |
 | `declick_ramps_in_from_near_zero` | перший семпл після `reset()` тихіший за пік перших 64 |
 | `pitch_bend_and_lfo_stay_finite` | bend `+2 st` + LFO вібрато `25 ct` → пік `≤ 1.5` на 96000 семплів |
-| `partial_limit_caps_but_nyquist_still_wins` | `set_partial_limit` нижче Найквіста → `max_partials()` == стеля; вище → Найквіст усе одно кепує; `0` → кламп до 1; біля Найквіста (n=1) стеля моот |
+| `partial_limit_caps_but_nyquist_still_wins` | `set_partial_limit` нижче Найквіста → `max_partials()` == ⌊стеля⌋; вище → Найквіст усе одно кепує; `0.0` → кламп до 1; біля Найквіста (n=1) стеля моот |
+| `partial_frac_fades_in_the_next_partial` | стеля `n.5` → DFT-магнітуда `(n+1)`-ї гармоніки ≈ пів-значення проти стелі `n+1.0` (неперервний свіп, не сходинка); при стелі `n.0` вона відсутня; коли зв'язує Найквіст — `frac` скидається (не аліасить) |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
 ### `poly` (15)
@@ -147,7 +149,7 @@
 | `geometric_is_a_true_finite_sum` | усічення на `n` vs на `4n` збігаються (`< 10⁻⁶`) → форма скінченна, не нескінченна |
 | `rendered_voice_does_not_alias` | DFT рендеру @440 Hz, `r=0.995`: енергія на `f₀` та 10-й гармоніці присутня; `< 10⁻⁴` вище клампу (54 гарм.) та в дзеркальних цілях |
 | `partial_limit_truncates_the_spectrum_cleanly` | `set_partial_limit(12)` при f₀=220, r=0.995 (Найквіст дав би ~109): DFT показує енергію до 12-ї гармоніки, `< 10⁻⁴` від 13-ї вгору — реальне обрізання, не фолдинг (кламп після Найквіста) |
-| `default_partial_limit_is_bit_identical` | голос без `set_partial_limit` і голос, явно виставлений на 2048, рендерять **побайтово** однаковий блок — деф. це no-op, крос-платформний хеш не зачеплено |
+| `default_partial_limit_is_bit_identical` | голос без `set_partial_limit` і голос, явно виставлений на `2048.0` (`frac = 0`), рендерять **побайтово** однаковий блок — деф. бере цілочисельну гілку `geometric_partials_pre`, крос-платформний хеш не зачеплено |
 | `cost_is_flat_in_partial_count` | час(1200 гарм.) / час(3 гарм.) `< 25×` (не `~400×`) |
 
 ### `tests/cross_platform_bit_exact.rs` — інтеграційний (1)
@@ -313,7 +315,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 74 / 74 (67 юніт + 7 інтеграційних) |
+| Тести | `cargo test` | 76 / 76 (69 юніт + 7 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -360,8 +362,8 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **74 / 74 pass** (67 юніт + 7 інтеграційних) |
-| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **74 / 74 pass** |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **76 / 76 pass** (69 юніт + 7 інтеграційних) |
+| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **76 / 76 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
 рендеру всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`:
@@ -388,7 +390,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 74/74, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 76/76, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.
