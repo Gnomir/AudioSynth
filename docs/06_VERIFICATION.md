@@ -2,7 +2,7 @@
 
 Що перевірено, як, і якими числами. Статус: **97 тестів `harmonic_core`**
 (79 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **7 у плагіні** (analyzer, A/B morph, seed randomiser) + 1 `#[ignore]`
+`tests/stress.rs`) + **10 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -390,7 +390,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (7, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (10, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -401,6 +401,9 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `rando::code_round_trips_and_normalises_look_alikes` | `decode(encode(seed)) == seed` для крайніх seed; case-insensitive; Crockford `I/L→1`, `O→0`; відкидає невірну довжину / символ. `07 §19` |
 | `rando::value_for_is_deterministic_in_range_and_varies` | той самий seed → той самий патч (побайтово вектор); різні seed → різний; кожен параметр у своєму вікні `SPEC`; нерандомізований (`hqmode`) → `None` |
 | `rando::distribution_spans_each_window` | по 400 seed кожне широке вікно покривається зверху донизу (`< lo + 0.15·span` та `> hi − 0.15·span`) — груба перевірка якості хешу |
+| `presets::every_preset_names_only_real_parameters` | кожен `#[id]` у `PRESETS` — реальний параметр (типо в id → лоадер тихо пропускає), значення скінченні; банк `≥ 20` пресетів; `[0]` = «Init» без оверрайдів |
+| `presets::every_preset_renders_bounded_non_silent_audio` | кожен пресет застосований у `PolySynth<8>` (мапінг plain→рушій дзеркалить `process()`), акорд 1 с: скінченне, пік `≤ 1.01`, RMS `> 2·10⁻³`; після `all_notes_off` + 6 с хвіст `< 5·10⁻³` (реліз працює) |
+| `presets::bass_presets_are_actually_bassy` | «Deep Sub» / «FM Bass» на ~55 Гц: енергія `40…300 Гц` `> 3×` енергії `2…6 кГц` — назви не брешуть |
 
 ---
 
