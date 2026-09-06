@@ -52,7 +52,7 @@
 | `pre_variants_are_bit_identical` | `geometric_partials_pre` / `geometric_peak_pre` == оригінали **бітово** для `powi_pos(r, n±1)` (гарантія кешу fast path) |
 | `geometric_matches_naive_sum` | `S_n` vs `Σ rᵏ cos(kx)` для `r ∈ {0.3…0.999}`, `n` до 1024 |
 | `dirichlet_peak_and_dc` | пік = `n`, середнє за період `< 10⁻²` |
-| `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно = `geometric_partials`, `n` до 1500, `r` до 1.0 |
+| `batched_x4_matches_scalar` | `geometric_partials_x4` полейнно ≈ `geometric_partials` у межах `5·10⁻⁶·n + 10⁻⁶` (батч-шлях не гарантує біт-ідентичність зі скаляром — він поза детермінованим гарячим трактом), `n` до 1500, `r` до 1.0 |
 | `frac_partial_at_one_equals_the_next_integer_partial` | `geometric_partials_pre_frac(…, frac=1.0)` == `S_{n+1}` (`< 10⁻⁹`) — доводить, що дробовий член це **точно** наступна гармоніка скінченної суми, не апроксимація |
 | `geometric_reduces_to_fundamental_for_small_r` | `r = 10⁻³` → нормований вихід ≈ `cos(x)` у межах `5·10⁻³` |
 

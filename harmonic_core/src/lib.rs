@@ -44,8 +44,9 @@
 //!   works because flat and geometric spectra have closed forms (finite
 //!   geometric series). Arbitrary spectra do not.
 //! * An exact O(1) band-limited *sawtooth* (`Σ sin(kx)/k`) has no elementary
-//!   closed form. The standard route is leaky-integrated BLIT
-//!   (Stilson & Smith 1996) — noted here as future work, not implemented.
+//!   closed form. `Waveform::Saw` / `Triangle` are stateless PolyBLEP /
+//!   PolyBLAMP (Välimäki & Huovilainen 2007), provided separately from the
+//!   closed form.
 //!
 //! ## no_std
 //!

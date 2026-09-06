@@ -144,20 +144,16 @@ without SIMD (Cortex-M). `--features portable-simd` (nightly) adds an explicit
 character stages are serial recursive filters; the batch API is for the bare
 oscillator / offline rendering.
 
-## Roadmap (honest)
+## Status & roadmap
 
-1. ~~`nih-plug` VST3/CLAP wrapper, polyphony, amp envelope.~~ ✔ `../harmonic_synth`
-2. ~~Character stage: drive / fold / grit / FM / feedback.~~ ✔
-3. ~~ZDF state-variable filter, resonance, per-sample smoothing.~~ ✔
-4. ~~Dedicated filter ADSR.~~ ✔ · ~~Stereo + equal-power pan + unison.~~ ✔
-5. ~~Pitch bend + LFO (sine/tri/saw → brightness, vibrato).~~ ✔ · ~~De-click + free-running phase.~~ ✔
-6. ~~Batched / SIMD oscillator.~~ ✔ `geometric_partials_x4`
-7. ~~2× oversampled oscillator + Character ("HQ Mode") — clean nonlinear stages.~~ ✔
-8. ~~Sample-rate validation with a status code (was a silent 48 k fallback).~~ ✔
-9. ~~Fast 4-term trig for LFO / pan (16-bit is plenty for modulators).~~ ✔
-10. ~~`pluginval` script (`cargo xtask validate`).~~ ✔ — run pending an install.
-11. 4× HQ + oversampled filter; oversample the master `soft_clip`.
-12. Leaky-integrated BLIT → band-limited saw/triangle (still O(1)).
-13. Filter-free "clean voice" fast path over the batched oscillator.
-14. Spatial SIMD: 4–8 voices in parallel (SoA `PolySynth`).
-15. Minimal GUI (`nih_plug_vizia`).
+The plugin (`../harmonic_synth`), Character stage, ZDF filter, dual ADSR,
+stereo + unison + drift, pitch bend, per-voice LFO with a modulation matrix,
+PolyBLEP saw/triangle, the fractional "Partials" knob, sample-rate validation,
+the batched oscillator, the HQ oversampling bus, the clean-voice fast path, and
+the `nih_plug_vizia` GUI are all done. `pluginval --strictness 8` and
+`clap-validator 35/35` pass.
+
+What's left, and the deliberately-deferred directions with their reasons, are in
+**[`../docs/09_ROADMAP.md`](../docs/09_ROADMAP.md)** — the short version is: live
+DAW validation, an upstream PR for the nih-plug CLAP fix, and 4× HQ / SoA-SIMD /
+a second geometric kernel if a concrete need ever appears.

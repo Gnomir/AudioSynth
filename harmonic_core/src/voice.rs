@@ -446,8 +446,7 @@ impl Voice {
     /// One band-limited triangle sample via **PolyBLAMP** (the integral of the
     /// PolyBLEP step): the naïve triangle with a cubic corner correction at each
     /// of its two slope discontinuities. Stateless, no integrators, no DC
-    /// blockers — the sub-bass roll-off of the old leaky-BLIT version is gone
-    /// (flat within ~0.1 dB down to 20 Hz). Output ≈ `[−1, 1]`.
+    /// blockers — flat within ~0.1 dB down to 20 Hz. Output ≈ `[−1, 1]`.
     #[inline]
     fn polyblamp_triangle(phase: f64, dt: f64) -> f64 {
         let p = phase - floor_f64(phase);
@@ -1068,8 +1067,8 @@ mod tests {
 
     #[test]
     fn polyblep_waves_are_flat_into_the_sub_bass() {
-        // The reason for moving off leaky-integrated BLIT: no high-pass anywhere,
-        // so the fundamental must sit at its ideal level right down to ~20 Hz.
+        // PolyBLEP / PolyBLAMP have no high-pass anywhere, so the fundamental
+        // must sit at its ideal level right down to ~20 Hz.
         let sr = 48_000.0;
         let n = 1 << 15;
         let mag = |buf: &[f64], f: f64| {
@@ -1107,7 +1106,7 @@ mod tests {
                 let db = 20.0 * (mag(&buf, f0) / (ideal * 0.5)).log10();
                 assert!(
                     db.abs() < 0.5,
-                    "{wf:?} f0={f0}: fundamental {db:+.2} dB off ideal (leaky-BLIT was −5 dB @ 28 Hz)"
+                    "{wf:?} f0={f0}: fundamental {db:+.2} dB off ideal — a high-pass crept in"
                 );
             }
         }
