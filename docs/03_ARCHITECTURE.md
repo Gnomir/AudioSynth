@@ -327,7 +327,7 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 
 **GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей
 (`Spectrum` — власний `View`: 30 виміряних барів + гребінка партіалів
-закритої форми + метр аліасингу, щокадру) +
+закритої форми + крива відгуку фільтра + метр аліасингу, щокадру) +
 підпис + рядок пресетів + згруповані секції параметрів (TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE / TUNING / MODULATION, `ParamSlider` + `ParamButton`) у `ScrollView`. Контент списку — в одному
 `height: auto` VStack усередині `ScrollView` (як у `GenericUi` nih-plug), і
 кожен `.group` / `.group-header` теж має явну `height: auto`: інакше morphorm
@@ -352,6 +352,16 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 наступного рядка) → `Spectrum::draw` домальовує 4 бліді криві-обгинаючі гребінки
 для розгортки цього контролю — «ось що ця ручка робить зі спектром».
 `Partials` бере `Param::preview_plain(s)` для своєї skewed-шкали.
+
+**Крива відгуку фільтра.** На тих самих осях `Spectrum` малює аналітичну
+АЧХ рушійного `Svf` (бірюзова полілінія + вертикаль на частоті зрізу):
+`Spectrum::filter_response` — це білінійно-предспотворений аналоговий
+прототип SVF, який реалізує `harmonic_core::filter` (`g = tan(π f_c/f_s)`,
+`k = 1/Q`, `Q = 0.5·2^{6·res}` — ті самі, що `Svf::recompute_{g,k}`; LP/BP/HP/
+Notch зі спільного знаменника). Показує **базове** положення зрізу — по-голосна
+filter-envelope рухає реальний зріз навколо неї. Малюється для будь-якого
+осцилятора (Saw/Triangle теж фільтруються), тест
+`editor::filter_response_curve_matches_the_svf_shape`.
 
 **Чесний метр аліасингу.** `Spectrum` малює праворуч окрему смугу — рівень
 вузького band-pass на `0.44·f_s` (Q≈9) у dBFS, кольором за порогом

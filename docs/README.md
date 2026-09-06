@@ -50,11 +50,11 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-104 тести ядра (86 юніт + 18 інтеграційних) + 22 у плагіні + 1 `#[ignore]`
+104 тести ядра (86 юніт + 18 інтеграційних) + 23 у плагіні + 1 `#[ignore]`
 (дрейф), біт-у-біт (δ = 0.0) на `aarch64` + `armv7-hf` під QEMU
 (`cross-verify.sh`) · clippy чистий (stable + `--no-default-features --release`
 + nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI
-(`nih_plug_vizia`: згруповані секції + спектр із гребінкою партіалів закритої форми + метр аліасингу + морф + рандом + Scala + пресети) · **pluginval
+(`nih_plug_vizia`: згруповані секції + спектр із гребінкою партіалів закритої форми + кривою фільтра + метр аліасингу + морф + рандом + Scala + пресети) · **pluginval
 `--strictness-level 8`: повний прохід (VST3, з GUI-тестами)** ·
 **clap-validator: 35/35** (потребує `[patch]` на `vendor/nih-plug`,
 `10_NIH_PLUG_CLAP_BUGS.md`) · осцилятор: closed-form additive (яскравість

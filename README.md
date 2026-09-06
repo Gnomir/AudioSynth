@@ -38,7 +38,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | Path | What |
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs` + C ABI |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
+| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
@@ -69,7 +69,7 @@ nightly.
 ## Status
 
 104 `harmonic_core` tests pass (86 unit + 18 integration, 11 of them an
-adversarial RT-safety suite) plus 22 plugin tests, plus a `#[ignore]` long-run
+adversarial RT-safety suite) plus 23 plugin tests, plus a `#[ignore]` long-run
 drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
 whole core suite — including a whole-signal-path FNV-1a hash compared against an
 x86-64 reference — passes **bit-for-bit (delta 0.0)** on
