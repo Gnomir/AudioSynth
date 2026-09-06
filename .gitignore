@@ -10,9 +10,14 @@ target/
 # --- generated artifacts ---
 # demo renders — regenerate: cargo run --example <name> --release
 *.wav
+# wasm demo build output — regenerate: see harmonic_core/contrib/wasm-demo/README.md
+harmonic_core/contrib/wasm-demo/harmonic_core.wasm
 # plugin bundles live under target/ (already ignored)
 # downloaded validation tooling (pluginval etc.)
 harmonic_synth/tools/
+
+# --- test scratch ---
+.playwright-mcp/
 
 # --- editors / OS ---
 .vscode/

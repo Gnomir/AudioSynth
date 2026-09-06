@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>harmonic_core — wasm demo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2316181c'/%3E%3Cpath d='M2 12c2 0 2-8 4-8s2 8 4 8 2-6 4-6' stroke='%23e0a94a' fill='none' stroke-width='1.5'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #16181c; --panel: #1e2228; --ink: #e7e9ec; --dim: #8b929c;
+    --line: #2c313a; --accent: #e0a94a; --accent-2: #5cb4b2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 2rem 1rem 3rem;
+  }
+  h1 { font-size: 1.15rem; font-weight: 600; margin: 0 0 .25rem; }
+  h1 code { color: var(--accent); font-size: .9em; }
+  .sub { color: var(--dim); margin: 0 0 1.5rem; font-size: .85rem; text-align: center; max-width: 40rem; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.25rem 1.4rem; width: 100%; max-width: 34rem;
+  }
+  #start {
+    font: inherit; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: #1a1400; border: 0; border-radius: 6px;
+    padding: .65rem 1.4rem; margin-bottom: 1rem;
+  }
+  #start[disabled] { opacity: .5; cursor: default; }
+  .row { display: grid; grid-template-columns: 7.5rem 1fr 3rem; align-items: center; gap: .6rem; margin: .5rem 0; }
+  .row label { color: var(--dim); }
+  .row output { font-variant-numeric: tabular-nums; text-align: right; color: var(--accent-2); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  select, .toggle { font: inherit; background: #14171b; color: var(--ink); border: 1px solid var(--line); border-radius: 5px; padding: .3rem .5rem; }
+  .toggle { cursor: pointer; }
+  .toggle[aria-pressed=true] { background: var(--accent-2); color: #06201f; border-color: var(--accent-2); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 1rem 0; }
+  .keys { display: flex; gap: 3px; margin-top: 1rem; user-select: none; }
+  .key {
+    flex: 1; height: 3.5rem; background: #eceef1; color: #333; border-radius: 0 0 5px 5px;
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: .35rem;
+    font-size: .7rem; cursor: pointer;
+  }
+  .key.down { background: var(--accent); }
+  .hint { color: var(--dim); font-size: .8rem; margin-top: .75rem; }
+  .hint kbd { background: #14171b; border: 1px solid var(--line); border-radius: 3px; padding: 0 .3rem; }
+</style>
+</head>
+<body>
+<h1><code>harmonic_core</code> — the same engine, in your browser</h1>
+<p class="sub">
+  This is <code>wasm32-unknown-unknown</code>, no_std, zero-dependency — the byte-for-byte
+  identical DSP that ships in the VST3/CLAP plugin and cross-compiles to a Cortex-M board.
+  One <code>Voice</code>, driven through the C ABI from an <code>AudioWorklet</code>.
+</p>
+
+<div class="card">
+  <button id="start">▶ Start audio</button>
+
+  <div class="row">
+    <label for="wave">Oscillator</label>
+    <select id="wave"><option value="0">Geometric</option><option value="1">Saw</option><option value="2">Triangle</option></select>
+    <span></span>
+  </div>
+  <div class="row">
+    <label for="brightness">Brightness</label>
+    <input type="range" id="brightness" min="0.02" max="0.97" step="0.001" value="0.85">
+    <output id="brightness-v"></output>
+  </div>
+  <div class="row">
+    <label for="partials">Partials</label>
+    <input type="range" id="partials" min="1" max="512" step="1" value="512">
+    <output id="partials-v"></output>
+  </div>
+  <div class="row">
+    <label for="formant">Formant</label>
+    <input type="range" id="formant" min="0" max="1" step="0.001" value="0">
+    <output id="formant-v"></output>
+  </div>
+
+  <hr>
+
+  <div class="row">
+    <label for="fmode">Filter</label>
+    <select id="fmode"><option value="0">Off</option><option value="1" selected>Low pass</option><option value="2">Band pass</option><option value="3">High pass</option><option value="4">Notch</option></select>
+    <span></span>
+  </div>
+  <div class="row">
+    <label for="cutoff">Cutoff</label>
+    <input type="range" id="cutoff" min="60" max="16000" step="1" value="7000">
+    <output id="cutoff-v"></output>
+  </div>
+  <div class="row">
+    <label for="resonance">Resonance</label>
+    <input type="range" id="resonance" min="0" max="1" step="0.001" value="0.2">
+    <output id="resonance-v"></output>
+  </div>
+
+  <hr>
+
+  <div class="row">
+    <label for="lfoRate">LFO rate</label>
+    <input type="range" id="lfoRate" min="0.1" max="14" step="0.01" value="5">
+    <output id="lfoRate-v"></output>
+  </div>
+  <div class="row">
+    <label for="lfoVibrato">→ Vibrato</label>
+    <input type="range" id="lfoVibrato" min="0" max="60" step="0.1" value="0">
+    <output id="lfoVibrato-v"></output>
+  </div>
+  <div class="row">
+    <label for="lfoCutoff">→ Cutoff</label>
+    <input type="range" id="lfoCutoff" min="0" max="3" step="0.01" value="0">
+    <output id="lfoCutoff-v"></output>
+  </div>
+
+  <hr>
+
+  <div class="row">
+    <label>HQ mode</label>
+    <button class="toggle" id="hq" aria-pressed="false">2× oversample the nonlinear stages</button>
+    <span></span>
+  </div>
+
+  <div class="keys" id="keys"></div>
+  <p class="hint">Play with the mouse or the keyboard row <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> (C major, one octave).</p>
+</div>
+
+<script type="module">
+const NOTES = [ // C4..C5
+  ['A','C',261.63], ['S','D',293.66], ['D','E',329.63], ['F','F',349.23],
+  ['G','G',392.00], ['H','A',440.00], ['J','B',493.88], ['K','C',523.25],
+];
+
+let ctx, node, ready = false, held = null;
+const $ = (id) => document.getElementById(id);
+
+function bindSlider(id, fmt, param, map = (x) => x) {
+  const el = $(id), out = $(id + '-v');
+  const update = () => {
+    out.textContent = fmt(parseFloat(el.value));
+    if (node) node.port.postMessage({ type: 'param', name: param, value: map(parseFloat(el.value)) });
+  };
+  el.addEventListener('input', update);
+  update();
+  return update;
+}
+
+const refresh = [
+  bindSlider('brightness', (v) => v.toFixed(2), 'brightness'),
+  bindSlider('partials', (v) => String(v | 0), 'partials'),
+  bindSlider('formant', (v) => v.toFixed(2), 'formant'),
+  bindSlider('cutoff', (v) => (v | 0) + ' Hz', 'cutoff'),
+  bindSlider('resonance', (v) => v.toFixed(2), 'resonance'),
+  bindSlider('lfoRate', (v) => v.toFixed(1) + ' Hz', 'lfoRate'),
+  bindSlider('lfoVibrato', (v) => v.toFixed(0) + ' ¢', 'lfoVibrato'),
+  bindSlider('lfoCutoff', (v) => v.toFixed(2) + ' oct', 'lfoCutoff'),
+];
+
+$('wave').addEventListener('change', (e) => node?.port.postMessage({ type: 'param', name: 'waveform', value: +e.target.value }));
+$('fmode').addEventListener('change', (e) => node?.port.postMessage({ type: 'param', name: 'filterMode', value: +e.target.value }));
+$('hq').addEventListener('click', (e) => {
+  const on = e.target.getAttribute('aria-pressed') !== 'true';
+  e.target.setAttribute('aria-pressed', on);
+  node?.port.postMessage({ type: 'param', name: 'hq', value: on });
+});
+
+// keyboard
+const keysEl = $('keys');
+const keyEls = new Map();
+NOTES.forEach(([code, name, hz]) => {
+  const d = document.createElement('div');
+  d.className = 'key'; d.textContent = name; d.dataset.hz = hz;
+  d.addEventListener('pointerdown', () => noteOn(hz, d));
+  d.addEventListener('pointerup', () => noteOff(d));
+  d.addEventListener('pointerleave', () => { if (held === d) noteOff(d); });
+  keysEl.appendChild(d);
+  keyEls.set(code, { el: d, hz });
+});
+
+function noteOn(hz, el) {
+  if (!ready) return;
+  if (held) held.classList.remove('down');
+  held = el; el.classList.add('down');
+  node.port.postMessage({ type: 'noteOn', hz });
+}
+function noteOff(el) {
+  if (!ready || held !== el) return;
+  el.classList.remove('down'); held = null;
+  node.port.postMessage({ type: 'noteOff' });
+}
+
+addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const k = keyEls.get(e.key.toUpperCase());
+  if (k) noteOn(k.hz, k.el);
+});
+addEventListener('keyup', (e) => {
+  const k = keyEls.get(e.key.toUpperCase());
+  if (k) noteOff(k.el);
+});
+
+$('start').addEventListener('click', async () => {
+  $('start').disabled = true;
+  const wasm = await fetch(new URL('harmonic_core.wasm', import.meta.url)).then((r) => r.arrayBuffer());
+  ctx = new AudioContext();
+  await ctx.audioWorklet.addModule(new URL('worklet.js', import.meta.url));
+  node = new AudioWorkletNode(ctx, 'harmonic-voice', {
+    outputChannelCount: [2],
+    processorOptions: { wasm },
+  });
+  node.connect(ctx.destination);
+  node.port.onmessage = (e) => {
+    if (e.data.type === 'error') {
+      $('start').textContent = 'wasm error — see console';
+      console.error('worklet:', e.data.message);
+      return;
+    }
+    if (e.data.type === 'ready') {
+      ready = true;
+      $('start').textContent = '● running';
+      // push every current control value into the freshly-booted voice
+      refresh.forEach((f) => f());
+      node.port.postMessage({ type: 'param', name: 'waveform', value: +$('wave').value });
+      node.port.postMessage({ type: 'param', name: 'filterMode', value: +$('fmode').value });
+    }
+  };
+});
+</script>
+</body>
+</html>

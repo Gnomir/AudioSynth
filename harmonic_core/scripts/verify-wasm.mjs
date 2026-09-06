@@ -58,4 +58,40 @@ if (wasmHash !== REFERENCE || jsHash !== REFERENCE) {
   console.error('\nMISMATCH — the wasm32 render is NOT bit-identical to the reference.');
   process.exit(1);
 }
-console.log('\nOK — wasm32 render is bit-identical to the x86-64 / ARM reference.');
+console.log('OK — wasm32 render is bit-identical to the x86-64 / ARM reference.\n');
+
+// ---------------------------------------------------------------------------
+// The browser-integration path: drive one `Voice` through the C ABI exactly as
+// contrib/wasm-demo's AudioWorklet does, and check it makes bounded sound.
+// ---------------------------------------------------------------------------
+const SR = 48_000;
+const v = ex.harmonic_wasm_voice();
+ex.harmonic_voice_init(v, SR);
+ex.harmonic_voice_set_rolloff(v, 0.9);
+ex.harmonic_voice_set_gain(v, 0.8);
+ex.harmonic_voice_set_filter(v, 1, 4_000, 0.3); // low-pass
+ex.harmonic_voice_set_frequency(v, 220);
+ex.harmonic_voice_reset(v);
+
+const scratch = ex.harmonic_wasm_scratch();
+const QUANTUM = 128;
+let peak = 0;
+let finite = true;
+let energy = 0;
+for (let block = 0; block < SR / QUANTUM; block++) { // ~1 s
+  ex.harmonic_voice_process(v, scratch, QUANTUM);
+  const buf = new Float32Array(ex.memory.buffer, scratch, QUANTUM * 2);
+  for (const s of buf) {
+    finite &&= Number.isFinite(s);
+    peak = Math.max(peak, Math.abs(s));
+    energy += s * s;
+  }
+}
+const rms = Math.sqrt(energy / (SR * 2));
+console.log(`Voice C ABI : peak ${peak.toFixed(3)}  rms ${rms.toFixed(4)}  finite ${finite}`);
+
+if (!finite || peak <= 0.02 || peak > 1.5 || rms < 2e-3) {
+  console.error('\nFAIL — the wasm Voice did not produce clean bounded audio.');
+  process.exit(1);
+}
+console.log('\nOK — the wasm Voice renders clean bounded audio through the C ABI.');

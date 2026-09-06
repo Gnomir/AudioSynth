@@ -308,3 +308,49 @@ pub unsafe extern "C" fn harmonic_voice_current_frequency(ptr: *const Voice) -> 
         None => 0.0,
     }
 }
+
+/// `wasm32`-only: caller-owned storage carved from the module's own statics.
+///
+/// A `no_std` `cdylib` on `wasm32-unknown-unknown` has no global allocator, so a
+/// browser / Node integrator cannot `malloc` a voice or an output buffer. These
+/// hand back fixed static storage instead — pass [`harmonic_wasm_voice`] to
+/// [`harmonic_voice_init`] once and to every other `harmonic_voice_*` call, and
+/// render into [`harmonic_wasm_scratch`], reading the result straight out of
+/// wasm linear memory. Single voice, single-threaded — exactly the shape an
+/// `AudioWorkletProcessor` needs (`contrib/wasm-demo/`).
+#[cfg(target_arch = "wasm32")]
+mod wasm_mem {
+    use super::Voice;
+    use core::cell::UnsafeCell;
+    use core::mem::MaybeUninit;
+
+    struct Slot<T>(UnsafeCell<T>);
+    // wasm32 is single-threaded; each slot is touched only by the `harmonic_*`
+    // calls below, in sequence, from one audio callback.
+    unsafe impl<T> Sync for Slot<T> {}
+
+    static VOICE: Slot<MaybeUninit<Voice>> = Slot(UnsafeCell::new(MaybeUninit::uninit()));
+
+    /// Pointer to the module's single static [`Voice`] slot.
+    #[no_mangle]
+    pub extern "C" fn harmonic_wasm_voice() -> *mut Voice {
+        VOICE.0.get().cast()
+    }
+
+    /// Frames the scratch buffer holds (interleaved stereo → `2 ×` this `f32`s).
+    pub const SCRATCH_FRAMES: usize = 4096;
+    static SCRATCH: Slot<[f32; SCRATCH_FRAMES * 2]> = Slot(UnsafeCell::new([0.0; SCRATCH_FRAMES * 2]));
+
+    /// Pointer to a [`SCRATCH_FRAMES`]-frame interleaved-stereo scratch buffer
+    /// for [`harmonic_voice_process`](super::harmonic_voice_process).
+    #[no_mangle]
+    pub extern "C" fn harmonic_wasm_scratch() -> *mut f32 {
+        SCRATCH.0.get().cast()
+    }
+
+    /// Capacity of [`harmonic_wasm_scratch`], in frames.
+    #[no_mangle]
+    pub extern "C" fn harmonic_wasm_scratch_frames() -> usize {
+        SCRATCH_FRAMES
+    }
+}
