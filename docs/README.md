@@ -50,7 +50,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-104 тести ядра (86 юніт + 18 інтеграційних) + 21 у плагіні + 1 `#[ignore]`
+104 тести ядра (86 юніт + 18 інтеграційних) + 22 у плагіні + 1 `#[ignore]`
 (дрейф), біт-у-біт (δ = 0.0) на `aarch64` + `armv7-hf` під QEMU
 (`cross-verify.sh`) · clippy чистий (stable + `--no-default-features --release`
 + nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI

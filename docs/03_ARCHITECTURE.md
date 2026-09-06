@@ -346,6 +346,13 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 `Geometric` (Saw/Triangle — фіксований `1/k`). «Математика на екрані,
 поверх виміряного» — field-notes #2.
 
+**«Розбери цей пресет».** Наведення на слайдер Brightness / Partials / Formant
+(`spectral_slider` → подія `HoverSpectral`, поле `Data::hovered_spectral`;
+злиття `apply_hover` стійке до застарілого `leave`, що приходить після `enter`
+наступного рядка) → `Spectrum::draw` домальовує 4 бліді криві-обгинаючі гребінки
+для розгортки цього контролю — «ось що ця ручка робить зі спектром».
+`Partials` бере `Param::preview_plain(s)` для своєї skewed-шкали.
+
 **Чесний метр аліасингу.** `Spectrum` малює праворуч окрему смугу — рівень
 вузького band-pass на `0.44·f_s` (Q≈9) у dBFS, кольором за порогом
 (зелений `< −45`, бурштин `−45…−30`, червоний `> −30`). Геометричний
