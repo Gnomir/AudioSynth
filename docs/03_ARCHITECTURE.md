@@ -294,6 +294,7 @@ struct HarmonicSynth {
     analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs — audio→GUI, лок-free
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
 // + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
+//           #[persist] seed: Mutex<u32> — останній seed рандомайзера (0 = немає)
     sustain_held: bool,                 // CC#64 стан педалі
     sustained_notes: [bool; 128],       // NoteOff, відкладені, поки педаль тримається
 }
@@ -334,6 +335,12 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 модуляційної матриці) робить це коректним для кожного параметра; дискретні
 (Oscillator / Filter / HQ) стрибають на середині. Це інструмент етапу дизайну
 — діє лише поки редактор відкритий. `05 §3` / `12 §4` / `07 §18`.
+
+**Seed-рандомайзер** (`src/rando.rs`) — той самий шлях запису параметрів.
+`RANDOM` котить 30-бітний seed → патч; seed ↔ 6-символьний код (Crockford
+base-32), мапінг seed→патч — цілочисельний SplitMix64, тож код звучить
+однаково на будь-якій машині (`06 §6-bis`-детермінізм, тепер і для «випадкового»
+звуку). `07 §19`.
 
 Потокобезпека GUI→аудіо для параметрів — на `nih-plug`
 (`FloatParam`/`EnumParam` lock-free).

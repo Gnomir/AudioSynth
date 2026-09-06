@@ -2,7 +2,7 @@
 
 Що перевірено, як, і якими числами. Статус: **94 тести `harmonic_core`**
 (76 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **4 у плагіні** (analyzer + editor morph) + 1 `#[ignore]`
+`tests/stress.rs`) + **7 у плагіні** (analyzer, A/B morph, seed randomiser) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -387,7 +387,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (4, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (7, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -395,6 +395,9 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `analyzer::meter_ignores_a_clean_low_tone_and_catches_near_nyquist_energy` | чистий тон 1 кГц → `< −55` dBFS; тон `−12` dBFS у смузі фолду → `−12±4`; розділення `> 35` дБ |
 | `analyzer::meter_decays_after_the_energy_stops` | після припинення енергії метр падає `> 30` дБ (envelope-фоловер відпускає) |
 | `editor::morph_endpoints_are_exact_and_midpoint_blends` | A/B морф: `pos = 0` → **рівно** A, `pos = 1` → **рівно** B (без дрейфу); середина = півсуми; `pos` клампиться (не екстраполює); відсутній у слоті параметр → `None` (не чіпається). `07 §18` |
+| `rando::code_round_trips_and_normalises_look_alikes` | `decode(encode(seed)) == seed` для крайніх seed; case-insensitive; Crockford `I/L→1`, `O→0`; відкидає невірну довжину / символ. `07 §19` |
+| `rando::value_for_is_deterministic_in_range_and_varies` | той самий seed → той самий патч (побайтово вектор); різні seed → різний; кожен параметр у своєму вікні `SPEC`; нерандомізований (`hqmode`) → `None` |
+| `rando::distribution_spans_each_window` | по 400 seed кожне широке вікно покривається зверху донизу (`< lo + 0.15·span` та `> hi − 0.15·span`) — груба перевірка якості хешу |
 
 ---
 
