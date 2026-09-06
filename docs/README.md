@@ -19,7 +19,7 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, HQ-режим (Unified HQ Bus), ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 97 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 103 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; один MIDI-канал; педаль сустейну на рівні плагіна; DAW-валідація лише часткова (перший прогін — REAPER) тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, макет пам'яті, протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Що лишилось: активні задачі (жива DAW-валідація, upstream-PR) та свідомо відкладені напрямки з причиною |
@@ -50,7 +50,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-97 тестів ядра (79 юніт + 18 інтеграційних) + 10 у плагіні + 1 `#[ignore]`
+103 тести ядра (85 юніт + 18 інтеграційних) + 15 у плагіні + 1 `#[ignore]`
 (дрейф), біт-у-біт (δ = 0.0) на `aarch64` + `armv7-hf` під QEMU
 (`cross-verify.sh`) · clippy чистий (stable + `--no-default-features --release`
 + nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI
@@ -62,7 +62,7 @@ cd harmonic_core && cargo doc --no-deps --open
 PolyBLEP пила/трикутник (плаский до DC) · clean-voice fast path · LFO:
 retrigger/free-run + матриця (→ brightness / pitch / cutoff / FM index) ·
 унісон з «диханням» · понотна яскравість (MPE / афтертач → `rolloff` на
-голос) · «Formant» — резонансний горб (другий закритий член) · CC#64 sustain (рівень плагіна) · чесний метр аліасингу в редакторі
+голос) · «Formant» — резонансний горб (другий закритий член) · мікротюнінг (12-TET дефолт побайтово + JI / Пифагор / мезотоніка / 19·24·31-EDO / Bohlen-Pierce) · CC#64 sustain (рівень плагіна) · чесний метр аліасингу в редакторі
 (смуга біля Найквіста → коли вмикати HQ) · A/B морф між патчами (кожен
 параметр інтерполюється чисто) · seed-рандомайзер із 6-символьним кодом (детермінований на будь-якій машині) · стартовий банк 22 пресети · ворожий RT-safety набір
 (`tests/stress.rs`) · `panic=abort` в обох крейтах · перший живий прогін у

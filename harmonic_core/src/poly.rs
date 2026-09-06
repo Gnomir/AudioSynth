@@ -10,6 +10,7 @@ use crate::env::Adsr;
 use crate::filter::FilterMode;
 use crate::lfo::{LfoMode, LfoShape};
 use crate::trig::exp2;
+use crate::tuning::Tuning;
 use crate::voice::{Voice, Waveform};
 
 /// Max unison voices stacked on one MIDI note.
@@ -179,6 +180,13 @@ pub struct PolySynth<const VOICES: usize> {
     partial_limit: f32,
     formant: f64,
 
+    // Note→frequency map. `tuning_default` is a cheap gate: while it is `true`
+    // (the default), `note_hz` short-circuits to `midi_to_hz`, so every render
+    // of a 12-TET / A=440 patch is bit-for-bit what it was before tuning
+    // existed. Any `set_tuning` clears it; `set_tuning_equal` restores it.
+    tuning: Tuning,
+    tuning_default: bool,
+
     // Per-note brightness expression (MPE timbre / CC74, poly & channel
     // pressure). `bright_depth` is how far full expression tilts `rolloff`;
     // `note_bright[k]` is the per-key component the host combined from that
@@ -250,6 +258,8 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             waveform: Waveform::Geometric,
             partial_limit: crate::voice::MAX_PARTIALS as f32,
             formant: 0.0,
+            tuning: Tuning::EQUAL_440,
+            tuning_default: true,
             bright_depth: 0.0,
             chan_bright: 0.0,
             note_bright: [0.0; 128],
@@ -380,6 +390,35 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.formant = if f.is_nan() { 0.0 } else { f.clamp(0.0, 1.0) };
         for v in &mut self.voices {
             v.core.set_formant(self.formant);
+        }
+    }
+
+    /// Set the note→frequency map (microtuning). The scale takes effect on the
+    /// **next** note-on; notes already sounding keep their pitch. Passing
+    /// [`Tuning::EQUAL_440`] is equivalent to [`set_tuning_equal`] — it restores
+    /// the bit-identical default path.
+    ///
+    /// [`set_tuning_equal`]: PolySynth::set_tuning_equal
+    pub fn set_tuning(&mut self, tuning: Tuning) {
+        self.tuning_default = tuning.is_equal_440();
+        self.tuning = tuning;
+    }
+
+    /// Restore 12-tone equal temperament, A4 = 440 Hz — the default, and the
+    /// engine's bit-identical fast path.
+    pub fn set_tuning_equal(&mut self) {
+        self.tuning = Tuning::EQUAL_440;
+        self.tuning_default = true;
+    }
+
+    /// Frequency for a MIDI note under the current tuning. While the tuning is
+    /// the default this is exactly [`crate::midi_to_hz`] (bit-for-bit).
+    #[inline]
+    fn note_hz(&self, note: u8) -> f64 {
+        if self.tuning_default {
+            midi_to_hz(note as f32)
+        } else {
+            self.tuning.hz(note)
         }
     }
 
@@ -603,7 +642,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     ) {
         let vi = self.pick_voice();
         let sr = self.sample_rate;
-        let hz = midi_to_hz(note as f32) * exp2(detune_cents / 1200.0);
+        let hz = self.note_hz(note) * exp2(detune_cents / 1200.0);
         let expr_off =
             self.expr_offset(self.note_bright.get(note as usize).copied().unwrap_or(0.0));
 

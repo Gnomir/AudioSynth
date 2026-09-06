@@ -69,6 +69,7 @@ pub mod env;
 pub mod lfo;
 pub mod voice;
 pub mod poly;
+pub mod tuning;
 pub mod ffi;
 
 pub use character::{CharParams, Character};
@@ -76,6 +77,7 @@ pub use env::Adsr;
 pub use filter::{FilterMode, Svf};
 pub use lfo::{Lfo, LfoMode, LfoShape};
 pub use poly::{midi_to_hz, PolySynth};
+pub use tuning::Tuning;
 pub use voice::{Voice, Waveform};
 
 /// Supported sample-rate range, in Hz. Outside this the prewarp `tan(π fc/fs)`

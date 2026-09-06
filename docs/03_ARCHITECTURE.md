@@ -52,7 +52,8 @@ trig ──────────────┬──────────
 | `env` | ~160 | `Adsr` |
 | `lfo` | ~180 | `Lfo` (+ `LfoMode`) |
 | `voice` | ~370 | `Voice` — повний тракт одного голосу, стерео-вихід |
-| `poly` | ~450 | `PolySynth<VOICES>` |
+| `poly` | ~460 | `PolySynth<VOICES>` |
+| `tuning` | ~250 | `Tuning` — нота→частота: 12-TET (дефолт, побайтово = `midi_to_hz`), n-EDO, довільна Scala-шкала |
 | `ffi` | ~180 | C-ABI |
 
 \* приблизно, включно з докстрінгами й тестами.
@@ -169,6 +170,7 @@ pub struct PolySynth<const VOICES: usize> {
     unison_count, unison_detune, unison_spread, unison_drift,
     bend_ratio, lfo_rate, lfo_shape, lfo_mode,
     lfo_to_rolloff, lfo_to_pitch, lfo_to_cutoff, lfo_to_fm,
+    tuning: Tuning, tuning_default: bool,   // нота→частота; default=true → note_hz обходить на midi_to_hz
     counter: u64,                  // вік голосу для стилінгу
 }
 
@@ -179,6 +181,14 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 1. будь-який вільний (`!amp.is_active()`);
 2. найстаріший у стадії release;
 3. вкрасти глобально найстаріший.
+
+**Мікротюнінг** (`set_tuning` / `set_tuning_equal`): `note_hz(note)` дає
+частоту тоніки/ноти. Поки `tuning_default` (12-TET, A4=440) — це **побайтово**
+`midi_to_hz(note)` (тест `tuning::equal_440_is_bit_identical_to_midi_to_hz`).
+`Tuning` = період у центах + центи кожного ступеня + якір (ref-нота, ref-Hz);
+`hz(n)` = `ref_hz · 2^((period·⌊rel/N⌋ + degrees[rel mod N]) / 1200)`. Шкала
+діє з **наступного** note-on (звучні ноти не ретюняться). `06 §2` (шість
+тестів), `07 §20`.
 
 **Унісон** (`note_on`): `n = clamp(unison_count, 1, 8)` голосів на одну
 ноту, кожен `i` отримує:
@@ -244,8 +254,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 97 тестів (79 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 97/97, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 103 тести (85 юніт + 18 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 103/103, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -316,7 +326,7 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 
 **GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей
 (`Spectrum` — власний `View`, малює 30 барів із `AnalyzerBands` щокадру) +
-підпис + рядок пресетів + згруповані секції параметрів (TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE / MODULATION, `ParamSlider` + `ParamButton`) у `ScrollView`. Контент списку — в одному
+підпис + рядок пресетів + згруповані секції параметрів (TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE / TUNING / MODULATION, `ParamSlider` + `ParamButton`) у `ScrollView`. Контент списку — в одному
 `height: auto` VStack усередині `ScrollView` (як у `GenericUi` nih-plug), і
 кожен `.group` / `.group-header` теж має явну `height: auto`: інакше morphorm
 дає їм `Stretch(1.0)` і секції накладаються (див. `docs/11`, журнал REAPER).

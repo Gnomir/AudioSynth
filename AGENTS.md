@@ -7,15 +7,15 @@ additive synthesis from a closed-form Dirichlet-kernel sum
 (`Σ rᵏ·cos(2πkp)`), plus PolyBLEP saw/triangle (`Waveform` enum),
 character (drive/fold/grit), a ZDF state-variable filter, two ADSRs, a per-voice
 LFO (retrigger/free-run + mod matrix), unison (with a breathing drift), pitch
-bend, equal-power pan.
+bend, equal-power pan, and note→frequency microtuning (`Tuning`).
 `harmonic_synth` — a 24-voice polyphonic VST3 + CLAP plugin over it, via
 `nih-plug`. Full design docs: `docs/` (start at `docs/README.md`).
 
-Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs`
+Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi}.rs`
 · `harmonic_core/tests/{spectrum,stress,cross_platform_bit_exact}.rs` (integration) ·
-`harmonic_synth/src/{lib,editor,analyzer,presets,rando}.rs` (host glue +
+`harmonic_synth/src/{lib,editor,analyzer,presets,rando,tuning}.rs` (host glue +
 `nih_plug_vizia` GUI + a cheap filter-bank spectrum display + a 22-preset bank +
-a seed randomiser) · `harmonic_synth/xtask/` (bundler) ·
+a seed randomiser + built-in microtuning scales) · `harmonic_synth/xtask/` (bundler) ·
 `harmonic_synth/vendor/nih-plug/` (patched framework copy, see below).
 
 ## Setup
@@ -36,8 +36,8 @@ diff-able against the real repo.
 
 ```
 cd harmonic_core
-cargo test                                     # 97 tests (79 unit + 18 integration; 11 of them tests/stress.rs) + 1 #[ignore] drift
-bash scripts/cross-verify.sh                    # 97/97 bit-identical on aarch64 + armv7-hf (Docker + QEMU)
+cargo test                                     # 103 tests (85 unit + 18 integration; 11 of them tests/stress.rs) + 1 #[ignore] drift
+bash scripts/cross-verify.sh                    # 103/103 bit-identical on aarch64 + armv7-hf (Docker + QEMU)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0
@@ -47,7 +47,7 @@ cargo check                                     # fast typecheck
 
 cd harmonic_synth
 cargo build --release
-cargo test                                      # 10 plugin tests (analyzer, editor morph, rando, presets)
+cargo test                                      # 15 plugin tests (analyzer, editor morph, rando, presets, tuning)
 cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_synth.{vst3,clap}
 cargo xtask validate                            # build + pluginval (VST3) + clap-validator (CLAP)
 ```

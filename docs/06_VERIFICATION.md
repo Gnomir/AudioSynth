@@ -1,8 +1,8 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **97 тестів `harmonic_core`**
-(79 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **10 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank) + 1 `#[ignore]`
+Що перевірено, як, і якими числами. Статус: **103 тести `harmonic_core`**
+(85 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+`tests/stress.rs`) + **15 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -45,6 +45,17 @@
 | Тест | Що доводить |
 |---|---|
 | `sample_rate_validation_reports_instead_of_substituting` | `validate_sample_rate` клампить (не підставляє 48k) і повертає `Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`; `Voice::new_checked` та `PolySynth::set_sample_rate` пробрасують статус |
+
+### `tuning` (6)
+
+| Тест | Що доводить |
+|---|---|
+| `equal_440_is_bit_identical_to_midi_to_hz` | `Tuning::EQUAL_440.hz(n)` **побітово** (`to_bits()`) дорівнює `midi_to_hz(n)` для всіх 128 нот — доказ, що дефолтний шлях `note_hz` (короткий обхід на `midi_to_hz`) нічого не змінює. Разом із `is_equal_440()` — гарантія, що весь наявний крос-платформний хеш і всі тести лишаються зеленими |
+| `equal_edo_matches_the_definition` | `Tuning::equal(12,…)` теж лягає на 12-TET; 24-EDO: одна MIDI-клавіша = чверть тону (`hz(70) = 440·2^{50/1200}`), 24 кроки = октава |
+| `just_intonation_puts_the_fifth_at_a_pure_3_2` | 5-limit хроматична шкала від C4: тоніка не рухається, квінта (ступінь 7) — точно `3:2`, велика терція (ступінь 4) — точно `5:4`, октава подвоюється |
+| `bohlen_pierce_repeats_at_the_tritave` | 13 рівних кроків «тритави» `1901.955` ц: 13 клавіш угору = точно `×3` |
+| `hostile_scales_still_produce_finite_positive_frequencies` | `from_cents` із `NaN`/`±∞`/`±1e9` центами, `NaN` періодом і `NaN` ref-Hz → усі 128 нот дають скінченну додатну частоту (ref → 440, період → 1 ц) |
+| `reference_frequency_scales_the_whole_scale` | `Tuning::equal(12, 432.0, 69)` → A4 = 432, а решта нот — 12-TET × `432/440` |
 
 ### `kernel` (8)
 
@@ -347,7 +358,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 97 / 97 (79 юніт + 18 інтеграційних) |
+| Тести | `cargo test` | 103 / 103 (85 юніт + 18 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -390,7 +401,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (10, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (15, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -404,6 +415,11 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `presets::every_preset_names_only_real_parameters` | кожен `#[id]` у `PRESETS` — реальний параметр (типо в id → лоадер тихо пропускає), значення скінченні; банк `≥ 20` пресетів; `[0]` = «Init» без оверрайдів |
 | `presets::every_preset_renders_bounded_non_silent_audio` | кожен пресет застосований у `PolySynth<8>` (мапінг plain→рушій дзеркалить `process()`), акорд 1 с: скінченне, пік `≤ 1.01`, RMS `> 2·10⁻³`; після `all_notes_off` + 6 с хвіст `< 5·10⁻³` (реліз працює) |
 | `presets::bass_presets_are_actually_bassy` | «Deep Sub» / «FM Bass» на ~55 Гц: енергія `40…300 Гц` `> 3×` енергії `2…6 кГц` — назви не брешуть |
+| `tuning::equal_at_440_is_the_engine_default` | `build(Equal, root, 440)` → `is_equal_440()` при будь-якому root; `ref = 432` → вже ні (справжній ретюн) |
+| `tuning::just_intonation_rooted_at_c_keeps_c_at_12tet_and_purifies_the_fifth` | JI від C: C4 не зрушений від 12-TET, G4 — чиста `3:2`, E4 — чиста `5:4` |
+| `tuning::root_moves_which_key_is_pure` | JI від A: A4 = 440, E5 (квінта вгору) стає `3:2` — вибір тоніки переносить, яка клавіша чиста |
+| `tuning::edo_and_bohlen_pierce_have_the_right_period` | 19-EDO і 31-EDO: `edo` клавіш = октава; Bohlen-Pierce: 13 клавіш = `×3` |
+| `tuning::every_scale_gives_finite_positive_frequencies_across_the_keyboard` | усі 8 шкал × 12 тонік × 128 нот → скінченна додатна частота |
 
 ---
 
@@ -444,7 +460,7 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **97 / 97 pass** (79 юніт + 18 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **103 / 103 pass** (85 юніт + 18 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **97 / 97 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
@@ -472,7 +488,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 97/97, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 103/103, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.

@@ -101,6 +101,8 @@ set_unison(count: u32, detune_cents: f64, spread: f64, drift: f64)  // clamp [1,
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
 set_lfo(rate_hz, shape: LfoShape, mode: LfoMode,
         to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm)   // 0 = target off
+set_tuning(t: Tuning)                                     // мікротюнінг; діє з наступного note-on
+set_tuning_equal()                                       // → 12-TET / A4=440, побайтовий дефолтний шлях
 ```
 
 **Обгинаючі** (RT-fanout, оновлює живі голоси):
@@ -155,7 +157,22 @@ impl LfoMode { pub fn from_u32(v: u32) -> Self }      // невідоме → Re
 
 #[repr(u32)] pub enum Waveform { Geometric=0, Saw=1, Triangle=2 }
 impl Waveform { pub fn from_u32(v: u32) -> Self }     // невідоме → Geometric
+
+pub struct Tuning { /* Copy; period + degree cents + (ref_note, ref_hz) anchor */ }
+impl Tuning {
+    pub const MAX_DEGREES: usize = 32;
+    pub const EQUAL_440: Tuning;                              // 12-TET, A4=440 (дефолт)
+    pub fn equal(edo: u8, ref_hz: f64, ref_note: u8) -> Tuning;      // n рівних поділів октави
+    pub fn from_cents(cents: &[f64], period: f64, ref_hz: f64, ref_note: u8) -> Tuning; // довільна Scala-шкала
+    pub fn is_equal_440(&self) -> bool;                       // → true вмикає дефолтний fast path у PolySynth
+    pub fn hz(&self, note: u8) -> f64;                        // завжди скінченна > 0
+}
 ```
+
+Усі конструктори `Tuning` санітизують вхід (NaN-центи → 0, період → `[1, 4800]`,
+`ref_hz` → `[8, 20000]`, `edo`/довжина → `[1, MAX_DEGREES]`) — значення завжди
+придатне. Мапінг клавіатури лінійний: MIDI-нота `ref_note` = ступінь 0, кожна
+вища клавіша — наступний ступінь, із переходом у наступний період.
 
 `Saw` / `Triangle` — **PolyBLEP / PolyBLAMP** (Välimäki & Huovilainen 2007),
 **без стану**. Фіксовані спектри `1/k` / `1/k²` (`rolloff` і HQ ігноруються),
@@ -276,8 +293,8 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 рядок пресетів (`◀ ім'я ▶`) + живий спектр-дисплей (банк band-pass `Svf`,
 не FFT) + чесний метр аліасингу (вузький BP на `0.44·f_s`, кольорова смуга
 праворуч — `04 §1.8`) + рядок A/B-морфу + рядок seed-рандомайзера + згруповані
-секції параметрів (7: TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE /
-MODULATION; `ParamSlider` + `ParamButton`) у `ScrollView` — замість плоского
+секції параметрів (8: TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE /
+TUNING / MODULATION; `ParamSlider` + `ParamButton`) у `ScrollView` — замість плоского
 `GenericUi`.
 
 **Стартовий банк пресетів** (`src/presets.rs`, ~22) — кожен пресет це набір
@@ -299,7 +316,7 @@ MODULATION; `ParamSlider` + `ParamButton`) у `ScrollView` — замість п
 u32`, `0` = немає); «пливе» від звуку, щойно крутнеш ручку. Межі — `07 §19`.
 
 **A/B морф** — не параметр, а редакторний інструмент. `SET A` / `SET B`
-знімають нормалізовані значення всіх 36 параметрів у персистовані слоти
+знімають нормалізовані значення всіх 39 параметрів у персистовані слоти
 (`#[persist] morph_a` / `morph_b` — `Vec<(id, f32)>`); слайдер пише
 `lerp(A, B, pos)` у справжні параметри через `RawParamEvent`
 (`Begin/SetNormalized/End` на кожен). Позиція теж персиститься
@@ -320,10 +337,18 @@ HQ / Free-Run) перемикаються на `pos = 0.5`. Межі — `07 §1
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |
 | Режим голосу | Free-Run Phase, **HQ Mode** (Unified HQ Bus — **+16 семплів** латентності, `PolySynth::HQ_LATENCY`, PDC повідомляється константно; НЕ плутати з `Voice::HQ_LATENCY = 3`, яка стосується лише прямого C-ABI, не плагіна) |
 | Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%), **Uni Drift** (%) |
+| **Мікротюнінг** | **Tuning** (enum: Equal / Just Intonation / Pythagorean / 1/4-comma Meantone / 19-EDO / 24-EDO / 31-EDO / Bohlen-Pierce), **Tune Root** (0–11, тоніка 12-нотних історичних шкал; ігнор. для Equal / EDO), **Tune Ref** (415–467 Гц, A4; `440` = стандарт) |
 | Модуляція | Bend Range (st), LFO Rate, LFO Shape, **LFO Sync** (Retrigger/Free-Run), LFO → Bright, LFO Vibrato (ct), **LFO → Cutoff** (±4 окт), **LFO → FM** (±4) |
 
 `Grit` мапиться на `crush` + `downsample·0.8` разом. `Bend Range` мапить
 `MidiPitchBend` value `[0,1]` → `(value−0.5)·2·range` семитонів.
+
+**Мікротюнінг** (`harmonic_synth/src/tuning.rs`): `Equal` при `Tune Ref = 440`
+дає `PolySynth::set_tuning_equal()` → побайтовий дефолтний шлях (нічого не
+змінюється). Решта збирає `Tuning` і викликає `set_tuning` **лише коли** один
+із трьох параметрів зрушився (`process` тримає `tuning_sig`). Ретюнить
+**фундаментал** ноти; обертони лишаються на `k·f0` (закрита форма — `07 §20`).
+Не входить у seed-рандом. Шкала діє з наступного note-on.
 
 `MIDI_INPUT = MidiConfig::MidiCCs` (не `Basic`): обгортки nih-plug (VST3 і
 CLAP) віддають події MIDI CC, pitch-bend і channel-pressure **лише** з цього
