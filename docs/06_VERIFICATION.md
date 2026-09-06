@@ -1,7 +1,7 @@
 # 06 — Верифікація
 
 Що перевірено, як, і якими числами. Статус: **104 тести `harmonic_core`** (86 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **24 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import, спектр-гребінка + hover + крива фільтра) + 1 `#[ignore]`
+`tests/stress.rs`) + **25 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import, спектр-гребінка + hover + крива фільтра + гребінка унісону) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -401,7 +401,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (24, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (25, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -413,6 +413,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `editor::hover_state_survives_a_stale_leave` | `apply_hover`: наведення на рядок Brightness → Partials → «застаріле» покидання Brightness (прийшло після входу в Partials) **не** скидає стан; справжнє покидання Partials скидає. Кодування `-1 - which` для leave |
 | `editor::hover_encoding_covers_the_filter_rows` | те саме кодування `-1 - which` для рядків Cutoff (3) та Resonance (4): enter Cutoff → Resonance, застаріле покидання Cutoff ігнорується, справжнє покидання Resonance скидає |
 | `editor::filter_response_curve_matches_the_svf_shape` | аналітична АЧХ `Spectrum::filter_response` збігається за формою з рушійним `Svf` (`filter.rs`): `Off` — рівно `1.0` скрізь; LP — плоска смуга пропускання та `≈ −12` дБ/окт (×3.5…5.5 на октаву); резонанс піднімає зріз `> 8×`; HP дзеркалить; BP пікує на зрізі, Notch занулює; скінченна та `≥ 0` на ворожих входах |
+| `editor::unison_smear_is_constant_width_on_the_log_axis` | `Spectrum::unison_half_width_px`: нуль detune (або нульовий діапазон) → 0 px; лінійна за detune (×2 → ×2 px); октава detune = рівно одна октава осі — тобто розмазування партіала стале в пікселях незалежно від `k` |
 | `rando::code_round_trips_and_normalises_look_alikes` | `decode(encode(seed)) == seed` для крайніх seed; case-insensitive; Crockford `I/L→1`, `O→0`; відкидає невірну довжину / символ. `07 §19` |
 | `rando::value_for_is_deterministic_in_range_and_varies` | той самий seed → той самий патч (побайтово вектор); різні seed → різний; кожен параметр у своєму вікні `SPEC`; нерандомізований (`hqmode`) → `None` |
 | `rando::distribution_spans_each_window` | по 400 seed кожне широке вікно покривається зверху донизу (`< lo + 0.15·span` та `> hi − 0.15·span`) — груба перевірка якості хешу |

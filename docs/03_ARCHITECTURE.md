@@ -344,7 +344,11 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 `PolySynth::lowest_sounding_hz`, пишеться раз на блок коли редактор відкритий);
 `r` / `partials` / `formant` редактор читає з параметрів напряму. Лише
 `Geometric` (Saw/Triangle — фіксований `1/k`). «Математика на екрані,
-поверх виміряного» — field-notes #2.
+поверх виміряного» — field-notes #2. Коли увімкнено унісон, кожен партіал
+розмазується **на однакову ширину в пікселях** (стек голосів `±detune` центів
+— стала в центах → стала в log-f; `Spectrum::unison_half_width_px`,
+дзеркалить `poly.rs::note_on`) — бліда амбер-смуга за чіткою центральною
+гребінкою.
 
 **«Розбери цей пресет».** Наведення на слайдер Brightness / Partials / Formant
 (`spectral_slider` → подія `HoverSpectral`, поле `Data::hovered_spectral`;
