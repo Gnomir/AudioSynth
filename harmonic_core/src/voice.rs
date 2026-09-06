@@ -11,7 +11,7 @@ use crate::kernel::{
     geometric_partials_pre, geometric_partials_pre_frac, geometric_peak_pre, powi_pos,
 };
 use crate::lfo::{Lfo, LfoMode, LfoShape};
-use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns, sin_turns_fast};
+use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns, sin_turns_fast, wrap01};
 use crate::{validate_sample_rate, SampleRateStatus};
 
 /// Hard ceiling on partial count (error budget + `r^n` loop length).
@@ -242,7 +242,7 @@ impl Voice {
     /// Force the carrier phase (turns). Used to spread unison voices.
     #[inline]
     pub fn set_start_phase(&mut self, turns: f64) {
-        self.phase = turns - floor_f64(turns);
+        self.phase = wrap01(turns);
     }
 
     // ---- timbre ----
@@ -336,7 +336,7 @@ impl Voice {
 
     #[inline]
     pub fn set_unison_drift_phase(&mut self, turns: f64) {
-        self.drift_phase = turns - floor_f64(turns);
+        self.drift_phase = wrap01(turns);
     }
 
     // ---- character / filter ----
@@ -391,7 +391,13 @@ impl Voice {
     /// `MAX_PARTIALS as f32` = no effect. `Saw` / `Triangle` ignore it.
     #[inline]
     pub fn set_partial_limit(&mut self, limit: f32) {
-        let limit = limit.clamp(1.0, MAX_PARTIALS as f32);
+        // NaN → the default (no limit). `f32::clamp` would return NaN here
+        // (it only rejects NaN *bounds*), which then poisons `partial_frac`.
+        let limit = if limit.is_nan() {
+            MAX_PARTIALS as f32
+        } else {
+            limit.clamp(1.0, MAX_PARTIALS as f32)
+        };
         self.partial_limit = limit as u32; // floor (limit ≥ 1.0)
         self.partial_frac = limit - self.partial_limit as f32;
     }

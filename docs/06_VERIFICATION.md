@@ -1,9 +1,10 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **81 тест проходить** (74
-юніт + 7 інтеграційних) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
-чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP, увесь набір
-проходить біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
+Що перевірено, як, і якими числами. Статус: **94 тести проходять** (76
+юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір `tests/stress.rs`)
++ 1 `#[ignore]` (довготривалий дрейф, §3), clippy чистий на трьох
+конфігураціях, плагін збирається у VST3 + CLAP, увесь набір проходить
+біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
 
 ---
 
@@ -56,11 +57,12 @@
 | `frac_partial_at_one_equals_the_next_integer_partial` | `geometric_partials_pre_frac(…, frac=1.0)` == `S_{n+1}` (`< 10⁻⁹`) — доводить, що дробовий член це **точно** наступна гармоніка скінченної суми, не апроксимація |
 | `geometric_reduces_to_fundamental_for_small_r` | `r = 10⁻³` → нормований вихід ≈ `cos(x)` у межах `5·10⁻³` |
 
-### `character` (9)
+### `character` (10)
 
 | Тест | Що доводить |
 |---|---|
 | `clean_params_are_bit_identity` | `CLEAN` → `process(x) == x` бітово, на 2000 значеннях |
+| `set_params_sanitises_hostile_fields` | NaN-поле → `0.0` (значення `CLEAN` для кожного поля), тож all-NaN зводиться до чистого й зберігає побітову тотожність; `±∞` / поза діапазоном → найближча межа. Без цього `is_clean` (`NaN <= 0.0` = false) пропускав би NaN у вейвшейпер |
 | `tanh_pade_joins_the_clamp_smoothly` | нахил `tanh_pade` одразу перед клампом `±3` `< 2·10⁻³`, одразу за ним `< 10⁻⁶` (немає зламу першої похідної, який давав кламп `±4`); жодного перельоту `±1` на `x ∈ [0, 50]` |
 | `sample_and_hold_state_is_cleared_on_reset` | після навантаженого drive+downsample та `reset()` перший семпл на тишу = `0` бітово (S&H `hold` не тягне хвіст попередньої ноти) |
 | `dc_blocker_time_constant_matches_between_1x_and_2x_paths` | загасання DC-зсуву через `process` (1×) і `process_hq_pair` (2×) збігається на матчнутих лічильниках викликів — доводить `√`-масштабування коефіцієнта DC-blocker'а на 2×-шляху (без цього падає на семплі 2000 з розбіжністю `0.263` проти `0.097`) |
@@ -84,13 +86,14 @@
 | `cutoff_ceiling_is_identical_at_1x_and_hq_2x` | той самий запитаний cutoff (до `500 000` Гц) клампується **однаково** при `Svf::new(fs)` і після `set_sample_rate(2fs)` — доводить, що музична стеля прив'язана до `base_sample_rate`, не до робочої ставки (без цього HQ відкривав би фільтр удвічі далі за той самий свіп) |
 | `stable_under_cutoff_and_resonance_sweep` | свіп cutoff при `res 1.0`, 200 000 семплів, `|y| < 20`, скінченне |
 
-### `env` (4)
+### `env` (5)
 
 | Тест | Що доводить |
 |---|---|
 | `ar_shape_when_sustain_is_full` | attack сягає 1, sustain тримає, release падає до `< 10⁻³` |
 | `decays_to_sustain_and_holds` | decay осідає на `sustain = 0.4` у межах `0.02` |
 | `zero_sustain_is_percussive_and_frees` | `sustain = 0` → голос стає Idle навіть при затиснутій ноті |
+| `hostile_stage_times_still_progress_to_idle` | `stage_time_s` клампить `[0.5 мс, 600 с]`: `+∞` / `1e30` → `600`, NaN / `−∞` / від'ємне → `0.5 мс`. Жоден коефіцієнт стадії не стає `0` → `+∞`-attack/decay/release не лишає голос застряглим і чутним |
 | `monotone_attack_then_nonincreasing_release` | attack монотонно росте, release монотонно спадає |
 
 ### `lfo` (4)
@@ -162,6 +165,26 @@
 | Тест | Що доводить |
 |---|---|
 | `rendered_signal_is_bit_identical_across_architectures` | 100 мс рендеру `PolySynth<8>` через весь тракт (унісон 4 + drift + FM + feedback + 4 маршрути LFO + резонансний Low SVF + drive/bias/fold/crush/downsample), зі скриптованими note-on/off та pitch-bend; біти кожного семпла згортаються в FNV-1a хеш і звіряються з константою, знятою на `x86_64-pc-windows-msvc`. Будь-яка розбіжність в 1 ULP на ~9600 семплах змінює хеш. Зелений на x86-64, `aarch64-unknown-linux-gnu`, `armv7-unknown-linux-gnueabihf` (§6) |
+
+### `tests/stress.rs` — інтеграційні, RT-safety (11)
+
+Ворожий доказовий набір: контракт аудіо-шляху («ніколи не паніка / не
+алокація / не блокування / не нескінченний / не необмежений семпл — *хай що*
+подасть хост») перевіряється атаками, а не довірою.
+
+| Тест | Що доводить |
+|---|---|
+| `nan_and_inf_into_every_polysynth_setter_stays_finite` | для кожного з `{NaN, ±∞, субнормаль, ±1e300, −0}`: усі публічні сеттери `PolySynth` по черзі отримують це значення, потім 8000 семплів — скінченні, `\|y\| ≤ 4`; далі рушій ще здатен озвучити свіжу ноту й дійти до тиші (жоден голос не застряг) |
+| `nan_and_inf_into_every_voice_setter_stays_finite` | те саме для всіх ~18 публічних сеттерів standalone `Voice` |
+| `parameter_storm_at_sample_rate` | ~300 k семплів, ~10 параметрів змінюються **щосемпла** випадково-в-діапазоні (детермінований LCG), акорд тримається, HQ тумблиться — скінченне, обмежене |
+| `note_event_storm_never_exceeds_the_pool_and_recovers_to_silence` | 20 k перемішаних note-on/off/choke на 16-голосний пул з унісоном 4 → `active_voice_count() ≤ 16` завжди; після `all_notes_off` + 4 с → 0 голосів, хвіст `< 10⁻⁴` |
+| `hostile_envelope_times_cannot_strand_a_voice` | `+∞` / `1e30` / NaN / від'ємні attack+decay+release → голос усе одно звільняється (жоден коеф. стадії не `0`) |
+| `sample_rate_extremes_with_the_whole_tract_lit` | увесь тракт (осц + Partials + expr + FM + feedback + character + Band SVF + фільтр-env + LFO×4 + унісон 6 + HQ) на `8000` та `768000` Гц → скінченне, обмежене |
+| `hq_toggled_every_few_samples_under_a_hot_signal` | `set_hq` тумблиться кожні 7 семплів під перевантаженим drive+fold+FM сигналом, 120 k семплів → скінченне (дециматор скидається щоразу) |
+| `reset_while_sounding_is_immediately_clean` | `reset()` посеред акорду → 0 голосів одразу, вихід `< 10⁻⁶` |
+| `long_run_holds_finite_bounded_and_does_not_drift_in_level` | ~2.1 M семплів (~44 с) утримуваного акорду з повільним LFO: RMS раннього vs пізнього вікна `∈ [0.5×, 2×]` — рівень не пливе ні в нуль, ні вгору |
+| `subnormal_and_zero_frequency_are_handled` | `set_frequency` на `{0, −0, MIN_POSITIVE, 1e-20, −50}` → скінченне |
+| `waveform_switching_mid_note_stays_bounded` | Geometric↔Saw↔Triangle перемикається кожні 11 семплів на звучній ноті → скінченне |
 
 ---
 
@@ -320,19 +343,48 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 81 / 81 (74 юніт + 7 інтеграційних) |
+| Тести | `cargo test` | 94 / 94 (76 юніт + 18 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
 ---
 
-## 5. RT-safety — grep
+## 5. RT-safety
+
+### 5.1. `grep` — статично
 
 ```
 $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 ```
 → збіги **лише** у `#[cfg(test)]`-модулях (`env.rs` тести). Нуль у гарячому
-шляху.
+шляху. `[profile.release] panic = "abort"` в **обох** крейтах.
+
+### 5.2. `tests/stress.rs` — ворожий доказовий набір (11 тестів)
+
+Контракт аудіо-шляху — **ніколи** не паніка / не алокація / не блокування /
+не нескінченний / не необмежений семпл, *хай що* подасть хост — перевіряється
+атаками, не довірою. `NaN` / `±∞` / `±1e300` / субнормаль по черзі в **кожен**
+публічний сеттер `PolySynth` і `Voice`; шторми параметрів і нот на швидкості
+семплу; крайні частоти дискретизації; HQ під навантаженням; прогін на 2 M
+семплів. Повний перелік — §2. Кожен сценарій вимагає скінченного обмеженого
+виходу **і** що ворожий вхід не лишає голос застряглим.
+
+Набір знайшов і зафіксував (корінь, не симптом):
+
+| Місце | Було | Стало |
+|---|---|---|
+| `Adsr::set` | `+∞` / величезний час стадії → коеф. `0` → голос навіки в Attack/Decay/Release | `stage_time_s` клампить `[0.5 мс, 600 с]` |
+| `Character::set_params` | NaN-поле проходило повз `is_clean` (`NaN <= 0` = false) → NaN у вейвшейпері назавжди | санітизація: NaN → `0.0` (= `CLEAN`), `±∞`/поза діапазоном → межа |
+| `Voice::set_start_phase` / `Lfo::set_phase` / `set_unison_drift_phase` | `1e300 − floor(1e300)` (floor точний лише до `2⁶³`) → фаза поза `[0,1)` → осц. видає non-finite | `trig::wrap01`: non-finite / нередуковне → `0.0` |
+| `PolySynth::set_gain` | `+∞` → `mix · ∞ = NaN` на нульовому семплі мікса; `1e300 as f32 = ∞` — те саме | кламп `[0, 64]`, тільки скінченне |
+| `Voice::set_partial_limit`, `PolySynth::set_partial_limit` | `f32::clamp(NaN,…)` повертає NaN → `partial_frac` = NaN | NaN → деф. `2048` |
+| `PolySynth::set_unison`, `Lfo::set_rate` | `f64::clamp(NaN,…)` = NaN; `NaN < 0.0` = false | явна NaN-гілка (`nan_clamp` / `is_nan`) |
+
+Клампи скидання NaN уже стояли на `Voice::set_frequency/gain/pan/…`,
+`Svf::set_cutoff/resonance`, `env::clamp01`, `PolySynth::set_gain`(NaN-частина)
+— набір закрив решту периметра публічного API. Усі виправлення лишають
+чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
+не зачеплено).
 
 ---
 
@@ -367,8 +419,8 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **81 / 81 pass** (74 юніт + 7 інтеграційних) |
-| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **81 / 81 pass** |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **94 / 94 pass** (76 юніт + 18 інтеграційних) |
+| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **94 / 94 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
 рендеру всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`:
@@ -395,12 +447,17 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 81/81, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 94/94, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.
 - **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі
   статус-кодом (не тихо), але сам кламп-шлях у реальному хості не тестований.
+- **RT-safety — покрито** (§5.2: ворожий вхід у весь публічний API, шторми,
+  крайні режими, 2 M семплів). **Не покрито:** справжній property-based
+  fuzzer (`cargo-fuzz` / `proptest`) — `tests/stress.rs` детермінований і
+  скриптований, не рандомізований пошук; вимірювання денормалей за часом
+  (тестується коректність тиші, не її вартість у циклах).
 - **Автоматизація параметрів на межі блоку** в реальному хості (тестовано
   лише логіку рушія, не marshalling `nih-plug`).
 - **`geometric_partials_x4_simd`** на nightly перевірено лише що

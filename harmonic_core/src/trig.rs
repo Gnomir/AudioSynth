@@ -248,6 +248,24 @@ pub fn floor_f64(x: f64) -> f64 {
     }
 }
 
+/// Reduce a phase in *turns* to `[0, 1)`. Defensive: `floor_f64` is only exact
+/// for `|x| < 2⁶³`, so a caller-supplied `±∞` / `NaN` / astronomically large
+/// value (from a public phase setter) that would not reduce cleanly is mapped
+/// to `0.0` rather than latched into a phase accumulator. Normal in-range
+/// inputs are `x - ⌊x⌋` exactly.
+#[inline]
+pub fn wrap01(x: f64) -> f64 {
+    if !x.is_finite() {
+        return 0.0;
+    }
+    let w = x - floor_f64(x);
+    if (0.0..1.0).contains(&w) {
+        w
+    } else {
+        0.0
+    }
+}
+
 /// `2^x` for real `x` (`|x| < 1000`). Replaces `f64::exp2` (std).
 ///
 /// Split `x = ⌊x⌋ + f`: the integer part becomes an exponent field directly,

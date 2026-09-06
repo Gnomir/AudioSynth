@@ -98,7 +98,31 @@ impl Character {
 
     #[inline]
     pub fn set_params(&mut self, p: CharParams) {
-        self.p = p;
+        // Sanitise at the door. `is_clean` / `stage` compare the params with
+        // `<=` / `==`, so a NaN field (`NaN <= 0.0` is false) would slip past
+        // the clean fast path and feed the waveshaper a NaN, poisoning every
+        // sample from then on. NaN → `0.0`, the CLEAN value of *every*
+        // Character field (so all-NaN params reduce to fully clean); ∞ /
+        // out-of-range → the nearest bound.
+        #[inline(always)]
+        fn s(x: f32, lo: f32, hi: f32) -> f32 {
+            if x.is_nan() {
+                0.0
+            } else if x < lo {
+                lo
+            } else if x > hi {
+                hi
+            } else {
+                x
+            }
+        }
+        self.p = CharParams {
+            drive: s(p.drive, 0.0, 1.0),
+            bias: s(p.bias, -1.0, 1.0),
+            fold: s(p.fold, 0.0, 1.0),
+            crush: s(p.crush, 0.0, 1.0),
+            downsample: s(p.downsample, 0.0, 1.0),
+        };
     }
 
     #[inline]
@@ -280,6 +304,46 @@ mod tests {
         for i in -1000..1000 {
             let x = i as f32 / 500.0;
             assert_eq!(c.process(x), x);
+        }
+    }
+
+    #[test]
+    fn set_params_sanitises_hostile_fields() {
+        // `is_clean` / `stage` compare with `<=` / `==`, so a NaN field slips
+        // past the clean fast path and poisons the waveshaper. `set_params`
+        // must clamp: NaN / -∞ / <lo → lo (which is "off"), +∞ / >hi → hi.
+        let mut c = Character::new();
+        c.set_params(CharParams {
+            drive: f32::NAN,
+            bias: f32::NEG_INFINITY,
+            fold: f32::INFINITY,
+            crush: 5.0,
+            downsample: -2.0,
+        });
+        let p = c.params();
+        assert_eq!(p.drive, 0.0);
+        assert_eq!(p.bias, -1.0);
+        assert_eq!(p.fold, 1.0);
+        assert_eq!(p.crush, 1.0);
+        assert_eq!(p.downsample, 0.0);
+        // output stays finite when driven with the sanitised params
+        for i in -200..200 {
+            let y = c.process(i as f32 / 100.0);
+            assert!(y.is_finite() && y.abs() <= 2.0, "poisoned output {y} at {i}");
+        }
+
+        // all-NaN → fully clean → bit identity preserved
+        let mut c2 = Character::new();
+        c2.set_params(CharParams {
+            drive: f32::NAN,
+            bias: f32::NAN,
+            fold: f32::NAN,
+            crush: f32::NAN,
+            downsample: f32::NAN,
+        });
+        for i in -500..500 {
+            let x = i as f32 / 250.0;
+            assert_eq!(c2.process(x), x);
         }
     }
 

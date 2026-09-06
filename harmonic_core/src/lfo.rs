@@ -2,7 +2,7 @@
 //! Sine / triangle / saw, all phase-aligned (rising through 0 at phase 0) so
 //! swapping shape mid-note does not jump.
 
-use crate::trig::{floor_f64, sin_turns_fast};
+use crate::trig::{sin_turns_fast, wrap01};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -64,7 +64,9 @@ impl Lfo {
     /// Rate in Hz. Clamped to `[0, fs/2)`.
     #[inline]
     pub fn set_rate(&mut self, hz: f64, sample_rate: f64) {
-        let h = if hz < 0.0 { 0.0 } else { hz };
+        // NaN (`NaN < 0.0` is false) and any negative → 0 Hz (frozen phase),
+        // never a NaN increment latched into the modulator.
+        let h = if hz.is_nan() || hz < 0.0 { 0.0 } else { hz };
         self.inc = (h / sample_rate).min(0.499);
     }
 
@@ -80,7 +82,7 @@ impl Lfo {
 
     #[inline]
     pub fn set_phase(&mut self, turns: f64) {
-        self.phase = turns - floor_f64(turns);
+        self.phase = wrap01(turns); // never latch a non-reducible phase
     }
 
     /// Note-on. Restarts from phase 0 in [`LfoMode::Retrigger`]; a no-op in

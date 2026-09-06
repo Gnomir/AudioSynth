@@ -280,11 +280,20 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     }
 
     pub fn set_gain(&mut self, g: f64) {
-        // `NaN < 0.0` is false, so a bare comparison lets NaN straight
-        // through — this is the master gain, so a latched NaN here would
-        // silence/poison the *entire* mix, not just
-        // one voice.
-        self.gain = if g.is_nan() || g < 0.0 { 0.0 } else { g };
+        // `NaN < 0.0` is false, so a bare comparison lets NaN straight through
+        // — this is the master gain, so a latched NaN here would poison the
+        // *entire* mix. `+∞` is just as bad: `mix * ∞` is `NaN` on any sample
+        // where the summed mix is exactly `0.0`. And a huge *finite* `f64`
+        // (e.g. `1e300`) overflows to `f32::INFINITY` in the `as f32` cast at
+        // the mix, with the same result. Clamp to `[0, 64]` (+36 dB — far past
+        // any real master; `soft_clip` bounds the output anyway).
+        self.gain = if g.is_nan() || g < 0.0 {
+            0.0
+        } else if g > 64.0 {
+            64.0
+        } else {
+            g
+        };
     }
 
     pub fn set_character(&mut self, p: CharParams) {
@@ -352,7 +361,11 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     /// flat cost; the fractional part gives a smooth (not stepped) sweep. See
     /// [`Voice::set_partial_limit`].
     pub fn set_partial_limit(&mut self, limit: f32) {
-        self.partial_limit = limit.clamp(1.0, crate::voice::MAX_PARTIALS as f32);
+        self.partial_limit = if limit.is_nan() {
+            crate::voice::MAX_PARTIALS as f32
+        } else {
+            limit.clamp(1.0, crate::voice::MAX_PARTIALS as f32)
+        };
         for v in &mut self.voices {
             v.core.set_partial_limit(self.partial_limit);
         }
@@ -432,10 +445,15 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     /// image *breathes* instead of sitting still. `drift` applies from the next
     /// note-on.
     pub fn set_unison(&mut self, count: u32, detune_cents: f64, spread: f64, drift: f64) {
+        // `f64::clamp` returns NaN when `self` is NaN (it only rejects NaN
+        // bounds). A NaN `spread` then flows into the pan gain; a NaN `drift`
+        // disables drift (`NaN > 0.0` is false) but is still stored — reject
+        // all three at the door. `detune_cents` is bounded generously (±4 oct)
+        // so a huge value can't drive `exp2` to `∞` before the freq clamp.
         self.unison_count = count.clamp(1, MAX_UNISON);
-        self.unison_detune = detune_cents;
-        self.unison_spread = spread.clamp(0.0, 1.0);
-        self.unison_drift = drift.clamp(0.0, 1.0);
+        self.unison_detune = nan_clamp(detune_cents, -4800.0, 4800.0);
+        self.unison_spread = nan_clamp(spread, 0.0, 1.0);
+        self.unison_drift = nan_clamp(drift, 0.0, 1.0);
     }
 
     /// Pitch bend in semitones (applied to every sounding voice, smoothed).
@@ -786,6 +804,19 @@ pub fn soft_clip(x: f32) -> f32 {
     };
     let x2 = x * x;
     x * (27.0 + x2) / (27.0 + 9.0 * x2)
+}
+
+/// NaN-safe `f64` clamp: `NaN` (and `-∞`) resolve to `lo`, `+∞` to `hi`.
+/// `f64::clamp` instead returns `NaN` unchanged when `self` is `NaN`.
+#[inline(always)]
+fn nan_clamp(x: f64, lo: f64, hi: f64) -> f64 {
+    if x.is_nan() || x < lo {
+        lo
+    } else if x > hi {
+        hi
+    } else {
+        x
+    }
 }
 
 #[inline(always)]

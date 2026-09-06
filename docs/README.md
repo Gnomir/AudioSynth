@@ -19,7 +19,7 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, HQ-режим (Unified HQ Bus), ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 81 тесту, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 94 тестів, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM (bit-exact), що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; один MIDI-канал; педаль сустейну на рівні плагіна; відсутність DAW-валідації тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, макет пам'яті, протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Що лишилось: активні задачі (жива DAW-валідація, upstream-PR) та свідомо відкладені напрямки з причиною |
@@ -50,7 +50,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-81 тест проходить (74 юніт + 7 інтеграційних) + 1 `#[ignore]` (дрейф),
+94 тести проходять (76 юніт + 18 інтеграційних) + 1 `#[ignore]` (дрейф),
 біт-у-біт на `aarch64` + `armv7-hf` під QEMU (`cross-verify.sh`) · clippy
 чистий (stable + `--no-default-features --release` + nightly
 `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI

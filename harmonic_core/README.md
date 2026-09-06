@@ -68,6 +68,8 @@ Artifacts land in `target/release/`:
 | `src/poly.rs` | `PolySynth<VOICES>` — alloc/stealing, unison, pitch bend, shared LFO, both ADSRs. Stereo out. |
 | `src/ffi.rs` | C ABI (interleaved-stereo `process`). Caller owns voice memory; crate never allocates. |
 | `tests/spectrum.rs` | closed form == brute sum; rendered voice proven non-aliasing via single-bin DFT. |
+| `tests/stress.rs` | adversarial RT-safety: `NaN`/`±∞`/`±1e300` into every public setter, parameter & note-event storms at sample rate, sample-rate extremes, HQ under load, 2 M-sample run — output stays finite, bounded, and the voice pool always recovers. |
+| `tests/cross_platform_bit_exact.rs` | whole-tract render hash vs an x86-64 reference — bit-identical on `aarch64` / `armv7-hf` under QEMU. |
 | `examples/` | `render_wav`, `poly_demo`, `character_demo`, `filter_demo`, `wide_demo` (unison), `bench_hc`. |
 
 ## `character` module — the dirt, on purpose

@@ -42,8 +42,12 @@ impl Adsr {
         }
     }
 
-    /// `attack` / `decay` / `release` in seconds (floored at 0.5 ms),
-    /// `sustain` in `0..1`. Safe to call on a sounding envelope.
+    /// `attack` / `decay` / `release` in seconds (clamped to `[0.5 ms, 600 s]`),
+    /// `sustain` in `0..1`. Safe to call on a sounding envelope. NaN / ∞ / a
+    /// huge time all resolve to a finite bound — see [`stage_time_s`] — so the
+    /// per-stage coefficient stays strictly `> 0` and every non-Idle stage
+    /// always advances toward its target: a hostile envelope time cannot
+    /// strand a voice in Attack / Decay / Release forever.
     pub fn set(
         &mut self,
         sample_rate: f64,
@@ -52,14 +56,14 @@ impl Adsr {
         sustain: f64,
         release_s: f64,
     ) {
-        let a = fmax(attack_s, 0.0005) * sample_rate;
+        let a = stage_time_s(attack_s) * sample_rate;
         self.attack_inc = (1.0 / a) as f32;
         // one-pole coeff s.t. the stage is essentially complete after its time:
         //   decay   → within 2^-7.64 ≈ 0.5 % of sustain
         //   release → 2^-13.3 ≈ -80 dB (below the 1e-4 Idle threshold)
-        let d = fmax(decay_s, 0.0005) * sample_rate;
+        let d = stage_time_s(decay_s) * sample_rate;
         self.decay_coeff = (1.0 - exp2(-7.64 / d)) as f32;
-        let r = fmax(release_s, 0.0005) * sample_rate;
+        let r = stage_time_s(release_s) * sample_rate;
         self.release_coeff = (1.0 - exp2(-13.3 / r)) as f32;
         self.sustain = clamp01(sustain as f32);
     }
@@ -155,6 +159,25 @@ fn fmax(a: f64, b: f64) -> f64 {
     }
 }
 
+/// Clamp an envelope stage time (seconds) to a finite, sane window.
+///
+/// Lower bound `0.5 ms` keeps the per-sample coefficient meaningfully `< 1`.
+/// Upper bound `600 s` (~10 min — far past any musical envelope) guarantees
+/// the coefficient stays strictly `> 0`: `1 - 2^(-k / (600·8000))` is still
+/// `≈ 4.6·10⁻⁹` at the lowest supported sample rate, so Attack / Decay /
+/// Release always progress and a `+∞` or absurd time from a hostile caller
+/// can't leave a voice stuck and audible. `fmax` maps NaN → the lower bound
+/// (`NaN > x` is false); `-∞` and any negative likewise.
+#[inline(always)]
+fn stage_time_s(t: f64) -> f64 {
+    let t = fmax(t, 0.0005);
+    if t > 600.0 {
+        600.0
+    } else {
+        t
+    }
+}
+
 #[inline(always)]
 fn clamp01(x: f32) -> f32 {
     // NaN compares false against everything and falls through unchanged
@@ -217,6 +240,33 @@ mod tests {
         e.trigger();
         run(&mut e, (SR * 1.0) as usize);
         assert!(!e.is_active(), "zero-sustain envelope never freed");
+    }
+
+    #[test]
+    fn hostile_stage_times_still_progress_to_idle() {
+        // +∞ / NaN / absurd stage times must not zero out a coefficient and
+        // strand the envelope: `stage_time_s` clamps to `[0.5 ms, 600 s]` so
+        // every non-Idle stage keeps advancing toward its target.
+        assert_eq!(stage_time_s(f64::INFINITY), 600.0);
+        assert_eq!(stage_time_s(1.0e30), 600.0);
+        assert_eq!(stage_time_s(f64::NAN), 0.0005);
+        assert_eq!(stage_time_s(f64::NEG_INFINITY), 0.0005);
+        assert_eq!(stage_time_s(-5.0), 0.0005);
+
+        for &t in &[f64::INFINITY, f64::NAN, 1.0e30] {
+            let mut e = Adsr::new();
+            e.set(SR, t, t, 0.5, t);
+            assert!(e.decay_coeff > 0.0 && e.decay_coeff.is_finite(), "decay coeff dead: {}", e.decay_coeff);
+            assert!(e.release_coeff > 0.0 && e.release_coeff.is_finite(), "release coeff dead: {}", e.release_coeff);
+            assert!(e.attack_inc > 0.0 && e.attack_inc.is_finite(), "attack inc dead: {}", e.attack_inc);
+            e.trigger();
+            run(&mut e, 64);
+            // a realistic release must then still bring it to Idle
+            e.set(SR, 0.005, 0.02, 0.5, 0.05);
+            e.release();
+            run(&mut e, (SR * 1.0) as usize);
+            assert!(!e.is_active(), "envelope stuck after hostile times {t:e}");
+        }
     }
 
     #[test]
