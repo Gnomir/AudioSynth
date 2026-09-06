@@ -50,10 +50,10 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-97 тестів проходять (79 юніт + 18 інтеграційних) + 1 `#[ignore]` (дрейф),
-біт-у-біт на `aarch64` + `armv7-hf` під QEMU (`cross-verify.sh`) · clippy
-чистий (stable + `--no-default-features --release` + nightly
-`--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI
+97 тестів ядра (79 юніт + 18 інтеграційних) + 10 у плагіні + 1 `#[ignore]`
+(дрейф), біт-у-біт (δ = 0.0) на `aarch64` + `armv7-hf` під QEMU
+(`cross-verify.sh`) · clippy чистий (stable + `--no-default-features --release`
++ nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI
 (`nih_plug_vizia`: згруповані секції параметрів + живий спектр + метр аліасингу + морф + рандом + пресети) · **pluginval
 `--strictness-level 8`: повний прохід (VST3, з GUI-тестами)** ·
 **clap-validator: 35/35** (потребує `[patch]` на `vendor/nih-plug`,
@@ -64,5 +64,9 @@ retrigger/free-run + матриця (→ brightness / pitch / cutoff / FM index)
 унісон з «диханням» · понотна яскравість (MPE / афтертач → `rolloff` на
 голос) · «Formant» — резонансний горб (другий закритий член) · CC#64 sustain (рівень плагіна) · чесний метр аліасингу в редакторі
 (смуга біля Найквіста → коли вмикати HQ) · A/B морф між патчами (кожен
-параметр інтерполюється чисто) · seed-рандомайзер із 6-символьним кодом (детермінований на будь-якій машині) · стартовий банк ~22 пресетів · ворожий RT-safety набір
-(`tests/stress.rs`) · `panic=abort` в обох крейтах.
+параметр інтерполюється чисто) · seed-рандомайзер із 6-символьним кодом (детермінований на будь-якій машині) · стартовий банк 22 пресети · ворожий RT-safety набір
+(`tests/stress.rs`) · `panic=abort` в обох крейтах · перший живий прогін у
+REAPER 7.79 зроблено (`11_DAW_CHECKLIST.md`).
+
+Комерційне пакування (spec sheet потужностей, позиціювання, ціни, канали
+перших клієнтів) — **[`../product/`](../product/README.md)**.

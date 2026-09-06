@@ -24,8 +24,9 @@ unison with a slow per-voice drift so the stack breathes, pitch bend and
 equal-power pan.
 
 > Cost is **Θ(log n)** per sample (one `rⁿ` by exponentiation-by-squaring),
-> **Θ(1)** at fixed partial count — measured ~26 M samples/s per clean voice, flat
-> across a 400× range of harmonic counts.
+> **Θ(1)** at fixed partial count — measured **~26 M samples/s per clean voice**
+> (~550× realtime @ 48 kHz), flat within 1 % from 3 to 1200 harmonics; a full
+> 64-voice chord renders at **~9.4× realtime** (~590 voice-realtime of margin).
 
 This project is **not** "AQOE-AudioSynth" / `cos²(2εθ)` — that idea was analysed
 and dropped (the formula is degenerate as a spectral envelope). Details:
@@ -36,8 +37,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | Path | What |
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs` + C ABI |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), `nih_plug_vizia` editor: spectrum + aliasing meter + A/B morph + seed randomiser + ~22 presets |
+| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 36 params, `nih_plug_vizia` editor: grouped sections + live spectrum + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
+| `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
 
 ## Build
@@ -65,20 +67,26 @@ nightly.
 
 ## Status
 
-97 `harmonic_core` tests pass (79 unit + 18 integration, 11 of them an adversarial RT-safety suite) plus 10 plugin tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
-nightly `portable-simd`. The whole suite — including a whole-signal-path hash
-compared against an x86-64 reference — passes bit-for-bit on
+97 `harmonic_core` tests pass (79 unit + 18 integration, 11 of them an
+adversarial RT-safety suite) plus 10 plugin tests, plus a `#[ignore]` long-run
+drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
+whole core suite — including a whole-signal-path FNV-1a hash compared against an
+x86-64 reference — passes **bit-for-bit (delta 0.0)** on
 `aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU
-(`harmonic_core/scripts/cross-verify.sh`). `pluginval --strictness-level 8` passes on the VST3
-(editor tests included); `clap-validator` passes **35/35** on the CLAP — the
-`nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt preset) are
-fixed via a `[patch]` onto a vendored copy, see
-[`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md). The plugin has
-a `nih_plug_vizia` editor (all params + a live spectrum + an honest aliasing
-meter + A/B patch morph + a seed randomiser with a shareable 6-char code + a
-~22-preset starter bank). Not
-yet validated in a live DAW — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) for exactly
-what is and isn't covered.
+(`harmonic_core/scripts/cross-verify.sh`). `pluginval --strictness-level 8`
+passes on the VST3 (editor tests included); `clap-validator` passes **35/35** on
+the CLAP — the `nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt
+preset) are fixed via a `[patch]` onto a vendored copy, see
+[`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md).
+
+**Live-DAW status:** a first pass in REAPER 7.79 (CLAP, Windows 11) is done —
+sound, editor, spectrum, presets and the randomiser all work; it also caught and
+fixed an editor-layout bug the validators can't see. The rest of the manual
+checklist (state recall across a restart, sample-rate sweep, voice stealing,
+sustain pedal, MPE, other hosts) is still pending — see
+[`docs/11_DAW_CHECKLIST.md`](docs/11_DAW_CHECKLIST.md) and
+[`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) for exactly what is and isn't
+covered.
 
 ## License
 
@@ -86,6 +94,11 @@ Dual-licensed under **MIT** ([`LICENSE-MIT`](LICENSE-MIT)) OR **Apache-2.0**
 ([`LICENSE-APACHE`](LICENSE-APACHE)), at your option — the standard Rust
 convention. Both `harmonic_core` and `harmonic_synth` declare
 `license = "MIT OR Apache-2.0"`.
+
+> The permissive license is a deliberate decision point before any commercial
+> release — it currently means the engine can be shipped in a closed product for
+> free. Options (keep permissive / open-core dual-license / source-available):
+> [`product/COMMERCIAL_BRIEF.md §5`](product/COMMERCIAL_BRIEF.md).
 
 Unless you explicitly state otherwise, any contribution intentionally
 submitted for inclusion in the work by you shall be dual-licensed as above,

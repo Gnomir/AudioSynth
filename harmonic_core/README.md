@@ -146,6 +146,16 @@ without SIMD (Cortex-M). `--features portable-simd` (nightly) adds an explicit
 character stages are serial recursive filters; the batch API is for the bare
 oscillator / offline rendering.
 
+## Measured (release, x86-64; `examples/bench_*`, `docs/06 §3`)
+
+| | number |
+|---|---|
+| One clean voice | **~26 M samples/s** (~550× realtime @ 48 kHz), flat within 1 % from 3 to 1200 harmonics |
+| 64-voice chord (`PolySynth<64>`) | **~9.4× realtime @ 48 kHz** (~590 voice-realtime of margin) |
+| PolyBLEP saw / triangle | ~90 M / ~77 M samples/s (cheaper than the geometric carrier) |
+| Cross-architecture render hash | **delta 0.0** on `aarch64` + `armv7-hf` under QEMU |
+| `no_std` cdylib | ~14 KB |
+
 ## Status & roadmap
 
 The plugin (`../harmonic_synth`), Character stage, ZDF filter, dual ADSR,
@@ -155,9 +165,14 @@ resonant "Formant" hump (a second closed-form term),
 PolyBLEP saw/triangle, the fractional "Partials" knob, sample-rate validation,
 the batched oscillator, the HQ oversampling bus, the clean-voice fast path, and
 the `nih_plug_vizia` GUI are all done. `pluginval --strictness 8` and
-`clap-validator 35/35` pass.
+`clap-validator 35/35` pass; a first live-DAW pass in REAPER is done
+(`../docs/11_DAW_CHECKLIST.md`).
 
 What's left, and the deliberately-deferred directions with their reasons, are in
-**[`../docs/09_ROADMAP.md`](../docs/09_ROADMAP.md)** — the short version is: live
-DAW validation, an upstream PR for the nih-plug CLAP fix, and 4× HQ / SoA-SIMD /
-a second geometric kernel if a concrete need ever appears.
+**[`../docs/09_ROADMAP.md`](../docs/09_ROADMAP.md)** — the short version is: the
+rest of the live-DAW checklist, an upstream PR for the nih-plug CLAP fix, and
+4× HQ / SoA-SIMD / more Formant terms if a concrete need ever appears.
+
+Commercial packaging of all of the above — capability spec sheet, positioning,
+pricing models, first-customer channels — is in
+**[`../product/`](../product/README.md)**.
