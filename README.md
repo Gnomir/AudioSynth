@@ -69,7 +69,7 @@ nightly.
 ## Status
 
 103 `harmonic_core` tests pass (85 unit + 18 integration, 11 of them an
-adversarial RT-safety suite) plus 15 plugin tests, plus a `#[ignore]` long-run
+adversarial RT-safety suite) plus 20 plugin tests, plus a `#[ignore]` long-run
 drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
 whole core suite — including a whole-signal-path FNV-1a hash compared against an
 x86-64 reference — passes **bit-for-bit (delta 0.0)** on

@@ -2,7 +2,7 @@
 
 Що перевірено, як, і якими числами. Статус: **103 тести `harmonic_core`**
 (85 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **15 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning) + 1 `#[ignore]`
+`tests/stress.rs`) + **20 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -401,7 +401,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (15, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (20, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -420,6 +420,11 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `tuning::root_moves_which_key_is_pure` | JI від A: A4 = 440, E5 (квінта вгору) стає `3:2` — вибір тоніки переносить, яка клавіша чиста |
 | `tuning::edo_and_bohlen_pierce_have_the_right_period` | 19-EDO і 31-EDO: `edo` клавіш = октава; Bohlen-Pierce: 13 клавіш = `×3` |
 | `tuning::every_scale_gives_finite_positive_frequencies_across_the_keyboard` | усі 8 шкал × 12 тонік × 128 нот → скінченна додатна частота |
+| `tuning::parses_a_ratio_scl_and_matches_the_built_in_pythagorean` | реальний `.scl` із відношеннями (`3/2`, `9/8`, `2/1`) → 12 ступенів, квінта = `701.955` ц, період `1200` ц; round-trip через `to_compact` / `expand_compact` |
+| `tuning::parses_a_cents_scl` | `.scl` із центовими значеннями (`350.0`, `1200.000`) парситься як центи напряму |
+| `tuning::build_scala_puts_the_fifth_on_a_pure_3_2` | `build_scala(compact, root=C, 440)` → C4 як 12-TET, G4 — чиста `3:2`, октава подвоюється |
+| `tuning::malformed_scl_is_rejected_not_panicked` | порожній / без лічильника / невірна кількість / `0/0` / від'ємний період → `Err`, без паніки; `build_scala("")` / `("garbage")` → `None` (фолбек на enum) |
+| `tuning::a_scale_bigger_than_the_cap_is_truncated_not_rejected` | 100-нотна шкала → обрізана до `MAX_SCALA_DEGREES = 64`, період збережено, усі 128 нот скінченні |
 
 ---
 

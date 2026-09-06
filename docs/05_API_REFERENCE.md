@@ -160,7 +160,7 @@ impl Waveform { pub fn from_u32(v: u32) -> Self }     // невідоме → Ge
 
 pub struct Tuning { /* Copy; period + degree cents + (ref_note, ref_hz) anchor */ }
 impl Tuning {
-    pub const MAX_DEGREES: usize = 32;
+    pub const MAX_DEGREES: usize = 64;   // 53-EDO / Turkish-53 fit; більше — обрізає викликач
     pub const EQUAL_440: Tuning;                              // 12-TET, A4=440 (дефолт)
     pub fn equal(edo: u8, ref_hz: f64, ref_note: u8) -> Tuning;      // n рівних поділів октави
     pub fn from_cents(cents: &[f64], period: f64, ref_hz: f64, ref_note: u8) -> Tuning; // довільна Scala-шкала
@@ -337,7 +337,7 @@ HQ / Free-Run) перемикаються на `pos = 0.5`. Межі — `07 §1
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |
 | Режим голосу | Free-Run Phase, **HQ Mode** (Unified HQ Bus — **+16 семплів** латентності, `PolySynth::HQ_LATENCY`, PDC повідомляється константно; НЕ плутати з `Voice::HQ_LATENCY = 3`, яка стосується лише прямого C-ABI, не плагіна) |
 | Унісон | Unison (1–8), Uni Detune (ct), Uni Spread (%), **Uni Drift** (%) |
-| **Мікротюнінг** | **Tuning** (enum: Equal / Just Intonation / Pythagorean / 1/4-comma Meantone / 19-EDO / 24-EDO / 31-EDO / Bohlen-Pierce), **Tune Root** (0–11, тоніка 12-нотних історичних шкал; ігнор. для Equal / EDO), **Tune Ref** (415–467 Гц, A4; `440` = стандарт) |
+| **Мікротюнінг** | **Tuning** (enum: Equal / Just Intonation / Pythagorean / 1/4-comma Meantone / 19-EDO / 24-EDO / 31-EDO / Bohlen-Pierce), **Tune Root** (0–11, тоніка 12-нотних історичних шкал; ігнор. для Equal / EDO), **Tune Ref** (415–467 Гц, A4; `440` = стандарт), **Scala** (поле в редакторі: шлях до `.scl` або вставлений вміст → перекриває Tuning enum) |
 | Модуляція | Bend Range (st), LFO Rate, LFO Shape, **LFO Sync** (Retrigger/Free-Run), LFO → Bright, LFO Vibrato (ct), **LFO → Cutoff** (±4 окт), **LFO → FM** (±4) |
 
 `Grit` мапиться на `crush` + `downsample·0.8` разом. `Bend Range` мапить
@@ -345,10 +345,20 @@ HQ / Free-Run) перемикаються на `pos = 0.5`. Межі — `07 §1
 
 **Мікротюнінг** (`harmonic_synth/src/tuning.rs`): `Equal` при `Tune Ref = 440`
 дає `PolySynth::set_tuning_equal()` → побайтовий дефолтний шлях (нічого не
-змінюється). Решта збирає `Tuning` і викликає `set_tuning` **лише коли** один
-із трьох параметрів зрушився (`process` тримає `tuning_sig`). Ретюнить
-**фундаментал** ноти; обертони лишаються на `k·f0` (закрита форма — `07 §20`).
-Не входить у seed-рандом. Шкала діє з наступного note-on.
+змінюється). Решта збирає `Tuning` і викликає `set_tuning` **лише коли** щось
+у сигнатурі `(enum, root, ref, FNV-хеш Scala-рядка)` зрушилось (`process`
+тримає `tuning_sig`). Ретюнить **фундаментал** ноти; обертони лишаються на
+`k·f0` (закрита форма — `07 §20`). Не входить у seed-рандом. Шкала діє з
+наступного note-on.
+
+**Scala-імпорт.** `#[persist] scala: Arc<Mutex<String>>` тримає компактну
+форму `"<period>;<c0>,<c1>,…"` (порожня = enum). Редактор (`ScalaEvent::Load`):
+`tuning::load` читає `.scl`-файл за шляхом **або** парсить вставлений вміст
+(відношення `3/2` / центи `701.955`, `!`-коментарі), `to_compact` → у
+`params.scala`; `✕` очищає. `process` бере мьютекс через **`try_lock`** (не
+блокує аудіо-потік), парсить компактну форму **без алокацій** (`expand_compact`
+→ `[f64; 64]` на стеку) → `build_scala` → `set_tuning`. `.kbm` (мапінг
+клавіатури) та MTS-ESP — ще ні (`09`).
 
 `MIDI_INPUT = MidiConfig::MidiCCs` (не `Basic`): обгортки nih-plug (VST3 і
 CLAP) віддають події MIDI CC, pitch-bend і channel-pressure **лише** з цього

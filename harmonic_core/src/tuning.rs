@@ -40,9 +40,10 @@ pub struct Tuning {
 }
 
 impl Tuning {
-    /// Largest scale this can hold (covers 31-EDO, Bohlen-Pierce, 24-EDO, and
-    /// every common just / historical 12-note scale with room to spare).
-    pub const MAX_DEGREES: usize = 32;
+    /// Largest scale this can hold. 64 covers 53-EDO / 53-comma Turkish scales,
+    /// Bohlen-Pierce, every common just / historical scale, and most Scala
+    /// files; larger `.scl` files are truncated by the caller.
+    pub const MAX_DEGREES: usize = 64;
 
     /// 12-tone equal temperament, A4 (MIDI 69) = 440 Hz. The default; the engine
     /// treats this exactly like the pre-tuning `midi_to_hz` path (bit-identical).

@@ -47,7 +47,7 @@ cargo check                                     # fast typecheck
 
 cd harmonic_synth
 cargo build --release
-cargo test                                      # 15 plugin tests (analyzer, editor morph, rando, presets, tuning)
+cargo test                                      # 20 plugin tests (analyzer, editor morph, rando, presets, tuning + Scala)
 cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_synth.{vst3,clap}
 cargo xtask validate                            # build + pluginval (VST3) + clap-validator (CLAP)
 ```
