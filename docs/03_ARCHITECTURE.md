@@ -254,8 +254,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 104 тести (86 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 104/104, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 105 тестів (87 юніт + 18 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 105/105, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -304,7 +304,7 @@ struct HarmonicSynth {
     engine: PolySynth<24>,
     dly: [[f32;2]; HQ_LAT], dly_pos,    // PDC-компенсація коли HQ off
     analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + 1 near-Nyquist BP (aliasing meter) + followers
-    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate — audio→GUI, лок-free
+    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate + filter_cutoff — audio→GUI, лок-free
     tuning_sig: Option<(i32,i32,i32,u64)>, // (enum, root, ref×100, FNV Scala) — гейт ретюну в process
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
 // + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
@@ -365,10 +365,15 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 `Spectrum::filter_response` — це білінійно-предспотворений аналоговий
 прототип SVF, який реалізує `harmonic_core::filter` (`g = tan(π f_c/f_s)`,
 `k = 1/Q`, `Q = 0.5·2^{6·res}` — ті самі, що `Svf::recompute_{g,k}`; LP/BP/HP/
-Notch зі спільного знаменника). Показує **базове** положення зрізу — по-голосна
-filter-envelope рухає реальний зріз навколо неї. Малюється для будь-якого
-осцилятора (Saw/Triangle теж фільтруються), тест
-`editor::filter_response_curve_matches_the_svf_shape`.
+Notch зі спільного знаменника). Частота зрізу — **жива**: рушій пише
+`AnalyzerBands::filter_cutoff` = `PolySynth::representative_cutoff()` (зріз
+найнижчого звучного голосу зі згорнутими filter-envelope та LFO→cutoff) раз на
+блок коли редактор відкритий; крива слідує за розгорткою в реальному часі, а
+тьмяна півжирна вертикаль позначає **спокійне** положення ручки, щойно
+модуляція його зсунула. Порожньо → фолбек на значення параметра. Малюється для
+будь-якого осцилятора (Saw/Triangle теж фільтруються), тести
+`editor::filter_response_curve_matches_the_svf_shape` +
+`poly::representative_cutoff_tracks_the_filter_envelope`.
 
 **Чесний метр аліасингу.** `Spectrum` малює праворуч окрему смугу — рівень
 вузького band-pass на `0.44·f_s` (Q≈9) у dBFS, кольором за порогом

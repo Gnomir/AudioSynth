@@ -57,6 +57,7 @@ pub fn midi_to_hz(note: f32) -> f64
 | `render_block(left: &mut [f32], right: &mut [f32])` | RT | до `min(len)` |
 | `max_partials() -> u32` | — | ефективна кількість гармонік: `min(⌊f_s/(2·freq_z)⌋, 2048, ⌊partial_limit⌋)` |
 | `current_frequency() -> f64` | — | `freq_z · bend_z`, Hz (для метрів) |
+| `current_cutoff() -> f64` | — | живий згладжений зріз фільтра (env + LFO згорнуті), Hz — для дисплея |
 | `sample_rate() -> f64` | — | валідована частота дискретизації голосу |
 
 Конструктори: `Voice::new(sr)` (клампить тихо) або
@@ -131,6 +132,7 @@ render_sample() -> [f32; 2]
 render_block(left: &mut [f32], right: &mut [f32])
 active_voice_count() -> usize
 lowest_sounding_hz() -> f64        // фундаментал найнижчої звучної ноти під тюнінгом; 0 = тихо. Для дисплея, не на рендер-шляху
+representative_cutoff() -> f64      // живий зріз фільтра тієї ж (найнижчої) ноти, env+LFO згорнуті; 0 = тихо. Для живої кривої фільтра
 ```
 
 Константа: `poly::MAX_UNISON = 8`.
