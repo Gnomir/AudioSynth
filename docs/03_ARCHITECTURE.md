@@ -254,8 +254,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 105 тестів (87 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 105/105, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 106 тестів (88 юніт + 18 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 106/106, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -304,7 +304,7 @@ struct HarmonicSynth {
     engine: PolySynth<24>,
     dly: [[f32;2]; HQ_LAT], dly_pos,    // PDC-компенсація коли HQ off
     analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + 1 near-Nyquist BP (aliasing meter) + followers
-    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate + filter_cutoff — audio→GUI, лок-free
+    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate + filter_cutoff + rolloff — audio→GUI, лок-free
     tuning_sig: Option<(i32,i32,i32,u64)>, // (enum, root, ref×100, FNV Scala) — гейт ретюну в process
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
 // + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
@@ -341,9 +341,12 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 (те саме, що `voice.rs::geom_osc`, з нормуванням на пік, яке для відносного
 дисплея випадає), тонкі бурштинові вертикалі на `x_of(k·f0)`, плюс лінія на
 стелі «Partials». `f0` — з `AnalyzerBands::voice_f0` (найнижча звучна нота,
-`PolySynth::lowest_sounding_hz`, пишеться раз на блок коли редактор відкритий);
-`r` / `partials` / `formant` редактор читає з параметрів напряму. Лише
-`Geometric` (Saw/Triangle — фіксований `1/k`). «Математика на екрані,
+`PolySynth::lowest_sounding_hz`, пишеться раз на блок коли редактор відкритий).
+`r` — **живий**: `AnalyzerBands::rolloff` = `PolySynth::representative_rolloff()`
+(ефективний `roll_eff` найнижчого голосу: згладжена яскравість + LFO→brightness
++ понотна експресія), тож нахил гребінки дихає разом із LFO; порожньо → фолбек
+на `brightness_to_r(параметр)`. `partials` / `formant` — з параметрів напряму.
+Лише `Geometric` (Saw/Triangle — фіксований `1/k`). «Математика на екрані,
 поверх виміряного» — field-notes #2. Коли увімкнено унісон, кожен партіал
 розмазується **на однакову ширину в пікселях** (стек голосів `±detune` центів
 — стала в центах → стала в log-f; `Spectrum::unison_half_width_px`,

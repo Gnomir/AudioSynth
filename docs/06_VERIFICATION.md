@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **105 тестів `harmonic_core`** (87 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+Що перевірено, як, і якими числами. Статус: **106 тестів `harmonic_core`** (88 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
 `tests/stress.rs`) + **25 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import, спектр-гребінка + hover + крива фільтра + гребінка унісону) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
@@ -138,7 +138,7 @@
 | `formant_adds_a_movable_mid_spectrum_bump_and_zero_is_inert` | при `rolloff 0.4` формант `0.42` піднімає 6-ту гармоніку `> 8×`; низький формант тримає енергію на партіалі 4, високий зсуває її на 15; `formant 0.0` рендериться **бітово** як без форманту (`04 §0.2`) |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (22)
+### `poly` (23)
 
 | Тест | Що доводить |
 |---|---|
@@ -164,6 +164,7 @@
 | `wildcard_note_brightness_is_ignored_not_a_panic` | `set_note_brightness(255, …)` / `(200, …)` (CLAP wildcard, поза таблицею) → без паніки, вихід скінченний |
 | `lowest_sounding_hz_tracks_the_bottom_note` | `PolySynth::lowest_sounding_hz` → `0` коли тихо; A4 → 440, потім A3 → 220 (вища нота не рухає підлогу); слідує тюнінгу (`equal(12, 432, 69)` → A2 = `108`); після `all_notes_off` → `0`. Для спектр-дисплея, не на рендер-шляху |
 | `representative_cutoff_tracks_the_filter_envelope` | `PolySynth::representative_cutoff` → `0` коли тихо; LP зі зрізом 500 Гц + `+4` окт filter-envelope, A3: за ~40 мс атаки зріз піднявся `> 1.5×` і `> 1500` Гц, лишається скінченним `< 30 кГц`; після `all_notes_off` + 1 с → `0`. Живить живу криву фільтра в редакторі |
+| `representative_rolloff_moves_with_lfo_to_brightness` | `PolySynth::representative_rolloff` → `0` коли тихо; при стійкій яскравості без LFO осідає на базу (`0.6 ± 0.02`); повільний глибокий LFO→brightness розгойдує `r` на `> 0.2` в межах `[ROLLOFF_MIN, ROLLOFF_MAX]`; після `all_notes_off` → `0`. Живить нахил гребінки |
 
 ### `tests/spectrum.rs` — інтеграційні (6)
 
@@ -359,7 +360,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 105 / 105 (87 юніт + 18 інтеграційних) |
+| Тести | `cargo test` | 106 / 106 (88 юніт + 18 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -471,7 +472,7 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **105 / 105 pass** (87 юніт + 18 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **106 / 106 pass** (88 юніт + 18 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **97 / 97 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
@@ -499,7 +500,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 105/105, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 106/106, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.
