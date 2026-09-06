@@ -71,6 +71,7 @@ pub mod voice;
 pub mod poly;
 pub mod tuning;
 pub mod ffi;
+pub mod verify;
 
 pub use character::{CharParams, Character};
 pub use env::Adsr;

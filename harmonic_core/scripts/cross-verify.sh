@@ -41,5 +41,35 @@ run_target() {
 run_target linux/arm64   "AArch64 (aarch64-unknown-linux-gnu)"
 run_target linux/arm/v7  "ARMv7 hard-float (armv7-unknown-linux-gnueabihf)"
 
+# ---------------------------------------------------------------------------
+# wasm32 — the browser / Node build. Native wasm f64 is IEEE-754, so the
+# render must hash to the same reference. Runs on the host (needs `node` and
+# the `wasm32-unknown-unknown` rustup target); skipped if either is missing.
+# ---------------------------------------------------------------------------
+if command -v node >/dev/null 2>&1 \
+   && rustup target list --installed 2>/dev/null | grep -q '^wasm32-unknown-unknown$'; then
+    echo "=============================================================="
+    echo "  wasm32-unknown-unknown  (browser / Node)"
+    echo "=============================================================="
+    ( cd "$CRATE_DIR" \
+        && cargo build --no-default-features --release --target wasm32-unknown-unknown )
+    node "${CRATE_DIR}/scripts/verify-wasm.mjs"
+else
+    echo "-- skipping wasm32 check (need 'node' + rustup target wasm32-unknown-unknown)"
+fi
+
+# ---------------------------------------------------------------------------
+# Bare-metal targets: compile-only. No hosted test runner, but a clean build
+# with `--no-default-features --release` is the firmware contract. VFP `f64`
+# semantics on thumbv7em-none-eabihf (Cortex-M4F/M7, e.g. Daisy Seed) match
+# armv7-hf above, so the bit-exact pass there transfers.
+# ---------------------------------------------------------------------------
+for t in thumbv7em-none-eabihf thumbv6m-none-eabi riscv32imac-unknown-none-elf aarch64-unknown-none; do
+    if rustup target list --installed 2>/dev/null | grep -q "^${t}\$"; then
+        echo "-- compile-check ${t}"
+        ( cd "$CRATE_DIR" && cargo build --no-default-features --release --target "$t" -q )
+    fi
+done
+
 echo
-echo "OK — all targets bit-identical to the x86_64 reference."
+echo "OK — every target bit-identical to (or compiling clean against) the x86_64 reference."
