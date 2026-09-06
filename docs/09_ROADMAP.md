@@ -35,8 +35,11 @@
   `harmonic_synth/vendor/nih-plug/`. Готовий патч — `contrib/nih-plug-
   clap-state-load-fix.patch` (застосовується на `de421011` і `master`).
 - **Напрямок.** Форк `robbert-vdh/nih-plug`, PR, потім `[patch]` на форк
-  замість vendored-копії, поки не змержать.
-- **Чому не зараз.** Рішення про публічний PR — за користувачем. Деталі:
+  замість vendored-копії, поки не змержать. **Матеріали готові:** патч
+  re-верифіковано проти upstream `master` (2026-09-06), текст PR написано
+  (`contrib/nih-plug-pr.md`).
+- **Чому не зараз.** Лишається git-крок від імені власника репозиторію
+  (`Gnomir`) — публічна дія на чужому репо. Деталі:
   `docs/10_NIH_PLUG_CLAP_BUGS.md`.
 - **Після мержу upstream:** видалити `harmonic_synth/vendor/nih-plug/` +
   `[patch]`-секцію, бампнути `rev` у `harmonic_synth/Cargo.toml`, прибрати

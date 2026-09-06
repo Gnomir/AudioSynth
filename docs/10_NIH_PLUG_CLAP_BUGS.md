@@ -172,19 +172,29 @@ abort. Жодного довільного ліміту не треба: якщ�
 |---|---|---|
 | `clap-validator` | 31 passed, **4 failed/crashed**, 9 skipped | **35 passed, 0 failed, 0 warnings**, 9 skipped |
 | `pluginval --strictness 8` (VST3, з GUI-тестами) | SUCCESS | SUCCESS (не зачеплено) |
-| `harmonic_core` тести | 57/57 | 57/57 (не залежать від nih-plug) |
+| `harmonic_core` тести | 57/57 | 94/94 (не залежать від nih-plug) |
 
 Регресійного тесту на це немає — воно у скрипті валідації, який не в
 `cargo test` (потребує зовнішніх бінарників). `06_VERIFICATION.md §6` фіксує
 очікуваний результат.
+
+**Re-верифіковано 2026-09-06:** патч чисто накладається на upstream `master`
+(HEAD усе ще `de421011`, не рухався від піну); усі символи, яких він
+торкається (`Task::RescanParamValues`, `Wrapper::schedule_gui`,
+`Vec::try_reserve_exact`), присутні в upstream; обробник
+`Task::RescanParamValues` уже викликає `host_params.rescan(CLAP_PARAM_RESCAN_VALUES)`
+— саме те, що потрібне після load. Готовий текст PR (title + body, англ.) —
+**`contrib/nih-plug-pr.md`**.
 
 ---
 
 ## Що робити далі
 
 1. **Подати upstream (за користувачем).** Форк `robbert-vdh/nih-plug` (напр.
-   `Gnomir/nih-plug`) → гілка → PR з цим текстом і патчем
-   `contrib/nih-plug-clap-state-load-fix.patch`.
+   `Gnomir/nih-plug`) → гілка → `git apply contrib/nih-plug-clap-state-load-fix.patch`
+   → push → PR з готовим текстом `contrib/nih-plug-pr.md` (title + body вже
+   написані). Матеріали перевірені й готові; лишається лише сам git-крок від
+   імені власника репозиторію.
 2. **Після мержу upstream:** бампнути pinned `rev` у
    `harmonic_synth/Cargo.toml` + `xtask/Cargo.toml`, видалити
    `harmonic_synth/vendor/nih-plug/` та секцію `[patch]`, прибрати рядок

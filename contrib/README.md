@@ -12,13 +12,16 @@ reproduction and verification:
 
 **This patch is already applied** to the vendored copy at
 `../harmonic_synth/vendor/nih-plug/`, which the plugin uses via `[patch]` — so
-`cargo xtask validate` passes `clap-validator` 35/35 with no `--exclude`. The
-`.patch` file is kept here for the upstream PR (applies cleanly on `de421011`
-and on `master`):
+`cargo xtask validate` passes `clap-validator` 35/35 with no `--exclude`.
+
+The `.patch` file is kept here for the upstream PR. Re-verified 2026-09-06: it
+applies cleanly to `master` (`de421011…`, unchanged since the pin) and every
+symbol it touches exists upstream.
 
 ```sh
 git clone https://github.com/robbert-vdh/nih-plug.git
 cd nih-plug && git apply /path/to/contrib/nih-plug-clap-state-load-fix.patch
 ```
 
-Not yet submitted upstream.
+**Ready-to-submit PR title + body: [`nih-plug-pr.md`](nih-plug-pr.md).**
+Not yet submitted upstream — that step is the repo owner's to take.
