@@ -274,6 +274,17 @@ void   harmonic_voice_process(HarmonicVoice *voice, float *out, size_t num_frame
 double harmonic_voice_current_frequency(const HarmonicVoice *voice);  /* freq*bend, Hz; NULL→0 */
 ```
 
+### wasm32 (лише `--target wasm32-*`)
+
+no_std cdylib не має алокатора — ці дають статичне сховище для браузерного
+інтегратора (`08 §6`, `contrib/wasm-demo/`):
+
+```c
+HarmonicVoice *harmonic_wasm_voice(void);      /* один статичний Voice */
+float         *harmonic_wasm_scratch(void);    /* interleaved-стерео скретч */
+size_t         harmonic_wasm_scratch_frames(void);  /* 4096 */
+```
+
 ### Приклад (аудіо-callback)
 
 ```c

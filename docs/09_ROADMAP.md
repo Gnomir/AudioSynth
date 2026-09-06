@@ -141,12 +141,17 @@
   виміряно. Bare-metal цілі (`thumbv7em` = Daisy Seed, `thumbv6m`,
   `riscv32imac`, `aarch64-unknown-none`) компілюються чисто
   `--no-default-features --release` — `cross-verify.sh` робить compile-check.
+  Браузерне демо — **є**: `harmonic_core/contrib/wasm-demo/` (index.html +
+  `AudioWorklet` + `.wasm`, без фреймворку), один `Voice` через C-ABI, живий
+  осцилограф; AR-гейт у JS, бо ядро без обгинаючої (робота хоста). Плюс
+  `ffi.rs` дає `harmonic_wasm_*` — статичне сховище для голосу/скретчу, бо
+  no_std cdylib не має алокатора. Перевірено в headless Chromium.
 - **Не покрито.** Реальне залізо (не емуляція); `thumbv6m` (програмний `f64` —
   інший шлях округлення можливий) та RISC-V — прогін на пристрої.
 - **Наступний крок для «$30-модуля».** Firmware-скелет під Daisy Seed
   (`libdaisy` + `AudioCallback` → C-ABI `Voice` array + свій voice-stealing;
-  ядро вже дає всі примітиви). Плюс `wasm-pack`/JS-обгортка з Web Audio
-  `AudioWorklet` для браузерного демо.
+  ядро вже дає всі примітиви). Для браузера: поліфонія (N голосів + крадіжка в
+  JS, або `harmonic_poly_*` C-ABI).
 
 ### Полиш GUI
 

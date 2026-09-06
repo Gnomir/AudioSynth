@@ -258,6 +258,21 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 вбудованих таргетів без `core::simd`-підтримки — використовуйте дефолтну
 збірку (авто-векторизація `[f64; 4]` + точний скалярний фолбек).
 
+### Браузер (wasm32) — приклад
+
+`cargo build --no-default-features --release --target wasm32-unknown-unknown`
+дає `harmonic_core.wasm` (~44 KB) з повним C-ABI. Оскільки `no_std` cdylib не
+має алокатора, `wasm32`-збірка додатково експортує **`harmonic_wasm_voice()`**
+/ **`harmonic_wasm_scratch()`** / **`harmonic_wasm_scratch_frames()`** —
+статичне сховище для одного `Voice` та interleaved-стерео скретч-буфера. Далі
+все як у C: `harmonic_voice_init(harmonic_wasm_voice(), sampleRate)`, сеттери,
+`harmonic_voice_process(voice, harmonic_wasm_scratch(), quantum)` у
+`AudioWorkletProcessor.process()`, читаючи результат прямо з
+`WebAssembly.Memory`. Обгинаюча амплітуди — на боці хоста (кілька рядків JS),
+як і на Daisy. Готовий приклад: `contrib/wasm-demo/` (index.html + worklet.js,
+без фреймворку) + жива версія
+<https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed>.
+
 ---
 
 ## 7. Що гарантовано / що ні

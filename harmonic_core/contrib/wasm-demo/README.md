@@ -9,6 +9,10 @@ The point of this directory is to make the portability claim concrete — the sa
 hashes to the [same 64-bit value](../../scripts/verify-wasm.mjs) as the x86-64
 and ARM builds.
 
+**Play it now (no build):** a single-file version with the `.wasm` inlined is
+published at <https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed>.
+This directory is the reference implementation — `AudioWorklet`, real files.
+
 ## Build
 
 ```sh
