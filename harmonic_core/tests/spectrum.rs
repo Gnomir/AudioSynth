@@ -148,10 +148,11 @@ fn partial_limit_truncates_the_spectrum_cleanly() {
 
 #[test]
 fn default_partial_limit_is_bit_identical() {
-    // The default (MAX_PARTIALS) must be a no-op: `.min(partial_limit)` after
-    // `.min(MAX_PARTIALS)` changes nothing, so an untouched voice and one
-    // explicitly set to the max must render the exact same bits. (This is what
-    // keeps the cross-platform bit-exact hash unaffected by the feature.)
+    // The default (2048.0, frac 0) must be a no-op: the ceiling never binds
+    // below Nyquist and `frac == 0` makes `geom_osc` take
+    // `geometric_partials_pre` verbatim — so an untouched voice and one
+    // explicitly set to the max render the exact same bits. This is what
+    // keeps the cross-platform bit-exact hash unaffected by the feature.
     let mk = |set_max: bool| {
         let mut v = Voice::new(44_100.0);
         v.set_frequency(196.0);

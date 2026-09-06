@@ -51,18 +51,18 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_filter_cutoff(hz: f64)` | RT | `[20, 0.45·f_s]` Hz, згладж. ~1 мс всередині |
 | `set_filter_resonance(r: f64)` | RT | `[0, 1]` → `Q [0.5, 32]` |
 | `reset()` | setup (note-on) | скид фази (якщо `!free_running`) + де-клік; скид згладжувачів, фільтра; LFO ретригериться лише в режимі `Retrigger` |
-| `max_partials() -> u32` | — | `⌊f_s/(2·freq_z)⌋`, обмежено `2048` |
+| `render_sample() -> [f32; 2]` | RT | `[L, R]` |
+| `render_block(left: &mut [f32], right: &mut [f32])` | RT | до `min(len)` |
+| `max_partials() -> u32` | — | ефективна кількість гармонік: `min(⌊f_s/(2·freq_z)⌋, 2048, ⌊partial_limit⌋)` |
 | `current_frequency() -> f64` | — | `freq_z · bend_z`, Hz (для метрів) |
 | `sample_rate() -> f64` | — | валідована частота дискретизації голосу |
 
 Конструктори: `Voice::new(sr)` (клампить тихо) або
 `Voice::new_checked(sr) -> (Voice, SampleRateStatus)` — повертає статус
-(`Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`). Константа `Voice::HQ_LATENCY = 3`.
-| `render_sample() -> [f32; 2]` | RT | `[L, R]` |
-| `render_block(left: &mut [f32], right: &mut [f32])` | RT | до `min(len)` |
+(`Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`).
 
-Константи: `Voice::ROLLOFF_MIN = 1e-3`, `Voice::ROLLOFF_MAX = 0.9995`.
-`voice::MAX_PARTIALS = 2048`.
+Константи: `Voice::HQ_LATENCY = 3`, `Voice::ROLLOFF_MIN = 1e-3`,
+`Voice::ROLLOFF_MAX = 0.9995`, `voice::MAX_PARTIALS = 2048`.
 
 ### `struct PolySynth<const VOICES: usize>`
 
@@ -264,16 +264,16 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 
 ## 3. Параметри плагіна `harmonic_synth`
 
-33 параметри. Редактор — `nih_plug_vizia` (`src/editor.rs`): заголовок +
+34 параметри. Редактор — `nih_plug_vizia` (`src/editor.rs`): заголовок +
 живий спектр-дисплей (банк band-pass `Svf`, не FFT) + `GenericUi` з усіма
 параметрами у `ScrollView`. Розмір вікна персиститься (`#[persist]
 editor_state: Arc<ViziaState>`). Групи параметрів:
 
 | Група | Параметри |
 |---|---|
-| Тон | **Oscillator** (enum Geometric/Saw/Triangle), Brightness, Gain |
+| Тон | **Oscillator** (enum Geometric/Saw/Triangle), Brightness, **Partials** (фракційна стеля на гармоніки, `04 §0`), Gain |
 | Амплітудна обгинаюча | Attack, Release |
-| Character | Drive, Fold, Grit (`bias` — не окремий слайдер; `CharParams::bias = 0.25·drive`, свідомо прив'язаний до Drive, щоб не роздувати список параметрів понад 33) |
+| Character | Drive, Fold, Grit (`bias` — не окремий слайдер; `CharParams::bias = 0.25·drive`, свідомо прив'язаний до Drive, щоб не роздувати список параметрів) |
 | FM | FM Amount, FM Ratio, Feedback |
 | Фільтр | Filter (enum Off/LP/BP/HP/Notch), Cutoff, Resonance |
 | Фільтрова обгинаюча | Filter Env (± окт), F.Env Attack/Decay/Sustain/Release |

@@ -67,7 +67,7 @@
 | `tiny_downsample_is_bypassed_not_jittered` | `downsample = 9·10⁻⁵` (щойно під bypass-порогом `10⁻⁴`) бітово ідентичний `downsample = 0.0` на 5000 семплах (без порогу падає точно на семплі 741, де мав би спрацювати пропуск S&H-лічильника) |
 | `drive_adds_energy_but_stays_bounded` | `drive 0.8` піднімає тихий сигнал (пік `> 0.3`), лишається `|y| ≤ 1.05` |
 | `fold_and_grit_stay_finite_and_bounded` | усі 5 стадій разом на 48000 семплів → скінченне, `|y| ≤ 1.2` |
-| `hq_path_is_bounded_and_reduces_alias_energy` | 2×+децимація на near-Nyquist тоні в фолдер → менше LF-енергії (аліасів), ніж 1× |
+| `hq_path_is_bounded_and_reduces_alias_energy` | 2×+децимація на тоні біля Найквіста в фолдер → менше LF-енергії (аліасів), ніж 1× |
 | `round_f32_behaves` | `round_f32` округлює до найближчого |
 
 ### `filter` (9)
@@ -108,7 +108,7 @@
 |---|---|
 | `output_stays_bounded_across_the_range` | `f₀ ∈ {20…12000}`: стерео-пік `∈ (0.05, 1.5]`, скінченне |
 | `polyblep_saw_and_triangle_are_bounded_and_shaped` | `Saw`/`Triangle` на `f₀ ∈ {55, 220, 3000}`: `\|y\| ≤ 1.6`, енергія над Найквістом `< 2 %·h₁`, гармоніки спадають; трикутник — парні `< 15 %`, `h₃/h₁ ∈ [0.06, 0.22]` (≈ `1/9`) |
-| `polyblep_waves_are_flat_into_the_sub_bass` | пилка/трикутник на `f₀ ∈ {27.5, 55, 220}` Гц: фундаментал `±0.5` дБ від ідеального рівня (`2/π` / `8/π²`) — доводить відсутність HPF, який leaky-BLIT давав як `−5` дБ на 28 Гц |
+| `polyblep_waves_are_flat_into_the_sub_bass` | пилка/трикутник на `f₀ ∈ {27.5, 55, 220}` Гц: фундаментал `±0.5` дБ від ідеального рівня (`2/π` / `8/π²`) — доводить відсутність HPF (плаский відгук до DC) |
 | `unrouted_lfo_does_not_affect_output` | голос з LFO на якійсь частоті, але routing `= 0`, рендериться **бітово** так само, як без LFO (fast path не тикає LFO) |
 | `lfo_to_cutoff_and_fm_stay_bounded` | усі 4 цілі роутингу разом на filtered+FM голосі → скінченне, `\|y\| ≤ 2.5` (резонансний SVF на швидкому свіпі перевищує unity — це реально) |
 | `free_run_lfo_phase_survives_note_on` | `FreeRun` vs `Retrigger` голос після note-on посеред циклу LFO дають **різний** вихід (FreeRun не рестартує вібрато) |

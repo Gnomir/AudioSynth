@@ -10,7 +10,7 @@
 | Ручка | Дія | Діапазон |
 |---|---|---|
 | `rolloff` (плагінна «Brightness») | **нахил** спектра: гармоніка `k` важить `rᵏ` | `r ∈ [0.02, 0.9995]` |
-| `partial_limit` (плагінна «Partials») | **обрізання** спектра: жорстка стеля на кількість гармонік | `[1, 2048]`, деф. 2048 = без ефекту |
+| `partial_limit` (плагінна «Partials») | **обрізання** спектра: фракційна стеля на кількість гармонік | `[1.0, 2048.0]`, деф. `2048.0` = без ефекту |
 
 Ручка (`Voice::set_partial_limit(f32)` / `PolySynth::set_partial_limit` /
 C-ABI `harmonic_voice_set_partial_limit`) **фракційна** — `1.0…2048.0`.
@@ -36,7 +36,7 @@ S_{n+frac}(p) = S_n(p) + frac · r^{n+1} · cos(2π(n+1)p)
   «пливе» `< 1` дБ поки `frac` йде 0→1, тоді ціле `n` збільшується й пік
   перераховується. Навмисно (відчуття «гармоніка приходить»), неперервно.
 - Ігнорується формами `Saw` / `Triangle` (це PolyBLEP, не адитивна сума).
-- Деф. `2048.0` (`frac = 0`) — точна тотожність попередній поведінці:
+- Деф. `2048.0` (`frac = 0`) — побайтова тотожність режиму без обмеження:
   `geom_osc` бере цілочисельну гілку `geometric_partials_pre` (тест
   `default_partial_limit_is_bit_identical`; крос-платформний хеш не
   зачеплено).
@@ -232,7 +232,7 @@ ic2 ← 2·v2 − ic2
   не самозбуджується.**
 - `k = 1/Q`.
 
-### 3.3. Посемплове згладжування (Задача 1)
+### 3.3. Посемплове згладжування
 
 `cutoff` і `res` мають цілі (`cutoff_t`, `res_t`) та згладжені (`cutoff_z`,
 `res_z`) значення. Усередині `process`:
@@ -366,7 +366,7 @@ coeff_r = 1 − 2^(−13.3 / (r·f_s))     // ~ −80 дБ через r с
 
 ---
 
-## 7. De-click + free-running фаза (`voice.rs`, Задача 1)
+## 7. De-click + free-running фаза (`voice.rs`)
 
 `free_running: bool` керує поведінкою `reset()` (note-on):
 
@@ -442,7 +442,7 @@ Identity у першому порядку → тихі сигнали прохо
 ## 11. PolyBLEP пилка / PolyBLAMP трикутник (`voice.rs::polyblep_saw`, `polyblamp_triangle`)
 
 Альтернативні форми осцилятора: `Waveform::Saw`, `Waveform::Triangle`
-(`Waveform::Geometric` — типова, закрита форма §01). Вибираються
+(`Waveform::Geometric` — типова, закрита форма — `01_MATHEMATICS.md`). Вибираються
 `Voice::set_waveform` / `PolySynth::set_waveform` / C-ABI
 `harmonic_voice_set_waveform` / параметр плагіна **Oscillator**.
 

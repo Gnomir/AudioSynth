@@ -164,7 +164,7 @@ pub fn tan_turns(turns: f64) -> f64 {
 /// `turns ≤ 0.225`). Outside `[0, 0.23]` it is unspecified.
 #[inline]
 pub fn tan_turns_fast(turns: f64) -> f64 {
-    // coefficients from examples/fit_coeffs.rs
+    // rational [3/2] minimax coefficients (fitted with a throwaway script)
     let u = turns * turns;
     let n = 6.283_185_401_533_712_5_f64
         + u * (-27.774_478_031_874_615 + u * 10.955_876_613_898_502);
@@ -272,7 +272,7 @@ pub fn exp2(x: f64) -> f64 {
     };
     let two_fl = f64::from_bits(((e + 1023) as u64) << 52);
 
-    // 2^f, f ∈ [0,1] — Remez minimax, degree 7 (see examples/fit_coeffs.rs)
+    // 2^f, f ∈ [0,1] — Remez minimax, degree 7 (coefficients fitted offline)
     let p = 8.568_020_029_104_6e-5_f64;
     let p = p * f + -8.581_653_953_827_3e-5;
     let p = p * f + 1.665_468_533_058_2e-3;
@@ -356,9 +356,7 @@ mod tests {
             }
             x += 0.017;
         }
-        assert!(max_rel < 1.5e-6, "exp2 max rel error {max_rel:e}");
-        // the minimax fit is far tighter than the old Taylor 1.5e-6
-        assert!(max_rel < 5.0e-8, "exp2 minimax regressed: {max_rel:e}");
+        assert!(max_rel < 5.0e-8, "exp2 minimax rel error {max_rel:e}");
         // integer powers stay exact
         for k in -20..=20 {
             assert_eq!(exp2(k as f64), (k as f64).exp2(), "exp2({k})");
