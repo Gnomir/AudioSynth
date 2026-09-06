@@ -316,8 +316,11 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 
 **GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей
 (`Spectrum` — власний `View`, малює 30 барів із `AnalyzerBands` щокадру) +
-підпис + рядок пресетів + згруповані секції параметрів (TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE / MODULATION, `ParamSlider` + `ParamButton`) у `ScrollView`. Розмір вікна
-персиститься через `#[persist] editor_state`. Спектр-аналіз — не FFT, а банк
+підпис + рядок пресетів + згруповані секції параметрів (TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE / MODULATION, `ParamSlider` + `ParamButton`) у `ScrollView`. Контент списку — в одному
+`height: auto` VStack усередині `ScrollView` (як у `GenericUi` nih-plug), і
+кожен `.group` / `.group-header` теж має явну `height: auto`: інакше morphorm
+дає їм `Stretch(1.0)` і секції накладаються (див. `docs/11`, журнал REAPER).
+Розмір вікна персиститься через `#[persist] editor_state`. Спектр-аналіз — не FFT, а банк
 резонансних band-pass `Svf` (Q≈5, ⅓-октави) з envelope-фоловерами; результат
 — 30 `AtomicF32`, які аудіо-потік пише, GUI читає.
 
