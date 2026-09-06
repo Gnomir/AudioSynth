@@ -625,6 +625,22 @@ impl Voice {
         self.filter.cutoff()
     }
 
+    /// The effective geometric rolloff `r` right now — smoothed base plus
+    /// LFO→brightness plus per-note expression, exactly as [`Self::tick_modulation`]
+    /// computes it. For the editor's live partial comb; not on the render path.
+    #[inline]
+    pub fn current_rolloff(&self) -> f64 {
+        if self.lfo_to_rolloff != 0.0 || self.expr_bright_z != 0.0 {
+            clamp(
+                self.rolloff_z + self.lfo_to_rolloff * self.lfo.value() as f64 + self.expr_bright_z,
+                Self::ROLLOFF_MIN,
+                Self::ROLLOFF_MAX,
+            )
+        } else {
+            self.rolloff_z
+        }
+    }
+
     /// Render one stereo sample `[left, right]`. No allocation, no locks, no
     /// panic path.
     #[inline]

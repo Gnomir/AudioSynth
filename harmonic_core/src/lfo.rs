@@ -102,6 +102,19 @@ impl Lfo {
         if self.phase >= 1.0 {
             self.phase -= 1.0;
         }
+        self.shape_at(p)
+    }
+
+    /// The current output in `[-1, 1]` **without** advancing the phase — for a
+    /// GUI that wants to mirror the modulation on screen. The audio path always
+    /// uses [`Self::tick`].
+    #[inline]
+    pub fn value(&self) -> f32 {
+        self.shape_at(self.phase)
+    }
+
+    #[inline]
+    fn shape_at(&self, p: f64) -> f32 {
         match self.shape {
             // a modulator — 16-bit trig is plenty, and it halves the cost
             LfoShape::Sine => sin_turns_fast(p) as f32,

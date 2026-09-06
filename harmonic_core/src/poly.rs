@@ -814,6 +814,25 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         cutoff
     }
 
+    /// Effective geometric rolloff `r` of the lowest sounding voice — smoothed
+    /// brightness with LFO→brightness and per-note expression folded in. `0.0`
+    /// when silent. The editor tilts the partial comb from this so an
+    /// LFO→brightness sweep animates. Not on the render path.
+    pub fn representative_rolloff(&self) -> f64 {
+        let mut lo = f64::INFINITY;
+        let mut r = 0.0;
+        for v in &self.voices {
+            if v.amp.is_active() {
+                let hz = self.note_hz(v.note);
+                if hz < lo {
+                    lo = hz;
+                    r = v.core.current_rolloff();
+                }
+            }
+        }
+        r
+    }
+
     /// Render one stereo sample `[left, right]`.
     #[inline]
     pub fn render_sample(&mut self) -> [f32; 2] {
@@ -1031,6 +1050,41 @@ mod tests {
             s.render_sample();
         }
         assert_eq!(s.representative_cutoff(), 0.0, "silent again → 0");
+    }
+
+    #[test]
+    fn representative_rolloff_moves_with_lfo_to_brightness() {
+        let sr = 48_000.0;
+        let mut s: PolySynth<4> = PolySynth::new(sr);
+        s.set_envelope(0.005, 0.1);
+        assert_eq!(s.representative_rolloff(), 0.0, "silent → 0");
+
+        // steady brightness, no LFO → representative rolloff settles to the base
+        s.set_rolloff(0.6);
+        s.note_on(57, 1.0);
+        for _ in 0..4_000 {
+            s.render_sample();
+        }
+        let base = s.representative_rolloff();
+        assert!((base - 0.6).abs() < 0.02, "base rolloff off: {base}");
+
+        // a slow, deep LFO→brightness must swing it well away from the base
+        s.set_lfo(2.0, LfoShape::Sine, LfoMode::FreeRun, 0.3, 0.0, 0.0, 0.0);
+        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+        for _ in 0..(sr as usize / 2) {
+            s.render_sample();
+            let r = s.representative_rolloff();
+            lo = lo.min(r);
+            hi = hi.max(r);
+        }
+        assert!(hi - lo > 0.2, "LFO→brightness did not move the rolloff: {lo}..{hi}");
+        assert!(lo >= Voice::ROLLOFF_MIN && hi <= Voice::ROLLOFF_MAX, "out of range: {lo}..{hi}");
+
+        s.all_notes_off();
+        for _ in 0..(sr as usize) {
+            s.render_sample();
+        }
+        assert_eq!(s.representative_rolloff(), 0.0, "silent again → 0");
     }
 
     #[test]
