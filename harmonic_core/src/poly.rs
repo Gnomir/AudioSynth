@@ -793,6 +793,27 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
+    /// Live filter cutoff, in Hz, of the lowest sounding voice — the one whose
+    /// fundamental [`Self::lowest_sounding_hz`] reports — with its filter
+    /// envelope and LFO→cutoff folded in. `0.0` when silent. The editor draws
+    /// the filter-response curve from this, so an envelope / LFO sweep animates
+    /// instead of the curve sitting at the resting parameter value. Not on the
+    /// render path.
+    pub fn representative_cutoff(&self) -> f64 {
+        let mut lo = f64::INFINITY;
+        let mut cutoff = 0.0;
+        for v in &self.voices {
+            if v.amp.is_active() {
+                let hz = self.note_hz(v.note);
+                if hz < lo {
+                    lo = hz;
+                    cutoff = v.core.current_cutoff();
+                }
+            }
+        }
+        cutoff
+    }
+
     /// Render one stereo sample `[left, right]`.
     #[inline]
     pub fn render_sample(&mut self) -> [f32; 2] {
@@ -979,6 +1000,37 @@ mod tests {
         s.note_on(45, 1.0);
         s.render_sample();
         assert!((s.lowest_sounding_hz() - 108.0).abs() < 0.2);
+    }
+
+    #[test]
+    fn representative_cutoff_tracks_the_filter_envelope() {
+        let sr = 48_000.0;
+        let mut s: PolySynth<4> = PolySynth::new(sr);
+        s.set_envelope(0.01, 0.2);
+        assert_eq!(s.representative_cutoff(), 0.0, "silent → 0");
+
+        // low-pass, cutoff 500 Hz, +4 octaves of filter envelope at the peak
+        s.set_filter(FilterMode::Low, 500.0, 0.2, 4.0);
+        s.set_filter_envelope(0.05, 0.30, 0.0, 0.10);
+        s.note_on(57, 1.0); // A3
+        for _ in 0..64 {
+            s.render_sample();
+        }
+        let c0 = s.representative_cutoff();
+        for _ in 0..2_000 {
+            s.render_sample(); // ~40 ms — climbing toward the attack peak
+        }
+        let c1 = s.representative_cutoff();
+        assert!(
+            c1 > c0 * 1.5 && c1 > 1_500.0 && c1.is_finite() && c1 < 30_000.0,
+            "cutoff did not rise with the envelope: {c0} -> {c1}"
+        );
+
+        s.all_notes_off();
+        for _ in 0..(sr as usize) {
+            s.render_sample();
+        }
+        assert_eq!(s.representative_cutoff(), 0.0, "silent again → 0");
     }
 
     #[test]

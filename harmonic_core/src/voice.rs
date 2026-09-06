@@ -617,6 +617,14 @@ impl Voice {
         self.freq_z * self.bend_z
     }
 
+    /// The filter's current smoothed cutoff in Hz, with the filter envelope and
+    /// LFO→cutoff already folded in (they are pushed onto the `Svf` per sample
+    /// from `PolySynth` / here). For the editor's live filter-response curve.
+    #[inline]
+    pub fn current_cutoff(&self) -> f64 {
+        self.filter.cutoff()
+    }
+
     /// Render one stereo sample `[left, right]`. No allocation, no locks, no
     /// panic path.
     #[inline]

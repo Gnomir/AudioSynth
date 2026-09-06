@@ -119,6 +119,15 @@ impl Svf {
         self.mode
     }
 
+    /// The current *smoothed* cutoff in Hz — the base target after per-sample
+    /// interpolation, i.e. what the filter is actually running at this instant.
+    /// An envelope or LFO sweep shows up here ~1 ms behind its target. For a
+    /// GUI drawing the live response; the audio path never needs it.
+    #[inline]
+    pub fn cutoff(&self) -> f64 {
+        self.cutoff_z
+    }
+
     /// Cutoff target in Hz. Clamped to `[20, 0.45·fs_base]` — against the
     /// *base* rate, not the current operating rate, so the same modulation
     /// sweep reaches the same ceiling whether or not the HQ bus has this
