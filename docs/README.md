@@ -54,7 +54,7 @@ cd harmonic_core && cargo doc --no-deps --open
 біт-у-біт на `aarch64` + `armv7-hf` під QEMU (`cross-verify.sh`) · clippy
 чистий (stable + `--no-default-features --release` + nightly
 `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI
-(`nih_plug_vizia`: усі параметри + живий спектр) · **pluginval
+(`nih_plug_vizia`: згруповані секції параметрів + живий спектр + метр аліасингу + морф + рандом + пресети) · **pluginval
 `--strictness-level 8`: повний прохід (VST3, з GUI-тестами)** ·
 **clap-validator: 35/35** (потребує `[patch]` на `vendor/nih-plug`,
 `10_NIH_PLUG_CLAP_BUGS.md`) · осцилятор: closed-form additive (яскравість
