@@ -62,4 +62,6 @@ cd harmonic_core && cargo doc --no-deps --open
 PolyBLEP пила/трикутник (плаский до DC) · clean-voice fast path · LFO:
 retrigger/free-run + матриця (→ brightness / pitch / cutoff / FM index) ·
 унісон з «диханням» · понотна яскравість (MPE / афтертач → `rolloff` на
-голос) · CC#64 sustain (рівень плагіна) · `panic=abort` в обох крейтах.
+голос) · CC#64 sustain (рівень плагіна) · чесний метр аліасингу в редакторі
+(смуга біля Найквіста → коли вмикати HQ) · ворожий RT-safety набір
+(`tests/stress.rs`) · `panic=abort` в обох крейтах.

@@ -65,7 +65,7 @@ nightly.
 
 ## Status
 
-94 tests pass (76 unit + 18 integration, 11 of them an adversarial RT-safety suite), plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+94 `harmonic_core` tests pass (76 unit + 18 integration, 11 of them an adversarial RT-safety suite) plus 3 plugin tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. The whole suite — including a whole-signal-path hash
 compared against an x86-64 reference — passes bit-for-bit on
 `aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU
@@ -74,7 +74,8 @@ compared against an x86-64 reference — passes bit-for-bit on
 `nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt preset) are
 fixed via a `[patch]` onto a vendored copy, see
 [`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md). The plugin has
-a `nih_plug_vizia` editor (all params + a live spectrum). Not yet validated in a
+a `nih_plug_vizia` editor (all params + a live spectrum + an honest aliasing
+meter that tells you when HQ Mode is worth its latency). Not yet validated in a
 live DAW — see [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) for exactly
 what is and isn't covered.
 

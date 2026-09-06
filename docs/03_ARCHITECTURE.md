@@ -290,8 +290,9 @@ struct HarmonicSynth {
     params: Arc<HarmonicSynthParams>,   // + #[persist] editor_state: Arc<ViziaState>
     engine: PolySynth<24>,
     dly: [[f32;2]; HQ_LAT], dly_pos,    // PDC-компенсація коли HQ off
-    analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + envelope followers
-    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] — audio→GUI, лок-free
+    analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + 1 near-Nyquist BP (aliasing meter) + followers
+    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs — audio→GUI, лок-free
+    mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
     sustain_held: bool,                 // CC#64 стан педалі
     sustained_notes: [bool; 128],       // NoteOff, відкладені, поки педаль тримається
 }
@@ -310,8 +311,19 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 
 **GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей
 (`Spectrum` — власний `View`, малює 30 барів із `AnalyzerBands` щокадру) +
-`GenericUi` у `ScrollView` (усі параметри). Розмір вікна персиститься через
-`#[persist] editor_state`. Спектр-аналіз — не FFT, а банк резонансних
-band-pass `Svf` (Q≈5, ⅓-октави) з envelope-фоловерами; результат — 30
-`AtomicF32`, які аудіо-потік пише, GUI читає. Потокобезпека GUI→аудіо для
-параметрів — на `nih-plug` (`FloatParam`/`EnumParam` lock-free).
+підпис + `GenericUi` у `ScrollView` (усі параметри). Розмір вікна
+персиститься через `#[persist] editor_state`. Спектр-аналіз — не FFT, а банк
+резонансних band-pass `Svf` (Q≈5, ⅓-октави) з envelope-фоловерами; результат
+— 30 `AtomicF32`, які аудіо-потік пише, GUI читає.
+
+**Чесний метр аліасингу.** `Spectrum` малює праворуч окрему смугу — рівень
+вузького band-pass на `0.44·f_s` (Q≈9) у dBFS, кольором за порогом
+(зелений `< −45`, бурштин `−45…−30`, червоний `> −30`). Геометричний
+осцилятор *точно* band-limited, тож енергія тут — це продукт нелінійних
+стадій (Drive / Fold / Grit / FM / Feedback), що завернувся назад:
+червоний ⇒ увімкни HQ Mode. Коли HQ увімкнено, майстер-дециматор цю
+енергію знімає й метр падає — тобто він показує саме те, що HQ виправить.
+`04_DSP_COMPONENTS.md §1.8`.
+
+Потокобезпека GUI→аудіо для параметрів — на `nih-plug`
+(`FloatParam`/`EnumParam` lock-free).
