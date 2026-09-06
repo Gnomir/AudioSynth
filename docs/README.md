@@ -63,5 +63,6 @@ PolyBLEP пила/трикутник (плаский до DC) · clean-voice fas
 retrigger/free-run + матриця (→ brightness / pitch / cutoff / FM index) ·
 унісон з «диханням» · понотна яскравість (MPE / афтертач → `rolloff` на
 голос) · CC#64 sustain (рівень плагіна) · чесний метр аліасингу в редакторі
-(смуга біля Найквіста → коли вмикати HQ) · ворожий RT-safety набір
-(`tests/stress.rs`) · `panic=abort` в обох крейтах.
+(смуга біля Найквіста → коли вмикати HQ) · A/B морф між патчами (кожен
+параметр інтерполюється чисто) · ворожий RT-safety набір (`tests/stress.rs`)
+· `panic=abort` в обох крейтах.

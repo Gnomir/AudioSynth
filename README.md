@@ -36,7 +36,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | Path | What |
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs` + C ABI |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), with a `nih_plug_vizia` editor + filter-bank spectrum display |
+| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), `nih_plug_vizia` editor: spectrum display + honest aliasing meter + A/B patch morph |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
 
@@ -47,7 +47,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 cd harmonic_core
 cargo test                                    # 94 (76 unit + 18 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 70/70 bit-identical on ARM (Docker + QEMU)
+bash scripts/cross-verify.sh                   # 94/94 bit-identical on ARM (Docker + QEMU)
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -65,7 +65,7 @@ nightly.
 
 ## Status
 
-94 `harmonic_core` tests pass (76 unit + 18 integration, 11 of them an adversarial RT-safety suite) plus 3 plugin tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+94 `harmonic_core` tests pass (76 unit + 18 integration, 11 of them an adversarial RT-safety suite) plus 4 plugin tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. The whole suite — including a whole-signal-path hash
 compared against an x86-64 reference — passes bit-for-bit on
 `aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU

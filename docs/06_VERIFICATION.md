@@ -2,7 +2,7 @@
 
 Що перевірено, як, і якими числами. Статус: **94 тести `harmonic_core`**
 (76 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **3 у плагіні** (`analyzer`) + 1 `#[ignore]`
+`tests/stress.rs`) + **4 у плагіні** (analyzer + editor morph) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -387,15 +387,14 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — `analyzer` (3, `cargo test -p harmonic_synth`)
-
-Плагінний бік. Чесний метр аліасингу (`04 §1.8`).
+### `harmonic_synth` — плагінні (4, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
-| `meter_is_calibrated_to_dbfs` | повношкальний тон на `0.44·f_s` (центр смуги) → метр читає `≈ 0` dBFS (`−3…+2`) — пін для `NYQ_GAIN_COMP` |
-| `meter_ignores_a_clean_low_tone_and_catches_near_nyquist_energy` | чистий тон 1 кГц → `< −55` dBFS; тон `−12` dBFS у смузі фолду → `−12±4`; розділення `> 35` дБ |
-| `meter_decays_after_the_energy_stops` | після припинення енергії метр падає `> 30` дБ (envelope-фоловер відпускає) |
+| `analyzer::meter_is_calibrated_to_dbfs` | повношкальний тон на `0.44·f_s` (центр смуги) → метр читає `≈ 0` dBFS (`−3…+2`) — пін для `NYQ_GAIN_COMP` (`04 §1.8`) |
+| `analyzer::meter_ignores_a_clean_low_tone_and_catches_near_nyquist_energy` | чистий тон 1 кГц → `< −55` dBFS; тон `−12` dBFS у смузі фолду → `−12±4`; розділення `> 35` дБ |
+| `analyzer::meter_decays_after_the_energy_stops` | після припинення енергії метр падає `> 30` дБ (envelope-фоловер відпускає) |
+| `editor::morph_endpoints_are_exact_and_midpoint_blends` | A/B морф: `pos = 0` → **рівно** A, `pos = 1` → **рівно** B (без дрейфу); середина = півсуми; `pos` клампиться (не екстраполює); відсутній у слоті параметр → `None` (не чіпається). `07 §18` |
 
 ---
 

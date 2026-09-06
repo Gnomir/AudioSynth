@@ -293,6 +293,7 @@ struct HarmonicSynth {
     analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + 1 near-Nyquist BP (aliasing meter) + followers
     analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs — audio→GUI, лок-free
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
+// + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
     sustain_held: bool,                 // CC#64 стан педалі
     sustained_notes: [bool; 128],       // NoteOff, відкладені, поки педаль тримається
 }
@@ -324,6 +325,15 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 червоний ⇒ увімкни HQ Mode. Коли HQ увімкнено, майстер-дециматор цю
 енергію знімає й метр падає — тобто він показує саме те, що HQ виправить.
 `04_DSP_COMPONENTS.md §1.8`.
+
+**A/B морфінг.** У редакторі — рядок `SET A · слайдер · SET B`. `SET A`/`SET B`
+знімають нормалізовані значення **всіх** параметрів (`Params::param_map`) у
+персистовані слоти. Слайдер пише `lerp(A, B, pos)` назад у справжні параметри
+через `RawParamEvent` — тож хост бачить звичайні автоматизовані рухи ручок, а
+звук точно відповідає ручкам. Фіксована архітектура (35 параметрів, без
+модуляційної матриці) робить це коректним для кожного параметра; дискретні
+(Oscillator / Filter / HQ) стрибають на середині. Це інструмент етапу дизайну
+— діє лише поки редактор відкритий. `05 §3` / `12 §4` / `07 §18`.
 
 Потокобезпека GUI→аудіо для параметрів — на `nih-plug`
 (`FloatParam`/`EnumParam` lock-free).
