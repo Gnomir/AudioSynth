@@ -17,7 +17,7 @@ band-limited impulse train) at the limit:
 `r` is a spectral tilt (dark → bright); `n` is clamped to Nyquist so the clean
 oscillator cannot alias. Two extra waveforms — a band-limited **sawtooth** and
 **triangle** via PolyBLEP / PolyBLAMP (stateless, flat to DC) — sit alongside it.
-On top: a character stage (drive / wavefolder / bit-crush / downsampler), FM with
+On top: a resonant "Formant" hump (a second closed-form term), a character stage (drive / wavefolder / bit-crush / downsampler), FM with
 operator feedback, a ZDF state-variable filter, two ADSR envelopes, a per-voice
 LFO (retrigger / free-run, routed to brightness / pitch / cutoff / FM index),
 unison with a slow per-voice drift so the stack breathes, pitch bend and
@@ -45,9 +45,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 94 (76 unit + 18 integration); + `-- --ignored` drift test
+cargo test                                    # 97 (79 unit + 18 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 94/94 bit-identical on ARM (Docker + QEMU)
+bash scripts/cross-verify.sh                   # 97/97 bit-identical on ARM (Docker + QEMU)
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -65,7 +65,7 @@ nightly.
 
 ## Status
 
-94 `harmonic_core` tests pass (76 unit + 18 integration, 11 of them an adversarial RT-safety suite) plus 7 plugin tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
+97 `harmonic_core` tests pass (79 unit + 18 integration, 11 of them an adversarial RT-safety suite) plus 7 plugin tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`, `no_std` and
 nightly `portable-simd`. The whole suite — including a whole-signal-path hash
 compared against an x86-64 reference — passes bit-for-bit on
 `aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU

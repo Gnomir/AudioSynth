@@ -61,7 +61,7 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **544 байт** (x86-64; `align = 8`), без
+`#[repr(C)] #[derive(Clone, Copy)]`, **624 байт** (x86-64; `align = 8`), без
 `Drop`, без вказівників. Розмір може змінюватись між версіями — хост
 **обов'язково** викликає `harmonic_voice_size()` у рантаймі, не хардкодить
 число.
@@ -100,6 +100,9 @@ pub struct Voice {
     waveform: Waveform,              // Geometric (дефолт) / Saw / Triangle
                                      // Saw/Triangle — PolyBLEP/PolyBLAMP, без стану
     partial_limit: u32, partial_frac: f32,   // фракційна стеля на гармоніки (деф. 2048.0 = без ефекту)
+    expr_bright: f64, expr_bright_z: f64,     // понотний зсув rolloff (MPE/афтертач); 0.0 = тотожність
+    formant: f64, formant_z: f64,             // глибина резонансного горба (04 §0.2); 0.0 = тотожність
+    hump_f: f64, hump_n: u32, hump: Hump,     // кеш (a, b, h, aⁿ⁺¹, bⁿ⁺¹, peak) для (formant_z, n)
     // --- нелінійні стадії ---
     character: Character,            // включно з DC-blocker + S&H стан
     filter: Svf,                     // коеф. a1/a2/a3/k + інтегратори ic1/ic2
@@ -241,8 +244,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 94 тести (76 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 94/94, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 97 тестів (79 юніт + 18 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 97/97, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -259,7 +262,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 544 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 624 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці

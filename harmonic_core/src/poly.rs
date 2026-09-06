@@ -177,6 +177,7 @@ pub struct PolySynth<const VOICES: usize> {
     hq_decim: HqBusDecimator,
     waveform: Waveform,
     partial_limit: f32,
+    formant: f64,
 
     // Per-note brightness expression (MPE timbre / CC74, poly & channel
     // pressure). `bright_depth` is how far full expression tilts `rolloff`;
@@ -248,6 +249,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             hq_decim: HqBusDecimator::new(),
             waveform: Waveform::Geometric,
             partial_limit: crate::voice::MAX_PARTIALS as f32,
+            formant: 0.0,
             bright_depth: 0.0,
             chan_bright: 0.0,
             note_bright: [0.0; 128],
@@ -368,6 +370,16 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         };
         for v in &mut self.voices {
             v.core.set_partial_limit(self.partial_limit);
+        }
+    }
+
+    /// "Formant" — a resonant bump in the mid-partials of the geometric
+    /// oscillator, `[0, 1]`. `0.0` (default) disables it (bit-identical). See
+    /// [`Voice::set_formant`].
+    pub fn set_formant(&mut self, f: f64) {
+        self.formant = if f.is_nan() { 0.0 } else { f.clamp(0.0, 1.0) };
+        for v in &mut self.voices {
+            v.core.set_formant(self.formant);
         }
     }
 
@@ -604,6 +616,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         v.core.set_hq(self.hq);
         v.core.set_waveform(self.waveform);
         v.core.set_partial_limit(self.partial_limit);
+        v.core.set_formant(self.formant);
         v.core.set_expr_brightness(expr_off);
         v.core.set_pitch_bend(self.bend_ratio);
         v.core.set_character(self.character);
@@ -1280,6 +1293,57 @@ mod tests {
                 expr.render_sample(),
                 "brightness depth 0.0 changed the output at sample {i}"
             );
+        }
+    }
+
+    #[test]
+    fn formant_fans_out_to_every_voice_and_zero_is_bit_identical() {
+        let sr = 48_000.0;
+        let bin = |buf: &[f32], f: f64| -> f64 {
+            let w = core::f64::consts::TAU * f / sr;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+        let render = |formant: f64, before_note: bool| -> Vec<f32> {
+            let mut s: PolySynth<8> = PolySynth::new(sr);
+            s.set_gain(1.0);
+            s.set_rolloff(0.4);
+            if before_note {
+                s.set_formant(formant);
+                s.note_on(45, 1.0);
+            } else {
+                s.note_on(45, 1.0);
+                for _ in 0..400 {
+                    s.render_sample();
+                }
+                s.set_formant(formant); // fan-out to the held voice
+            }
+            for _ in 0..1200 {
+                s.render_sample();
+            }
+            (0..16384).map(|_| s.render_sample()[0]).collect()
+        };
+        let f6 = midi_to_hz(45.0) * 6.0;
+        let flat = bin(&render(0.0, true), f6);
+        let held = bin(&render(0.42, false), f6); // applied to a sounding note
+        let fresh = bin(&render(0.42, true), f6); // applied before note-on
+        assert!(held > flat * 6.0, "formant didn't bump a held voice: {flat:e} -> {held:e}");
+        assert!(fresh > flat * 6.0, "a fresh note ignored the formant: {fresh:e}");
+
+        // formant 0.0 → bit-for-bit unchanged
+        let mut a: PolySynth<4> = PolySynth::new(sr);
+        a.set_gain(1.0);
+        a.note_on(57, 1.0);
+        let mut b: PolySynth<4> = PolySynth::new(sr);
+        b.set_gain(1.0);
+        b.set_formant(0.0);
+        b.note_on(57, 1.0);
+        for i in 0..8000 {
+            assert_eq!(a.render_sample(), b.render_sample(), "formant 0.0 changed the output at {i}");
         }
     }
 

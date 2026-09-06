@@ -172,7 +172,7 @@ abort. Жодного довільного ліміту не треба: якщ�
 |---|---|---|
 | `clap-validator` | 31 passed, **4 failed/crashed**, 9 skipped | **35 passed, 0 failed, 0 warnings**, 9 skipped |
 | `pluginval --strictness 8` (VST3, з GUI-тестами) | SUCCESS | SUCCESS (не зачеплено) |
-| `harmonic_core` тести | 57/57 | 94/94 (не залежать від nih-plug) |
+| `harmonic_core` тести | 57/57 | 97/97 (не залежать від nih-plug) |
 
 Регресійного тесту на це немає — воно у скрипті валідації, який не в
 `cargo test` (потребує зовнішніх бінарників). `06_VERIFICATION.md §6` фіксує

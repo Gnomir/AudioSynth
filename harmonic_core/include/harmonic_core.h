@@ -93,6 +93,12 @@ void harmonic_voice_set_partial_limit(HarmonicVoice *voice, float limit);
  * by the sawtooth / triangle waveforms. */
 void harmonic_voice_set_expr_brightness(HarmonicVoice *voice, double r_offset);
 
+/* "Formant": a resonant mid-spectrum bump on the geometric oscillator, added as
+ * a second closed-form term. [0, 1]; 0.0 (default) disables it (oscillator path
+ * bit-identical). Higher raises the bump's centre partial + depth. Theta(log n).
+ * Ignored by the sawtooth / triangle waveforms. */
+void harmonic_voice_set_formant(HarmonicVoice *voice, double f);
+
 /* Reset phase + smoothers + filter state (call on note-on). Honors
  * free_running: in that mode the oscillator phase keeps running. */
 void harmonic_voice_reset(HarmonicVoice *voice);

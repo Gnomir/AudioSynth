@@ -237,6 +237,21 @@ pub unsafe extern "C" fn harmonic_voice_set_expr_brightness(ptr: *mut Voice, r_o
     }
 }
 
+/// "Formant" — a resonant mid-spectrum bump on the geometric oscillator, added
+/// as a second closed-form term. `[0, 1]`; `0.0` (the default) disables it and
+/// the oscillator path is bit-identical. Higher raises the bump's centre
+/// partial and depth. Still `Θ(log n)`. Ignored by the sawtooth / triangle
+/// waveforms.
+///
+/// # Safety
+/// `ptr` must come from a successful [`harmonic_voice_init`].
+#[no_mangle]
+pub unsafe extern "C" fn harmonic_voice_set_formant(ptr: *mut Voice, f: f64) {
+    if let Some(v) = unsafe { ptr.as_mut() } {
+        v.set_formant(f);
+    }
+}
+
 /// # Safety
 /// `ptr` must come from a successful [`harmonic_voice_init`].
 #[no_mangle]

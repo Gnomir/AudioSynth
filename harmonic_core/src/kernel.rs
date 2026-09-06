@@ -162,6 +162,47 @@ pub fn geometric_peak_pre(r: f64, n: u32, rn: f64) -> f64 {
     }
 }
 
+/// Resonant-hump spectral term: the difference of two geometric rolloffs,
+///
+/// ```text
+///   Σ_{k=1}^{n} (aᵏ − bᵏ) cos(2π k p)   =   S_n(p, a) − S_n(p, b)
+/// ```
+///
+/// With `1 > a > b > 0` the weight `aᵏ − bᵏ` is `0`-ish at `k = 1`, rises to a
+/// peak near `k* = ln(ln b / ln a) / ln(a/b)`, and decays after — a
+/// controllable formant-like bump to add on top of the main `Σ rᵏ` spectrum.
+/// Still a closed form, still `Θ(log n)`: two [`geometric_partials_pre`] calls,
+/// so the caller supplies `an1 = a^{n+1}` and `bn1 = b^{n+1}` the same way.
+/// Degenerate `a`/`b` (outside `(0,1)`, or `a ≤ b`) just yield a small or zero
+/// term — never a NaN.
+#[inline]
+pub fn geometric_hump_pre(p: f64, a: f64, b: f64, n: u32, an1: f64, bn1: f64) -> f64 {
+    geometric_partials_pre(p, a, n, an1) - geometric_partials_pre(p, b, n, bn1)
+}
+
+/// Peak (at `p → 0`) of [`geometric_hump_pre`]: `Σ aᵏ − Σ bᵏ`, `> 0` for
+/// `a > b`. `an = a^n`, `bn = b^n` supplied by the caller (as for
+/// [`geometric_peak_pre`]). Used to normalise the combined spectrum.
+#[inline]
+pub fn geometric_hump_peak(a: f64, b: f64, n: u32, an: f64, bn: f64) -> f64 {
+    if n == 0 {
+        return 0.0;
+    }
+    let sum = |r: f64, rn: f64| {
+        if r > 0.0 && r < 1.0 {
+            r * (1.0 - rn) / (1.0 - r)
+        } else {
+            0.0
+        }
+    };
+    let d = sum(a, an) - sum(b, bn);
+    if d > 0.0 {
+        d
+    } else {
+        0.0
+    }
+}
+
 #[inline(always)]
 fn fabs(x: f64) -> f64 {
     f64::from_bits(x.to_bits() & 0x7fff_ffff_ffff_ffff)
@@ -397,6 +438,51 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn hump_matches_the_naive_weighted_sum_and_bumps_the_mids() {
+        // 1. Closed form == Σ (aᵏ − bᵏ) cos(2πkp), the difference of two rolloffs.
+        let naive = |p: f64, a: f64, b: f64, n: u32| {
+            let mut s = 0.0;
+            for k in 1..=n {
+                let w = powi_pos(a, k) - powi_pos(b, k);
+                s += w * (k as f64 * p * core::f64::consts::TAU).cos();
+            }
+            s
+        };
+        for &(a, b) in &[(0.92_f64, 0.79_f64), (0.977, 0.932), (0.8, 0.5)] {
+            for &n in &[8u32, 40, 300] {
+                let (an1, bn1) = (powi_pos(a, n + 1), powi_pos(b, n + 1));
+                let mut p = 0.002;
+                while p < 1.0 {
+                    let got = geometric_hump_pre(p, a, b, n, an1, bn1);
+                    let want = naive(p, a, b, n);
+                    assert!((got - want).abs() < 1e-6 * n as f64 + 1e-6, "a={a} b={b} n={n} p={p}: {got} vs {want}");
+                    p += 0.017;
+                }
+            }
+        }
+
+        // 2. The weight aᵏ − bᵏ genuinely peaks in the mid-partials, not at k=1.
+        for &(a, b, want_k) in &[(0.924_f64, 0.79_f64, 7u32), (0.977, 0.932, 23)] {
+            let w = |k: u32| powi_pos(a, k) - powi_pos(b, k);
+            let (mut kmax, mut vmax) = (1u32, w(1));
+            for k in 2..=48 {
+                if w(k) > vmax {
+                    vmax = w(k);
+                    kmax = k;
+                }
+            }
+            assert!(kmax.abs_diff(want_k) <= 2, "hump for a={a} b={b} peaked at k={kmax}, wanted ≈{want_k}");
+            assert!(w(1) < 0.6 * vmax, "hump not humped: w(1)={} peak={}", w(1), vmax);
+        }
+
+        // 3. Peak helper is positive and matches Σ of the weights.
+        let (a, b, n) = (0.95_f64, 0.8_f64, 60u32);
+        let direct: f64 = (1..=n).map(|k| powi_pos(a, k) - powi_pos(b, k)).sum();
+        let helper = geometric_hump_peak(a, b, n, powi_pos(a, n), powi_pos(b, n));
+        assert!((direct - helper).abs() < 1e-9 && helper > 0.0, "{direct} vs {helper}");
     }
 
     #[test]

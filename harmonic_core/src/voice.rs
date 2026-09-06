@@ -8,7 +8,8 @@
 use crate::character::{CharParams, Character};
 use crate::filter::{FilterMode, Svf};
 use crate::kernel::{
-    geometric_partials_pre, geometric_partials_pre_frac, geometric_peak_pre, powi_pos,
+    geometric_hump_peak, geometric_hump_pre, geometric_partials_pre, geometric_partials_pre_frac,
+    geometric_peak_pre, powi_pos,
 };
 use crate::lfo::{Lfo, LfoMode, LfoShape};
 use crate::trig::{exp2, floor_f64, sin_cos_turns_fast, sin_turns, sin_turns_fast, wrap01};
@@ -129,8 +130,37 @@ pub struct Voice {
     expr_bright: f64,
     expr_bright_z: f64,
 
+    // "Formant" — a second closed-form spectral term (`geometric_hump_pre`)
+    // adding a controllable resonant bump to the mid-partials. `formant` is the
+    // target `[0, 1]`; `formant_z` is one-pole smoothed. `0.0` (default) = the
+    // hump is disabled and the oscillator path is bit-identical. `hump_*` is the
+    // derived `(a, b, h, aⁿ⁺¹, bⁿ⁺¹, peak)` for the current `(formant_z, n)`,
+    // recomputed only when either changes (the hump path is opt-in, not the
+    // clean fast path, so a plain cache is enough).
+    formant: f64,
+    formant_z: f64,
+    hump_f: f64,
+    hump_n: u32,
+    hump: Hump,
+
     character: Character,
     filter: Svf,
+}
+
+/// Derived resonant-hump parameters for [`Voice::geom_osc`]. `h == 0` means the
+/// hump is off and the oscillator takes its plain, bit-identical path.
+#[derive(Clone, Copy)]
+struct Hump {
+    h: f64,   // depth
+    a: f64,   // slow rolloff of the difference term (peak side)
+    b: f64,   // fast rolloff
+    an1: f64, // a^{n+1}
+    bn1: f64, // b^{n+1}
+    peak: f64, // Σaᵏ − Σbᵏ, for renormalisation
+}
+
+impl Hump {
+    const OFF: Hump = Hump { h: 0.0, a: 0.0, b: 0.0, an1: 0.0, bn1: 0.0, peak: 0.0 };
 }
 
 /// Output of [`Voice::tick_modulation`] — the effective, per-sample
@@ -146,6 +176,7 @@ struct Modulation {
     fm_index: f64,
     fm_term: f64,
     m: f64, // raw LFO output (0 if nothing is routed) — for lfo_to_cutoff
+    hump: Hump,
 }
 
 impl Voice {
@@ -213,6 +244,11 @@ impl Voice {
             partial_frac: 0.0,
             expr_bright: 0.0,
             expr_bright_z: 0.0,
+            formant: 0.0,
+            formant_z: 0.0,
+            hump_f: 0.0,
+            hump_n: 0,
+            hump: Hump::OFF,
             character: Character::new(),
             filter: Svf::new(sr),
         };
@@ -415,6 +451,17 @@ impl Voice {
         self.expr_bright = clamp(r_offset, -0.9, 0.9);
     }
 
+    /// "Formant" — a resonant bump added to the mid-partials via a second
+    /// closed-form term ([`crate::kernel::geometric_hump_pre`]). `[0, 1]`;
+    /// `0.0` (the default) disables it and the oscillator path is bit-identical.
+    /// Higher values raise the bump's centre partial (~1.5 … ~25.5, with
+    /// `formant²`) and its depth. Still `Θ(log n)`. One-pole smoothed. Ignored
+    /// by `Saw` / `Triangle`.
+    #[inline]
+    pub fn set_formant(&mut self, f: f64) {
+        self.formant = clamp(f, 0.0, 1.0);
+    }
+
     #[inline]
     pub fn set_filter_mode(&mut self, mode: FilterMode) {
         self.filter.set_mode(mode);
@@ -446,6 +493,7 @@ impl Voice {
         self.freq_z = self.freq;
         self.rolloff_z = self.rolloff;
         self.expr_bright_z = self.expr_bright;
+        self.formant_z = self.formant;
         self.bend_z = self.bend;
         self.pan_z = self.pan;
         self.character.reset();
@@ -456,13 +504,23 @@ impl Voice {
     /// The geometric oscillator sum at phase `ph`, normalised by `peak`. Uses
     /// the integer closed form when `frac == 0` (the common case: default
     /// setting, or the Nyquist clamp binding) so that path stays bit-identical;
-    /// otherwise fades the `(n+1)`-th partial in at weight `frac`.
+    /// otherwise fades the `(n+1)`-th partial in at weight `frac`. When
+    /// `hump.h != 0` a second closed-form term (`geometric_hump_pre`) adds a
+    /// resonant mid-spectrum bump, and the whole thing is renormalised by the
+    /// combined peak. `hump.h == 0` (the default) takes the plain `… / peak`
+    /// path unchanged — bit-identical.
     #[inline]
-    fn geom_osc(ph: f64, r: f64, n: u32, rn1: f64, frac: f64, peak: f64) -> f64 {
-        if frac != 0.0 {
-            geometric_partials_pre_frac(ph, r, n, rn1, frac) / peak
+    fn geom_osc(ph: f64, r: f64, n: u32, rn1: f64, frac: f64, peak: f64, hump: &Hump) -> f64 {
+        let base = if frac != 0.0 {
+            geometric_partials_pre_frac(ph, r, n, rn1, frac)
         } else {
-            geometric_partials_pre(ph, r, n, rn1) / peak
+            geometric_partials_pre(ph, r, n, rn1)
+        };
+        if hump.h == 0.0 {
+            base / peak
+        } else {
+            (base + hump.h * geometric_hump_pre(ph, hump.a, hump.b, n, hump.an1, hump.bn1))
+                / (peak + hump.h * hump.peak)
         }
     }
 
@@ -509,6 +567,40 @@ impl Voice {
         (self.geom_rn1, self.geom_peak)
     }
 
+    /// Derived [`Hump`] for `(formant, n)`, cached. `formant == 0` → [`Hump::OFF`]
+    /// (oscillator path stays bit-identical). Otherwise the bump's centre partial
+    /// rises with `formant²` (~1.5 … ~25.5) and its depth linearly; `a`/`b` are
+    /// two rolloffs with a fixed decay ratio (`b = a³` in log terms), so their
+    /// difference `aᵏ − bᵏ` peaks near that centre.
+    #[inline]
+    fn hump_for(&mut self, formant: f64, n: u32) -> Hump {
+        if formant == 0.0 {
+            return Hump::OFF;
+        }
+        if formant != self.hump_f || n != self.hump_n {
+            self.hump_f = formant;
+            self.hump_n = n;
+
+            let kc = 1.5 + 24.0 * formant * formant;
+            // a = 2^{-1/kc}, b = a² = 2^{-2/kc}. Then bᵏ = a^{2k}, so the bump
+            // weight is aᵏ(1 − aᵏ), which peaks (value 0.25) exactly where
+            // aᵏ = ½, i.e. at partial k = kc.
+            let a = clamp(exp2(-1.0 / kc), 0.05, 0.9995);
+            let b = clamp(a * a, 0.02, a - 1.0e-4);
+            let an = powi_pos(a, n);
+            let bn = powi_pos(b, n);
+            self.hump = Hump {
+                h: 1.3 * formant,
+                a,
+                b,
+                an1: an * a,
+                bn1: bn * b,
+                peak: geometric_hump_peak(a, b, n, an, bn),
+            };
+        }
+        self.hump
+    }
+
     /// The partial count in effect right now: the Nyquist clamp
     /// `⌊fs / 2f⌋`, further capped by [`Voice::set_partial_limit`].
     #[inline]
@@ -547,6 +639,7 @@ impl Voice {
                 rn1,
                 mo.frac,
                 peak,
+                &mo.hump,
             );
             let osc_hi = Self::geom_osc(
                 self.phase + 0.5 * mo.step + fm_hi + mo.fb + mo.drift,
@@ -555,6 +648,7 @@ impl Voice {
                 rn1,
                 mo.frac,
                 peak,
+                &mo.hump,
             );
             self.last_osc = osc_lo;
             self.character.process_hq(osc_lo as f32, osc_hi as f32)
@@ -569,6 +663,7 @@ impl Voice {
                         rn1,
                         mo.frac,
                         peak,
+                        &mo.hump,
                     )
                 }
                 Waveform::Saw => {
@@ -635,6 +730,7 @@ impl Voice {
                     rn1,
                     mo.frac,
                     peak,
+                    &mo.hump,
                 );
                 let hi = Self::geom_osc(
                     self.phase + 0.5 * mo.step + fm_hi + mo.fb + mo.drift,
@@ -643,6 +739,7 @@ impl Voice {
                     rn1,
                     mo.frac,
                     peak,
+                    &mo.hump,
                 );
                 (lo, hi)
             }
@@ -698,6 +795,8 @@ impl Voice {
         // Per-note brightness expression, smoothed on the same time constant.
         // Stays at exactly 0.0 while unused, so `roll_eff` below is unchanged.
         self.expr_bright_z += (1.0 - self.smooth_coeff) * (self.expr_bright - self.expr_bright_z);
+        // "Formant" hump depth, same time constant. Exactly 0.0 while unused.
+        self.formant_z += (1.0 - self.smooth_coeff) * (self.formant - self.formant_z);
         self.bend_z += (1.0 - self.smooth_coeff) * (self.bend - self.bend_z);
         self.pan_z += (1.0 - self.pan_smooth) * (self.pan - self.pan_z);
 
@@ -745,6 +844,7 @@ impl Voice {
         } else {
             0.0
         };
+        let hump = self.hump_for(self.formant_z, n);
 
         // ---- oscillator terms ----
         let fb = self.feedback * self.last_osc;
@@ -778,7 +878,7 @@ impl Voice {
             0.0
         };
 
-        Modulation { roll_eff, n, frac, fb, step, drift, fm_index, fm_term, m }
+        Modulation { roll_eff, n, frac, fb, step, drift, fm_index, fm_term, m, hump }
     }
 
     /// Advance the carrier/FM phase accumulators by `step` and refresh the
@@ -1007,6 +1107,72 @@ mod tests {
         b.set_expr_brightness(0.0);
         for _ in 0..3000 {
             assert_eq!(a.render_sample(), b.render_sample(), "expr 0.0 perturbed the output");
+        }
+    }
+
+    #[test]
+    fn formant_adds_a_movable_mid_spectrum_bump_and_zero_is_inert() {
+        let fs = 48_000.0;
+        let f0 = 150.0;
+        // magnitude of the k-th partial once the smoothed formant has settled
+        let partial = |formant: f64, k: f64| -> f64 {
+            let mut v = Voice::new(fs);
+            v.set_frequency(f0);
+            v.set_rolloff(0.4); // steep natural rolloff → the mids are near-silent
+            v.set_gain(1.0);
+            v.set_formant(formant);
+            v.reset();
+            let mut buf = vec![0.0_f32; 1 << 15];
+            let mut scr = vec![0.0_f32; 1 << 15];
+            v.render_block(&mut buf, &mut scr);
+            for x in &buf {
+                assert!(x.is_finite() && x.abs() <= 1.5, "formant {formant}: unbounded {x}");
+            }
+            let w = core::f64::consts::TAU * (f0 * k) / fs;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+
+        // 1. A bump appears: at rolloff 0.4 the 6th partial is ~0.4^6 ≈ 4e-3 of
+        //    the fundamental; a mid formant lifts it by well over an order of
+        //    magnitude.
+        let p6_off = partial(0.0, 6.0);
+        let p6_on = partial(0.42, 6.0); // K ≈ 1.5 + 24·0.42² ≈ 5.7
+        assert!(p6_on > p6_off * 8.0, "formant did not bump the 6th partial: {p6_off:e} -> {p6_on:e}");
+
+        // 2. The bump moves up with the control. Two views, both robust to the
+        //    peak renormalisation: a low formant favours a low partial over a
+        //    high one, a high formant the reverse.
+        let lo_at4 = partial(0.30, 4.0); // K ≈ 3.7
+        let lo_at15 = partial(0.30, 15.0);
+        let hi_at4 = partial(0.78, 4.0); // K ≈ 16
+        let hi_at15 = partial(0.78, 15.0);
+        assert!(
+            lo_at4 > lo_at15 * 2.0,
+            "low formant should sit on partial 4, not 15: {lo_at4:e} vs {lo_at15:e}"
+        );
+        assert!(
+            hi_at15 > hi_at4,
+            "high formant should shift energy up to partial 15: {hi_at4:e} vs {hi_at15:e}"
+        );
+        assert!(
+            hi_at15 > lo_at15,
+            "raising the formant should lift partial 15: {lo_at15:e} -> {hi_at15:e}"
+        );
+
+        // 3. formant 0.0 must be *exactly* the no-formant render, bit for bit.
+        let mut c = Voice::new(fs);
+        c.set_frequency(f0);
+        c.set_rolloff(0.85);
+        c.reset();
+        let mut d = c;
+        d.set_formant(0.0);
+        for _ in 0..3000 {
+            assert_eq!(c.render_sample(), d.render_sample(), "formant 0.0 perturbed the output");
         }
     }
 
