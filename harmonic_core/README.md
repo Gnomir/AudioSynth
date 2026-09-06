@@ -148,6 +148,7 @@ oscillator / offline rendering.
 
 The plugin (`../harmonic_synth`), Character stage, ZDF filter, dual ADSR,
 stereo + unison + drift, pitch bend, per-voice LFO with a modulation matrix,
+per-note brightness expression (MPE / aftertouch → per-voice rolloff),
 PolyBLEP saw/triangle, the fractional "Partials" knob, sample-rate validation,
 the batched oscillator, the HQ oversampling bus, the clean-voice fast path, and
 the `nih_plug_vizia` GUI are all done. `pluginval --strictness 8` and

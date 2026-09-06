@@ -178,6 +178,18 @@ pub struct PolySynth<const VOICES: usize> {
     waveform: Waveform,
     partial_limit: f32,
 
+    // Per-note brightness expression (MPE timbre / CC74, poly & channel
+    // pressure). `bright_depth` is how far full expression tilts `rolloff`;
+    // `note_bright[k]` is the per-key component the host combined from that
+    // note's MPE timbre + poly pressure; `chan_bright` is the channel-pressure
+    // component shared by every sounding note. The effective per-voice offset
+    // is `bright_depth · clamp(note_bright[note] + chan_bright, −1, 1)`.
+    // `bright_depth == 0.0` (the default) leaves every voice at `expr = 0.0`,
+    // i.e. bit-identical to no expression.
+    bright_depth: f64,
+    chan_bright: f32,
+    note_bright: [f32; 128],
+
     counter: u64,
 }
 
@@ -236,6 +248,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             hq_decim: HqBusDecimator::new(),
             waveform: Waveform::Geometric,
             partial_limit: crate::voice::MAX_PARTIALS as f32,
+            bright_depth: 0.0,
+            chan_bright: 0.0,
+            note_bright: [0.0; 128],
             counter: 0,
         };
         (s, status)
@@ -343,6 +358,75 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
+    /// Depth of per-note brightness expression, in `rolloff` units at full
+    /// deflection (a musical value is `~0.3`). `0.0` disables it entirely —
+    /// every voice stays at `expr = 0.0`, bit-identical to no expression. See
+    /// [`Voice::set_expr_brightness`].
+    pub fn set_brightness_depth(&mut self, depth: f64) {
+        self.bright_depth = if depth.is_nan() {
+            0.0
+        } else {
+            depth.clamp(-0.9, 0.9)
+        };
+        self.refresh_expr();
+    }
+
+    /// Per-note brightness expression for `note`, from the host's combined MPE
+    /// timbre / CC74 + poly-pressure value (`raw`, nominally `[-1, 1]`). Fans
+    /// out to every voice currently playing that note. Out-of-range `note`
+    /// (e.g. CLAP's wildcard key, which arrives as `255`) is ignored.
+    pub fn set_note_brightness(&mut self, note: u8, raw: f32) {
+        let idx = note as usize;
+        if idx >= 128 {
+            return;
+        }
+        self.note_bright[idx] = raw;
+        let off = self.expr_offset(raw);
+        for v in &mut self.voices {
+            if v.note == note && v.amp.is_active() {
+                v.core.set_expr_brightness(off);
+            }
+        }
+    }
+
+    /// Channel-pressure contribution to brightness expression (mono aftertouch,
+    /// or MPE channel pressure), `raw` nominally `[-1, 1]`. Shared by every
+    /// sounding note and summed with each note's own
+    /// [`PolySynth::set_note_brightness`] value.
+    pub fn set_channel_brightness(&mut self, raw: f32) {
+        self.chan_bright = if raw.is_nan() { 0.0 } else { raw };
+        self.refresh_expr();
+    }
+
+    /// Effective per-voice `rolloff` offset for a given per-key raw value,
+    /// folding in the shared channel-pressure term and the depth.
+    #[inline]
+    fn expr_offset(&self, note_raw: f32) -> f64 {
+        let sum = note_raw + self.chan_bright;
+        let clamped = if sum.is_nan() {
+            0.0
+        } else {
+            sum.clamp(-1.0, 1.0)
+        };
+        self.bright_depth * clamped as f64
+    }
+
+    /// Re-push the brightness expression offset to every active voice — after a
+    /// depth or channel-pressure change, which affect all notes at once.
+    fn refresh_expr(&mut self) {
+        let depth = self.bright_depth;
+        let chan = self.chan_bright;
+        let nb = self.note_bright;
+        for v in &mut self.voices {
+            if v.amp.is_active() {
+                let note_raw = nb.get(v.note as usize).copied().unwrap_or(0.0);
+                let sum = note_raw + chan;
+                let clamped = if sum.is_nan() { 0.0 } else { sum.clamp(-1.0, 1.0) };
+                v.core.set_expr_brightness(depth * clamped as f64);
+            }
+        }
+    }
+
     /// Unison: `count` (1..8) detuned + stereo-spread voices per note, plus
     /// `drift` (0..1) — a slow independent per-voice phase drift so the stacked
     /// image *breathes* instead of sitting still. `drift` applies from the next
@@ -447,6 +531,11 @@ impl<const VOICES: usize> PolySynth<VOICES> {
 
     /// MIDI note-on. Stacks `unison_count` detuned, stereo-spread voices.
     pub fn note_on(&mut self, note: u8, velocity: f32) {
+        // A fresh press starts from neutral per-note expression; the host
+        // re-sends MPE timbre / pressure right after note-on if it has any.
+        if let Some(slot) = self.note_bright.get_mut(note as usize) {
+            *slot = 0.0;
+        }
         let n = self.unison_count.clamp(1, MAX_UNISON);
         // 1/√n unison make-up gain (no `f32::sqrt` in no_std)
         const INV_SQRT: [f32; 9] = [
@@ -485,6 +574,8 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         let vi = self.pick_voice();
         let sr = self.sample_rate;
         let hz = midi_to_hz(note as f32) * exp2(detune_cents / 1200.0);
+        let expr_off =
+            self.expr_offset(self.note_bright.get(note as usize).copied().unwrap_or(0.0));
 
         let v = &mut self.voices[vi];
         v.core.set_frequency(hz);
@@ -495,6 +586,7 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         v.core.set_hq(self.hq);
         v.core.set_waveform(self.waveform);
         v.core.set_partial_limit(self.partial_limit);
+        v.core.set_expr_brightness(expr_off);
         v.core.set_pitch_bend(self.bend_ratio);
         v.core.set_character(self.character);
         v.core.set_fm(self.fm_ratio, self.fm_index);
@@ -577,6 +669,8 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             v.filt_env.choke();
         }
         self.counter = 0;
+        self.chan_bright = 0.0;
+        self.note_bright = [0.0; 128];
     }
 
     fn pick_voice(&self) -> usize {
@@ -1077,6 +1171,135 @@ mod tests {
             capped_fresh < full * 0.05,
             "a fresh note ignored the partial limit: {capped_fresh:e}"
         );
+    }
+
+    #[test]
+    fn per_note_brightness_addresses_one_key_and_leaves_the_others_alone() {
+        // The additive-unique claim, as a mechanism test: expression aimed at
+        // one key changes only the voice(s) playing that key. A shared
+        // per-voice filter cannot do this.
+        let sr = 48_000.0;
+        let bin = |buf: &[f32], f: f64| -> f64 {
+            let w = core::f64::consts::TAU * f / sr;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+        // Spectral tilt (8th partial / fundamental) of `note`, optionally with
+        // a brightness value routed to key `bright_key` after the note sounds.
+        // The ratio, not an absolute magnitude, so peak-normalisation rescaling
+        // doesn't confound it.
+        let hf_of = |note: u8, bright: Option<(u8, f32)>| -> f64 {
+            let mut s: PolySynth<8> = PolySynth::new(sr);
+            s.set_gain(1.0);
+            s.set_rolloff(0.7);
+            s.set_brightness_depth(0.4);
+            s.note_on(note, 1.0);
+            for _ in 0..400 {
+                s.render_sample();
+            }
+            if let Some((k, b)) = bright {
+                s.set_note_brightness(k, b);
+            }
+            for _ in 0..2500 {
+                s.render_sample();
+            }
+            let buf: Vec<f32> = (0..16384).map(|_| s.render_sample()[0]).collect();
+            let f0 = midi_to_hz(note as f32);
+            bin(&buf, f0 * 8.0) / bin(&buf, f0)
+        };
+
+        let a = 41_u8;
+        let b = 60_u8;
+        let a_flat = hf_of(a, None);
+        let a_bright = hf_of(a, Some((a, 1.0)));
+        let b_flat = hf_of(b, None);
+        let b_when_a_bright = hf_of(b, Some((a, 1.0))); // aimed at a's key while b plays
+
+        assert!(
+            a_bright > a_flat * 3.0,
+            "brightness on key {a} didn't lift its own 8th partial: {a_flat:e} -> {a_bright:e}"
+        );
+        assert!(
+            (b_when_a_bright - b_flat).abs() < b_flat * 0.02 + 1e-9,
+            "key {b}'s spectrum moved when the expression was aimed at key {a}: \
+             {b_flat:e} -> {b_when_a_bright:e}"
+        );
+    }
+
+    #[test]
+    fn brightness_depth_zero_leaves_the_synth_bit_identical() {
+        let mut plain: PolySynth<4> = PolySynth::new(48_000.0);
+        plain.set_gain(1.0);
+        plain.note_on(57, 1.0);
+
+        let mut expr: PolySynth<4> = PolySynth::new(48_000.0);
+        expr.set_gain(1.0);
+        expr.set_brightness_depth(0.0); // the disabling value
+        expr.note_on(57, 1.0);
+        expr.set_note_brightness(57, 1.0); // …so these must be no-ops
+        expr.set_channel_brightness(0.8);
+
+        for i in 0..8000 {
+            assert_eq!(
+                plain.render_sample(),
+                expr.render_sample(),
+                "brightness depth 0.0 changed the output at sample {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn channel_brightness_moves_every_sounding_note() {
+        let sr = 48_000.0;
+        let bin = |buf: &[f32], f: f64| -> f64 {
+            let w = core::f64::consts::TAU * f / sr;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+        let render = |chan: Option<f32>| -> Vec<f32> {
+            let mut s: PolySynth<8> = PolySynth::new(sr);
+            s.set_gain(1.0);
+            s.set_rolloff(0.7);
+            s.set_brightness_depth(0.4);
+            s.note_on(45, 1.0);
+            for _ in 0..400 {
+                s.render_sample();
+            }
+            if let Some(c) = chan {
+                s.set_channel_brightness(c);
+            }
+            for _ in 0..2500 {
+                s.render_sample();
+            }
+            (0..16384).map(|_| s.render_sample()[0]).collect()
+        };
+        let f0 = midi_to_hz(45.0);
+        let tilt = |buf: &[f32]| bin(buf, f0 * 8.0) / bin(buf, f0);
+        let flat = tilt(&render(None));
+        let pressed = tilt(&render(Some(1.0)));
+        assert!(pressed > flat * 3.0, "channel pressure didn't brighten: {flat:e} -> {pressed:e}");
+    }
+
+    #[test]
+    fn wildcard_note_brightness_is_ignored_not_a_panic() {
+        let mut s: PolySynth<4> = PolySynth::new(48_000.0);
+        s.set_gain(1.0);
+        s.set_brightness_depth(0.4);
+        s.note_on(60, 1.0);
+        s.set_note_brightness(255, 1.0); // CLAP wildcard key → out of range
+        s.set_note_brightness(200, -1.0);
+        for _ in 0..2000 {
+            let [l, r] = s.render_sample();
+            assert!(l.is_finite() && r.is_finite());
+        }
     }
 
     #[test]

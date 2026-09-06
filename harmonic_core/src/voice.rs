@@ -118,6 +118,17 @@ pub struct Voice {
     partial_limit: u32,
     partial_frac: f32,
 
+    // Per-note brightness expression (MPE timbre / CC74, poly & channel
+    // pressure). Added to the smoothed `rolloff` before the oscillator, on top
+    // of any LFO brightness routing, and clamped to the same range. Set per
+    // note by the host from `NoteEvent::PolyBrightness` / `PolyPressure` /
+    // `MidiChannelPressure`. `expr_bright` is the target; `expr_bright_z` is the
+    // one-pole-smoothed value actually applied (MPE slides are dense and can
+    // step hard). `0.0` — the default — is bit-identical to no expression: the
+    // `roll_eff` term below then reduces to `self.rolloff_z` verbatim.
+    expr_bright: f64,
+    expr_bright_z: f64,
+
     character: Character,
     filter: Svf,
 }
@@ -200,6 +211,8 @@ impl Voice {
             waveform: Waveform::Geometric,
             partial_limit: MAX_PARTIALS,
             partial_frac: 0.0,
+            expr_bright: 0.0,
+            expr_bright_z: 0.0,
             character: Character::new(),
             filter: Svf::new(sr),
         };
@@ -383,6 +396,19 @@ impl Voice {
         self.partial_frac = limit - self.partial_limit as f32;
     }
 
+    /// Per-note brightness expression offset — added to the smoothed `rolloff`
+    /// before the oscillator, on top of any LFO brightness routing, then the
+    /// sum is clamped to `[ROLLOFF_MIN, ROLLOFF_MAX]`. `r_offset` itself is
+    /// clamped to `[−0.9, 0.9]` (the same bound as `lfo_to_rolloff`) and
+    /// one-pole smoothed. `0.0` — the default — is bit-identical to no
+    /// expression. The host sets this per sounding note from MPE timbre /
+    /// CC74 and poly/channel pressure (see [`crate::PolySynth::set_note_brightness`]).
+    /// `Saw` / `Triangle` ignore it (fixed spectra).
+    #[inline]
+    pub fn set_expr_brightness(&mut self, r_offset: f64) {
+        self.expr_bright = clamp(r_offset, -0.9, 0.9);
+    }
+
     #[inline]
     pub fn set_filter_mode(&mut self, mode: FilterMode) {
         self.filter.set_mode(mode);
@@ -413,6 +439,7 @@ impl Voice {
         }
         self.freq_z = self.freq;
         self.rolloff_z = self.rolloff;
+        self.expr_bright_z = self.expr_bright;
         self.bend_z = self.bend;
         self.pan_z = self.pan;
         self.character.reset();
@@ -662,6 +689,9 @@ impl Voice {
         // ---- parameter smoothing ----
         self.freq_z += (1.0 - self.smooth_coeff) * (self.freq - self.freq_z);
         self.rolloff_z += (1.0 - self.smooth_coeff) * (self.rolloff - self.rolloff_z);
+        // Per-note brightness expression, smoothed on the same time constant.
+        // Stays at exactly 0.0 while unused, so `roll_eff` below is unchanged.
+        self.expr_bright_z += (1.0 - self.smooth_coeff) * (self.expr_bright - self.expr_bright_z);
         self.bend_z += (1.0 - self.smooth_coeff) * (self.bend - self.bend_z);
         self.pan_z += (1.0 - self.pan_smooth) * (self.pan - self.pan_z);
 
@@ -682,9 +712,9 @@ impl Voice {
         } else {
             self.freq_z * self.bend_z
         };
-        let roll_eff = if self.lfo_to_rolloff != 0.0 {
+        let roll_eff = if self.lfo_to_rolloff != 0.0 || self.expr_bright_z != 0.0 {
             clamp(
-                self.rolloff_z + self.lfo_to_rolloff * m,
+                self.rolloff_z + self.lfo_to_rolloff * m + self.expr_bright_z,
                 Self::ROLLOFF_MIN,
                 Self::ROLLOFF_MAX,
             )
@@ -926,6 +956,52 @@ mod tests {
         let full = mag7(7.0); // fully in
         assert!(none < full * 0.05, "7th partial present at limit 6.0: {none:e}");
         assert!(half > full * 0.25 && half < full * 0.75, "fade not ~half: {half:e} vs {full:e}");
+    }
+
+    #[test]
+    fn expr_brightness_tilts_the_spectrum_and_zero_is_inert() {
+        let fs = 48_000.0;
+        let f0 = 180.0;
+        // Spectral *tilt*: the 8th partial relative to the fundamental. An
+        // absolute partial magnitude is confounded by the peak normalisation
+        // (as r→1 the whole spectrum is rescaled), the ratio is not.
+        let bin = |buf: &[f32], f: f64| -> f64 {
+            let w = core::f64::consts::TAU * f / fs;
+            let (mut re, mut im) = (0.0_f64, 0.0);
+            for (n, &s) in buf.iter().enumerate() {
+                re += s as f64 * (w * n as f64).cos();
+                im -= s as f64 * (w * n as f64).sin();
+            }
+            (re * re + im * im).sqrt() / buf.len() as f64
+        };
+        let tilt = |offset: f64| -> f64 {
+            let mut v = Voice::new(fs);
+            v.set_frequency(f0);
+            v.set_rolloff(0.7); // mid tilt — headroom both ways
+            v.set_gain(1.0);
+            v.set_expr_brightness(offset);
+            v.reset();
+            let mut buf = vec![0.0_f32; 1 << 15];
+            let mut scr = vec![0.0_f32; 1 << 15];
+            v.render_block(&mut buf, &mut scr);
+            bin(&buf, f0 * 8.0) / bin(&buf, f0)
+        };
+        let dark = tilt(-0.35);
+        let flat = tilt(0.0);
+        let bright = tilt(0.3);
+        assert!(bright > flat * 2.0, "positive expr did not brighten the tilt: {flat:e} -> {bright:e}");
+        assert!(dark < flat * 0.5, "negative expr did not darken the tilt: {flat:e} -> {dark:e}");
+
+        // expr 0.0 must be *exactly* the no-expression render, bit for bit.
+        let mut a = Voice::new(fs);
+        a.set_frequency(f0);
+        a.set_rolloff(0.7);
+        a.reset();
+        let mut b = a;
+        b.set_expr_brightness(0.0);
+        for _ in 0..3000 {
+            assert_eq!(a.render_sample(), b.render_sample(), "expr 0.0 perturbed the output");
+        }
     }
 
     #[test]

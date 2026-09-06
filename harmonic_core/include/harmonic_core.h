@@ -86,6 +86,13 @@ void harmonic_voice_set_waveform(HarmonicVoice *voice, unsigned int waveform);
  * triangle waveforms. */
 void harmonic_voice_set_partial_limit(HarmonicVoice *voice, float limit);
 
+/* Per-note brightness expression (MPE timbre / CC74, poly & channel pressure):
+ * added to the smoothed rolloff before the oscillator, on top of any LFO
+ * brightness routing, then clamped. r_offset is clamped to [-0.9, 0.9] and
+ * one-pole smoothed. 0.0 (default) is bit-identical to no expression. Ignored
+ * by the sawtooth / triangle waveforms. */
+void harmonic_voice_set_expr_brightness(HarmonicVoice *voice, double r_offset);
+
 /* Reset phase + smoothers + filter state (call on note-on). Honors
  * free_running: in that mode the oscillator phase keeps running. */
 void harmonic_voice_reset(HarmonicVoice *voice);

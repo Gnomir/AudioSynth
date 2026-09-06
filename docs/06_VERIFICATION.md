@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **76 тестів проходять** (69
+Що перевірено, як, і якими числами. Статус: **81 тест проходить** (74
 юніт + 7 інтеграційних) + 1 `#[ignore]` (довготривалий дрейф, §3), clippy
 чистий на трьох конфігураціях, плагін збирається у VST3 + CLAP, увесь набір
 проходить біт-у-біт на `aarch64` + `armv7-hf` під QEMU (§6).
@@ -102,7 +102,7 @@
 | `triangle_and_saw_hit_their_peaks` | пік `> 0.95`, мін `< −0.95` |
 | `free_run_mode_survives_retrigger` | `FreeRun` — `retrigger()` не чіпає фазу; `Retrigger` (дефолт) — скидає в 0 |
 
-### `voice` (13 + 1 `#[ignore]`)
+### `voice` (14 + 1 `#[ignore]`)
 
 | Тест | Що доводить |
 |---|---|
@@ -119,9 +119,10 @@
 | `pitch_bend_and_lfo_stay_finite` | bend `+2 st` + LFO вібрато `25 ct` → пік `≤ 1.5` на 96000 семплів |
 | `partial_limit_caps_but_nyquist_still_wins` | `set_partial_limit` нижче Найквіста → `max_partials()` == ⌊стеля⌋; вище → Найквіст усе одно кепує; `0.0` → кламп до 1; біля Найквіста (n=1) стеля моот |
 | `partial_frac_fades_in_the_next_partial` | стеля `n.5` → DFT-магнітуда `(n+1)`-ї гармоніки ≈ пів-значення проти стелі `n+1.0` (неперервний свіп, не сходинка); при стелі `n.0` вона відсутня; коли зв'язує Найквіст — `frac` скидається (не аліасить) |
+| `expr_brightness_tilts_the_spectrum_and_zero_is_inert` | понотний зсув `+0.3` / `−0.35` до `rolloff 0.7` → відношення 8-ї гармоніки до фундаменталу росте `> 2×` / падає `< 0.5×`; зсув `0.0` рендериться **бітово** так само, як без експресії |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (15)
+### `poly` (19)
 
 | Тест | Що доводить |
 |---|---|
@@ -140,6 +141,10 @@
 | `filter_envelope_is_independent_of_amp_envelope` | фільтровий свіп (`sustain 0`) закриває HF `> 1.5×`, поки амплітудна ADSR тримає ноту |
 | `extreme_cutoff_modulation_never_destabilises_the_filter` | база 12 кГц + LFO→cutoff на клампі `±8` окт + envelope `+6` окт + res `0.02` (найбільше `k`, найнебезпечніший режим для полюса `tan_turns_fast` на `0.25`) — скінченне, `< 20` на 48000 семплів |
 | `soft_clip_is_gentle_and_bounded` | `≈` identity при `x ≤ 0.1`; `|soft_clip(±1000)| ≤ 1` |
+| `per_note_brightness_addresses_one_key_and_leaves_the_others_alone` | яскравість, спрямована на клавішу `a`, піднімає нахил (8-ма/фундаментал) **лише** ноти `a` (`> 3×`); спектр ноти `b`, що звучить поряд, не рухається (`< 2 %`) — понотна адресація |
+| `channel_brightness_moves_every_sounding_note` | `set_channel_brightness(1.0)` при глибині `0.4` → нахил звучної ноти яснішає `> 3×` (тиск каналу — спільний на всіх) |
+| `brightness_depth_zero_leaves_the_synth_bit_identical` | глибина `0.0` + `set_note_brightness` + `set_channel_brightness` → **бітово** той самий вихід, що й без експресії, на 8000 семплах (вимикаюче значення справді no-op) |
+| `wildcard_note_brightness_is_ignored_not_a_panic` | `set_note_brightness(255, …)` / `(200, …)` (CLAP wildcard, поза таблицею) → без паніки, вихід скінченний |
 
 ### `tests/spectrum.rs` — інтеграційні (6)
 
@@ -315,7 +320,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 76 / 76 (69 юніт + 7 інтеграційних) |
+| Тести | `cargo test` | 81 / 81 (74 юніт + 7 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -362,8 +367,8 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **76 / 76 pass** (69 юніт + 7 інтеграційних) |
-| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **76 / 76 pass** |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **81 / 81 pass** (74 юніт + 7 інтеграційних) |
+| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **81 / 81 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
 рендеру всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`:
@@ -390,7 +395,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 76/76, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 81/81, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.

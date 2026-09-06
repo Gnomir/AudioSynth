@@ -61,7 +61,7 @@ trig ──────────────┬──────────
 
 ## 2. `Voice` — стан одного голосу
 
-`#[repr(C)] #[derive(Clone, Copy)]`, **528 байт** (x86-64; `align = 8`), без
+`#[repr(C)] #[derive(Clone, Copy)]`, **544 байт** (x86-64; `align = 8`), без
 `Drop`, без вказівників. Розмір може змінюватись між версіями — хост
 **обов'язково** викликає `harmonic_voice_size()` у рантаймі, не хардкодить
 число.
@@ -241,8 +241,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 76 тестів (69 юніт + 7 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 76/76, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 81 тест (74 юніт + 7 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 81/81, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -259,7 +259,7 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 `Voice` — POD, тому C-ABI не має `create`/`destroy`:
 
 ```c
-size_t sz  = harmonic_voice_size();     // 528 сьогодні — НЕ хардкодити
+size_t sz  = harmonic_voice_size();     // 544 сьогодні — НЕ хардкодити
 size_t al  = harmonic_voice_align();    // 8
 void  *mem = aligned_alloc(al, sz);     // викликач розміщує (стек / арена / купа)
 harmonic_voice_init(mem, 48000.0);      // ptr.write(Voice::new(sr)) на місці
@@ -299,12 +299,13 @@ struct HarmonicSynth {
 fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
     // по-блоково: обгинаючі, FM-ratio, унісон, free-run, LFO, фільтр
     // подієвий цикл: NoteOn/Off/Choke/MidiPitchBend/CC#64 (sustain)/CC#123 (all notes off)
+    //               + PolyBrightness/PolyPressure/MidiChannelPressure → понотна яскравість
     // посемплово: brightness, gain, character, feedback → render_sample() → [L,R]
     //             + analyzer.feed((L+R)/2)  лише якщо editor_state.is_open()
 }
 ```
 
-`MidiConfig::Basic`, `SAMPLE_ACCURATE_AUTOMATION = true`, стерео-вихід
+`MidiConfig::MidiCCs`, `SAMPLE_ACCURATE_AUTOMATION = true`, стерео-вихід
 (`main_output_channels: NonZeroU32::new(2)`), 24 голоси (унісон ділить пул).
 
 **GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей

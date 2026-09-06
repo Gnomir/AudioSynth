@@ -222,6 +222,21 @@ pub unsafe extern "C" fn harmonic_voice_set_partial_limit(ptr: *mut Voice, limit
     }
 }
 
+/// Per-note brightness expression offset (MPE timbre / CC74, poly & channel
+/// pressure): added to the smoothed `rolloff` before the oscillator, on top of
+/// any LFO brightness routing, then clamped. `r_offset` is clamped to
+/// `[-0.9, 0.9]` and one-pole smoothed. `0.0` (the default) is bit-identical to
+/// no expression. Ignored by the sawtooth / triangle waveforms.
+///
+/// # Safety
+/// `ptr` must come from a successful [`harmonic_voice_init`].
+#[no_mangle]
+pub unsafe extern "C" fn harmonic_voice_set_expr_brightness(ptr: *mut Voice, r_offset: f64) {
+    if let Some(v) = unsafe { ptr.as_mut() } {
+        v.set_expr_brightness(r_offset);
+    }
+}
+
 /// # Safety
 /// `ptr` must come from a successful [`harmonic_voice_init`].
 #[no_mangle]

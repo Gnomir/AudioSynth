@@ -47,6 +47,7 @@ pub fn midi_to_hz(note: f32) -> f64
 | `set_hq(hq: bool)` | setup | 2× оверсемплінг осц.+character; `true` додає `Voice::HQ_LATENCY` (=3) семпли; лише для `Waveform::Geometric` |
 | `set_waveform(w: Waveform)` | setup | `Geometric` / `Saw` / `Triangle`; Saw+Triangle — PolyBLEP/PolyBLAMP, ігнорують `rolloff` та HQ |
 | `set_partial_limit(limit: f32)` | setup | стеля на гармоніки, `[1.0, 2048.0]`, фракційна (гладкий свіп), деф. 2048 = без ефекту; після Найквіст-клампу (не аліасить), плоска вартість; лише `Waveform::Geometric` (`04 §0`) |
+| `set_expr_brightness(r_offset: f64)` | RT | понотний зсув `rolloff` (MPE / афтертач), `[−0.9, 0.9]`, згладж. ~5 мс, поверх LFO→brightness; `0.0` = побайтова тотожність; лише `Geometric` (`04 §0.1`) |
 | `set_filter_mode(m: FilterMode)` | setup | — |
 | `set_filter_cutoff(hz: f64)` | RT | `[20, 0.45·f_s]` Hz, згладж. ~1 мс всередині |
 | `set_filter_resonance(r: f64)` | RT | `[0, 1]` → `Q [0.5, 32]` |
@@ -91,6 +92,9 @@ set_free_running(free: bool)
 set_hq(hq: bool)                                          // Unified HQ Bus; +PolySynth::HQ_LATENCY (=16) семплів
 set_waveform(w: Waveform)                                 // Geometric / Saw / Triangle
 set_partial_limit(limit: f32)                            // стеля на гармоніки [1.0,2048.0], фракційна, деф. 2048; після Найквіста; плоска вартість
+set_brightness_depth(depth: f64)                         // глибина понотної яскравості, [−0.9,0.9] r-одиниць; 0.0 вимикає (побайт. тотожн.)
+set_note_brightness(note: u8, raw: f32)                  // MPE-тембр+поліафтертач для клавіші note; wildcard 255 ігнор.
+set_channel_brightness(raw: f32)                         // тиск каналу — спільно на всі звучні ноти (04 §0.1)
 set_unison(count: u32, detune_cents: f64, spread: f64, drift: f64)  // clamp [1,8] · [0,1] · [0,1]
 set_pitch_bend(semitones: f64)                            // → ratio 2^(st/12), на всі голоси
 set_lfo(rate_hz, shape: LfoShape, mode: LfoMode,
@@ -196,7 +200,7 @@ HarmonicVoice HarmonicVoice`).
 ### Життєвий цикл
 
 ```c
-size_t harmonic_voice_size(void);   /* 528 — не хардкодити, зростає з версіями */
+size_t harmonic_voice_size(void);   /* 544 — не хардкодити, зростає з версіями */
 size_t harmonic_voice_align(void);  /* 8 */
 int    harmonic_voice_init(HarmonicVoice *voice, double sample_rate);
        /*  0 ok · 1 clamped-low · 2 clamped-high · 3 defaulted (NaN/inf) · -1 null */
@@ -223,6 +227,7 @@ void harmonic_voice_set_lfo(HarmonicVoice*, double rate_hz,
 void harmonic_voice_set_hq(HarmonicVoice*, unsigned int hq);  /* !=0 → 2× OS, +3 семпли латентності */
 void harmonic_voice_set_waveform(HarmonicVoice*, unsigned int waveform); /* 0 geom / 1 saw / 2 tri */
 void harmonic_voice_set_partial_limit(HarmonicVoice*, float limit); /* [1.0,2048.0] fractional, 2048=none; after Nyquist, no alias, flat cost */
+void harmonic_voice_set_expr_brightness(HarmonicVoice*, double r_offset); /* понотний зсув rolloff (MPE/афтертач), [-0.9,0.9], 0.0=тотожність */
 ```
 
 ### Робота
@@ -264,14 +269,14 @@ C-ABI **не** потокобезпечний. Не викликайте сет�
 
 ## 3. Параметри плагіна `harmonic_synth`
 
-34 параметри. Редактор — `nih_plug_vizia` (`src/editor.rs`): заголовок +
+35 параметрів. Редактор — `nih_plug_vizia` (`src/editor.rs`): заголовок +
 живий спектр-дисплей (банк band-pass `Svf`, не FFT) + `GenericUi` з усіма
 параметрами у `ScrollView`. Розмір вікна персиститься (`#[persist]
 editor_state: Arc<ViziaState>`). Групи параметрів:
 
 | Група | Параметри |
 |---|---|
-| Тон | **Oscillator** (enum Geometric/Saw/Triangle), Brightness, **Partials** (фракційна стеля на гармоніки, `04 §0`), Gain |
+| Тон | **Oscillator** (enum Geometric/Saw/Triangle), Brightness, **Partials** (фракційна стеля на гармоніки, `04 §0`), **Expr → Bright** (понотна яскравість MPE / афтертач → `rolloff`, біполярна, `04 §0.1`), Gain |
 | Амплітудна обгинаюча | Attack, Release |
 | Character | Drive, Fold, Grit (`bias` — не окремий слайдер; `CharParams::bias = 0.25·drive`, свідомо прив'язаний до Drive, щоб не роздувати список параметрів) |
 | FM | FM Amount, FM Ratio, Feedback |
@@ -283,3 +288,10 @@ editor_state: Arc<ViziaState>`). Групи параметрів:
 
 `Grit` мапиться на `crush` + `downsample·0.8` разом. `Bend Range` мапить
 `MidiPitchBend` value `[0,1]` → `(value−0.5)·2·range` семитонів.
+
+`MIDI_INPUT = MidiConfig::MidiCCs` (не `Basic`): обгортки nih-plug (VST3 і
+CLAP) віддають події MIDI CC, pitch-bend і channel-pressure **лише** з цього
+рівня. Це живить колесо висоти, педаль CC#64, CC#123 all-notes-off **і**
+понотну експресію (MPE-тембр / поліафтертач / тиск каналу → «Expr → Bright»).
+Для VST3 реєструються 130×16 хостових CC-параметрів (штатний механізм
+nih-plug); у збережений стан плагіна вони не входять.
