@@ -254,8 +254,8 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 103 тести (85 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 103/103, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 104 тести (86 юніт + 18 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 104/104, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -304,7 +304,8 @@ struct HarmonicSynth {
     engine: PolySynth<24>,
     dly: [[f32;2]; HQ_LAT], dly_pos,    // PDC-компенсація коли HQ off
     analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + 1 near-Nyquist BP (aliasing meter) + followers
-    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs — audio→GUI, лок-free
+    analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate — audio→GUI, лок-free
+    tuning_sig: Option<(i32,i32,i32,u64)>, // (enum, root, ref×100, FNV Scala) — гейт ретюну в process
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
 // + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
 //           #[persist] seed: Mutex<u32> — останній seed рандомайзера (0 = немає)
@@ -325,7 +326,8 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 (`main_output_channels: NonZeroU32::new(2)`), 24 голоси (унісон ділить пул).
 
 **GUI** (`src/editor.rs`, `nih_plug_vizia`): заголовок + спектр-дисплей
-(`Spectrum` — власний `View`, малює 30 барів із `AnalyzerBands` щокадру) +
+(`Spectrum` — власний `View`: 30 виміряних барів + гребінка партіалів
+закритої форми + метр аліасингу, щокадру) +
 підпис + рядок пресетів + згруповані секції параметрів (TONE / AMP ENVELOPE / CHARACTER / FM / FILTER / VOICE / TUNING / MODULATION, `ParamSlider` + `ParamButton`) у `ScrollView`. Контент списку — в одному
 `height: auto` VStack усередині `ScrollView` (як у `GenericUi` nih-plug), і
 кожен `.group` / `.group-header` теж має явну `height: auto`: інакше morphorm
@@ -333,6 +335,16 @@ fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
 Розмір вікна персиститься через `#[persist] editor_state`. Спектр-аналіз — не FFT, а банк
 резонансних band-pass `Svf` (Q≈5, ⅓-октави) з envelope-фоловерами; результат
 — 30 `AtomicF32`, які аудіо-потік пише, GUI читає.
+
+**Гребінка закритої форми.** Поверх виміряних барів `Spectrum` малює
+**реальні партіали** поточного патча: вага партіала `k` = `rᵏ + h·(aᵏ−bᵏ)`
+(те саме, що `voice.rs::geom_osc`, з нормуванням на пік, яке для відносного
+дисплея випадає), тонкі бурштинові вертикалі на `x_of(k·f0)`, плюс лінія на
+стелі «Partials». `f0` — з `AnalyzerBands::voice_f0` (найнижча звучна нота,
+`PolySynth::lowest_sounding_hz`, пишеться раз на блок коли редактор відкритий);
+`r` / `partials` / `formant` редактор читає з параметрів напряму. Лише
+`Geometric` (Saw/Triangle — фіксований `1/k`). «Математика на екрані,
+поверх виміряного» — field-notes #2.
 
 **Чесний метр аліасингу.** `Spectrum` малює праворуч окрему смугу — рівень
 вузького band-pass на `0.44·f_s` (Q≈9) у dBFS, кольором за порогом

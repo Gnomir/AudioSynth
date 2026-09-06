@@ -36,8 +36,8 @@ diff-able against the real repo.
 
 ```
 cd harmonic_core
-cargo test                                     # 103 tests (85 unit + 18 integration; 11 of them tests/stress.rs) + 1 #[ignore] drift
-bash scripts/cross-verify.sh                    # 103/103 bit-identical on aarch64 + armv7-hf (Docker + QEMU)
+cargo test                                     # 104 tests (86 unit + 18 integration; 11 of them tests/stress.rs) + 1 #[ignore] drift
+bash scripts/cross-verify.sh                    # 104/104 bit-identical on aarch64 + armv7-hf (Docker + QEMU)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0
@@ -47,7 +47,7 @@ cargo check                                     # fast typecheck
 
 cd harmonic_synth
 cargo build --release
-cargo test                                      # 20 plugin tests (analyzer, editor morph, rando, presets, tuning + Scala)
+cargo test                                      # 21 plugin tests (…, tuning, Scala, spectrum comb)
 cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_synth.{vst3,clap}
 cargo xtask validate                            # build + pluginval (VST3) + clap-validator (CLAP)
 ```

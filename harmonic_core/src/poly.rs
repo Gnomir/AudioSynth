@@ -773,6 +773,26 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.voices.iter().filter(|v| v.amp.is_active()).count()
     }
 
+    /// Fundamental frequency, in Hz, of the lowest note currently sounding (any
+    /// non-idle voice), under the current tuning — or `0.0` if silent. For a
+    /// spectrum display; not on the render path.
+    pub fn lowest_sounding_hz(&self) -> f64 {
+        let mut lo = f64::INFINITY;
+        for v in &self.voices {
+            if v.amp.is_active() {
+                let hz = self.note_hz(v.note);
+                if hz < lo {
+                    lo = hz;
+                }
+            }
+        }
+        if lo.is_finite() {
+            lo
+        } else {
+            0.0
+        }
+    }
+
     /// Render one stereo sample `[left, right]`.
     #[inline]
     pub fn render_sample(&mut self) -> [f32; 2] {
@@ -928,6 +948,37 @@ mod tests {
             })
             .fold(0.0, f32::max);
         assert!(tail < 1e-4, "tail not silent: {tail}");
+    }
+
+    #[test]
+    fn lowest_sounding_hz_tracks_the_bottom_note() {
+        let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+        s.set_envelope(0.005, 0.05);
+        assert_eq!(s.lowest_sounding_hz(), 0.0); // silent
+
+        s.note_on(69, 1.0); // A4
+        s.render_sample();
+        assert!((s.lowest_sounding_hz() - 440.0).abs() < 0.1);
+
+        s.note_on(57, 1.0); // A3 — now the lowest
+        s.render_sample();
+        assert!((s.lowest_sounding_hz() - 220.0).abs() < 0.1);
+
+        s.note_on(76, 1.0); // higher, doesn't change the floor
+        s.render_sample();
+        assert!((s.lowest_sounding_hz() - 220.0).abs() < 0.1);
+
+        s.all_notes_off();
+        for _ in 0..48_000 {
+            s.render_sample();
+        }
+        assert_eq!(s.lowest_sounding_hz(), 0.0);
+
+        // it follows the tuning: A2 (MIDI 45) at A4 = 432 → 432·2⁻² = 108 Hz
+        s.set_tuning(crate::Tuning::equal(12, 432.0, 69));
+        s.note_on(45, 1.0);
+        s.render_sample();
+        assert!((s.lowest_sounding_hz() - 108.0).abs() < 0.2);
     }
 
     #[test]

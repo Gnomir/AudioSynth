@@ -130,6 +130,7 @@ reset()                             // жорстка тиша (host reset)
 render_sample() -> [f32; 2]
 render_block(left: &mut [f32], right: &mut [f32])
 active_voice_count() -> usize
+lowest_sounding_hz() -> f64        // фундаментал найнижчої звучної ноти під тюнінгом; 0 = тихо. Для дисплея, не на рендер-шляху
 ```
 
 Константа: `poly::MAX_UNISON = 8`.

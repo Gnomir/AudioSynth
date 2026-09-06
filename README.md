@@ -38,7 +38,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | Path | What |
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs` + C ABI |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning, `nih_plug_vizia` editor: grouped sections + live spectrum + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
+| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
@@ -48,9 +48,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 103 (85 unit + 18 integration); + `-- --ignored` drift test
+cargo test                                    # 104 (86 unit + 18 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 103/103 bit-identical on ARM (Docker + QEMU)
+bash scripts/cross-verify.sh                   # 104/104 bit-identical on ARM (Docker + QEMU)
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -68,8 +68,8 @@ nightly.
 
 ## Status
 
-103 `harmonic_core` tests pass (85 unit + 18 integration, 11 of them an
-adversarial RT-safety suite) plus 20 plugin tests, plus a `#[ignore]` long-run
+104 `harmonic_core` tests pass (86 unit + 18 integration, 11 of them an
+adversarial RT-safety suite) plus 21 plugin tests, plus a `#[ignore]` long-run
 drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
 whole core suite — including a whole-signal-path FNV-1a hash compared against an
 x86-64 reference — passes **bit-for-bit (delta 0.0)** on

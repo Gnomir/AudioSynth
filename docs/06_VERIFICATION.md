@@ -1,8 +1,7 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **103 тести `harmonic_core`**
-(85 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **20 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import) + 1 `#[ignore]`
+Що перевірено, як, і якими числами. Статус: **104 тести `harmonic_core`** (86 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+`tests/stress.rs`) + **21 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import, спектр-гребінка) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -139,7 +138,7 @@
 | `formant_adds_a_movable_mid_spectrum_bump_and_zero_is_inert` | при `rolloff 0.4` формант `0.42` піднімає 6-ту гармоніку `> 8×`; низький формант тримає енергію на партіалі 4, високий зсуває її на 15; `formant 0.0` рендериться **бітово** як без форманту (`04 §0.2`) |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (20)
+### `poly` (21)
 
 | Тест | Що доводить |
 |---|---|
@@ -163,6 +162,7 @@
 | `brightness_depth_zero_leaves_the_synth_bit_identical` | глибина `0.0` + `set_note_brightness` + `set_channel_brightness` → **бітово** той самий вихід, що й без експресії, на 8000 семплах (вимикаюче значення справді no-op) |
 | `formant_fans_out_to_every_voice_and_zero_is_bit_identical` | `set_formant` фанаутиться і в утримуваний голос (`trigger_one`), і в свіжу ноту — 6-та гармоніка `> 6×` при `rolloff 0.4`; `formant 0.0` → **бітово** незмінний вихід на 8000 семплах |
 | `wildcard_note_brightness_is_ignored_not_a_panic` | `set_note_brightness(255, …)` / `(200, …)` (CLAP wildcard, поза таблицею) → без паніки, вихід скінченний |
+| `lowest_sounding_hz_tracks_the_bottom_note` | `PolySynth::lowest_sounding_hz` → `0` коли тихо; A4 → 440, потім A3 → 220 (вища нота не рухає підлогу); слідує тюнінгу (`equal(12, 432, 69)` → A2 = `108`); після `all_notes_off` → `0`. Для спектр-дисплея, не на рендер-шляху |
 
 ### `tests/spectrum.rs` — інтеграційні (6)
 
@@ -358,7 +358,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 103 / 103 (85 юніт + 18 інтеграційних) |
+| Тести | `cargo test` | 104 / 104 (86 юніт + 18 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -401,7 +401,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (20, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (21, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -409,6 +409,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `analyzer::meter_ignores_a_clean_low_tone_and_catches_near_nyquist_energy` | чистий тон 1 кГц → `< −55` dBFS; тон `−12` dBFS у смузі фолду → `−12±4`; розділення `> 35` дБ |
 | `analyzer::meter_decays_after_the_energy_stops` | після припинення енергії метр падає `> 30` дБ (envelope-фоловер відпускає) |
 | `editor::morph_endpoints_are_exact_and_midpoint_blends` | A/B морф: `pos = 0` → **рівно** A, `pos = 1` → **рівно** B (без дрейфу); середина = півсуми; `pos` клампиться (не екстраполює); відсутній у слоті параметр → `None` (не чіпається). `07 §18` |
+| `editor::partial_comb_weights_match_the_engine_shape` | вага партіала спектр-гребінки `rᵏ + h·(aᵏ−bᵏ)` (те саме, що `voice.rs::geom_osc`): без горба — точно `rᵏ`, монотонно спадає; горб форманти піднімає партіал `≈ kc` над чистим `rᵏ` і знову спадає вище центру |
 | `rando::code_round_trips_and_normalises_look_alikes` | `decode(encode(seed)) == seed` для крайніх seed; case-insensitive; Crockford `I/L→1`, `O→0`; відкидає невірну довжину / символ. `07 §19` |
 | `rando::value_for_is_deterministic_in_range_and_varies` | той самий seed → той самий патч (побайтово вектор); різні seed → різний; кожен параметр у своєму вікні `SPEC`; нерандомізований (`hqmode`) → `None` |
 | `rando::distribution_spans_each_window` | по 400 seed кожне широке вікно покривається зверху донизу (`< lo + 0.15·span` та `> hi − 0.15·span`) — груба перевірка якості хешу |
@@ -465,7 +466,7 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **103 / 103 pass** (85 юніт + 18 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **104 / 104 pass** (86 юніт + 18 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **97 / 97 pass** |
 
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
@@ -493,7 +494,7 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 103/103, хеш
+- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 104/104, хеш
   біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
   soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
   проганялось.
