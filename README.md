@@ -50,7 +50,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 cd harmonic_core
 cargo test                                    # 106 (88 unit + 18 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 106/106 bit-identical on ARM (Docker + QEMU)
+bash scripts/cross-verify.sh                   # 106/106 bit-identical on ARM (QEMU) + wasm32 (Node) + bare-metal compile-check
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -73,8 +73,9 @@ adversarial RT-safety suite) plus 25 plugin tests, plus a `#[ignore]` long-run
 drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
 whole core suite — including a whole-signal-path FNV-1a hash compared against an
 x86-64 reference — passes **bit-for-bit (delta 0.0)** on
-`aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU
-(`harmonic_core/scripts/cross-verify.sh`). `pluginval --strictness-level 8`
+`aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU, and
+the same render hashes to the same value in the `wasm32` build under Node
+(`harmonic_core/scripts/cross-verify.sh` + `verify-wasm.mjs`). `pluginval --strictness-level 8`
 passes on the VST3 (editor tests included); `clap-validator` passes **35/35** on
 the CLAP — the `nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt
 preset) are fixed via a `[patch]` onto a vendored copy, see

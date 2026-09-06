@@ -474,21 +474,29 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 |---|---|---|
 | `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **106 / 106 pass** (88 юніт + 18 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **97 / 97 pass** |
+| `wasm32-unknown-unknown` (Node) | нативний wasm `f64` | **хеш = референс** (`scripts/verify-wasm.mjs`) |
 
+Сценарій рендеру та константа-хеш живуть у `harmonic_core::verify`
+(`render_verification` / `verify_hash` / `VERIFY_HASH`), тож інтеграційний
+тест, ARM-звірка й wasm-звірка проганяють **той самий байт-у-байт прохід**.
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
 рендеру всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`:
-**дельта `= 0.0` на всіх трьох архітектурах**. Дрейф фазового акумулятора
+**дельта `= 0.0`**. wasm-звірка (`hc_verify_*` експорти + `verify-wasm.mjs`)
+перевіряє і власний хеш модуля, і незалежний JS-фолд байтів — обидва
+`= 0xc7f786d40586da75`. Дрейф фазового акумулятора
 (`voice::phase_accumulators_do_not_drift`, `DRIFT_SAMPLES=2·10⁷`) теж
 збігається до останньої значущої цифри (`4.566·10⁻¹⁰` обертів carrier,
 `3.483·10⁻¹⁰` FM) на x86-64 та `aarch64`.
 
 Обґрунтування: жоден гарячий шлях не використовує `libm`, `mul_add` чи FMA-
 контракцію; x86-64 на SSE2 (без x87 80-біт); касти `(x as i64)` насичувані
-на рівні мови. IEEE-754 `+ − × ÷` коректно округлені однаково на SSE2 та
-VFP/NEON → результат мусить збігатися, і тепер це **виміряно**, не виведено.
+на рівні мови. IEEE-754 `+ − × ÷` коректно округлені однаково на SSE2,
+VFP/NEON та wasm → результат мусить збігатися, і тепер це **виміряно**.
 
-Ще ні: реальне залізо Cortex-M, `thumbv6m` (M0 без FPU — програмний `f64`),
-прогін під RISC-V (усі три крос-компілюються чисто).
+Compile-only (у `cross-verify.sh`): `thumbv7em-none-eabihf` (Cortex-M4F/M7 —
+Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
+`aarch64-unknown-none` — усі збираються чисто `--no-default-features
+--release`. Ще ні: реальне залізо Cortex-M.
 
 Апаратура: Docker Desktop 29.7, QEMU user-mode через `binfmt_misc`.
 
@@ -500,10 +508,10 @@ VFP/NEON → результат мусить збігатися, і тепер �
   pluginval / clap-validator, §6).
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
-- **ARM під QEMU — покрито** (§6-bis: `aarch64` + `armv7-hf`, 106/106, хеш
-  біт-у-біт). **Не покрито:** реальне залізо Cortex-M, `thumbv6m` (M0,
-  soft-float `f64`), прогін під RISC-V — усе крос-компілюється чисто, але не
-  проганялось.
+- **ARM під QEMU + wasm32 під Node — покрито** (§6-bis: `aarch64` + `armv7-hf`
+  106/106, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
+  (`thumbv7em` / `thumbv6m`), прогін під RISC-V — усе крос-компілюється чисто
+  (compile-check у `cross-verify.sh`), але на залізі не проганялось.
 - **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі
   статус-кодом (не тихо), але сам кламп-шлях у реальному хості не тестований.
 - **RT-safety — покрито** (§5.2: ворожий вхід у весь публічний API, шторми,

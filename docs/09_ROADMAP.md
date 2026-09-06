@@ -134,10 +134,19 @@
 
 ### Залізо: реальний Cortex-M, `thumbv6m` (M0 soft-float), RISC-V
 
-- **Стан.** Крос-компілюється чисто під усі; біт-у-біт **виміряно** лише на
-  `aarch64` + `armv7-hf` (VFP `f64` = Cortex-M4F) під QEMU.
-- **Не покрито.** Реальне залізо; `thumbv6m` (програмний `f64` — інший шлях
-  округлення можливий); прогін під RISC-V.
+- **Стан.** Біт-у-біт **виміряно** на `aarch64`, `armv7-hf` (VFP `f64` =
+  Cortex-M4F/M7) під QEMU **і на `wasm32`** під Node (`scripts/verify-wasm.mjs`
+  — той самий `verify::render_verification`, той самий хеш
+  `0xc7f786d40586da75`). Тобто «той самий звук у браузері» — не обіцянка, а
+  виміряно. Bare-metal цілі (`thumbv7em` = Daisy Seed, `thumbv6m`,
+  `riscv32imac`, `aarch64-unknown-none`) компілюються чисто
+  `--no-default-features --release` — `cross-verify.sh` робить compile-check.
+- **Не покрито.** Реальне залізо (не емуляція); `thumbv6m` (програмний `f64` —
+  інший шлях округлення можливий) та RISC-V — прогін на пристрої.
+- **Наступний крок для «$30-модуля».** Firmware-скелет під Daisy Seed
+  (`libdaisy` + `AudioCallback` → C-ABI `Voice` array + свій voice-stealing;
+  ядро вже дає всі примітиви). Плюс `wasm-pack`/JS-обгортка з Web Audio
+  `AudioWorklet` для браузерного демо.
 
 ### Полиш GUI
 

@@ -120,25 +120,40 @@ Rust за замовчуванням не контрактить `a*b + c` у FM
 касти `(x as i64)` насичувані й детерміновані на рівні мови. Тому результат
 синтезу бітово ідентичний між x86-64 та ARM / RISC-V — для ARM **це виміряно**.
 
-Усі 106 тестів ядра (включно з `cross_platform_bit_exact`, який рендерить
-100 мс через весь тракт — унісон + drift + FM + feedback + 4 маршрути LFO +
-резонансний SVF + усі стадії `Character` — і згортає біти кожного семпла в
-хеш) проходять під QEMU на:
+Сценарій рендеру та референс-хеш винесені у `pub mod verify`
+(`render_verification` → `&mut [f32]`, без алокацій, `no_std`;
+`verify_hash`, `VERIFY_HASH`, `VERIFY_FRAMES`) — його викликають і
+`cross_platform_bit_exact`, і крос-звірки під QEMU, і wasm-звірка, тож усі
+проганяють **побайтово той самий** прохід (100 мс через весь тракт: унісон +
+drift + FM + feedback + 4 маршрути LFO + резонансний SVF + усі стадії
+`Character`). Інтегратор теж може викликати `render_verification` як
+self-check своєї збірки.
+
+Усі 106 тестів ядра проходять під QEMU на:
 
 - **`aarch64-unknown-linux-gnu`** — 64-бітний ARM;
 - **`armv7-unknown-linux-gnueabihf`** — 32-бітний ARM hard-float; набір
   інструкцій VFP для `f64` **тотожний** `thumbv7em-none-eabihf` (Cortex-M4F),
   тож прохід переноситься на bare-metal firmware-таргет.
 
-Хеш вихідного сигналу **збігається біт-у-біт** із референсом, знятим на
-`x86_64-pc-windows-msvc` (дельта `= 0.0`). Дрейф фазового акумулятора теж
-збігається до останньої цифри (`4.566·10⁻¹⁰` обертів на `2·10⁷` семплів на
-всіх трьох архітектурах). Прогін: `scripts/cross-verify.sh` (Docker + QEMU;
-`06_VERIFICATION.md §6`).
+**`wasm32` виміряно теж.** `harmonic_core.wasm` (збірка
+`wasm32-unknown-unknown --no-default-features`) експортує `hc_verify_*`;
+`scripts/verify-wasm.mjs` проганяє рендер у Node і звіряє і власний хеш
+модуля, і незалежний JS-фолд байтів — обидва дорівнюють `VERIFY_HASH`
+(`0xc7f786d40586da75`). Той самий рендер у браузері дасть той самий звук.
 
-**Ще не покрито:** реальне залізо Cortex-M (лише емуляція), `thumbv6m`
-(M0, без FPU — програмний `f64`; збирається чисто, але не проганявся),
-RISC-V прогін (крос-компілюється чисто).
+Хеш вихідного сигналу **збігається біт-у-біт** із референсом, знятим на
+`x86_64-pc-windows-msvc` (дельта `= 0.0`), на всіх виміряних цілях. Дрейф
+фазового акумулятора теж збігається до останньої цифри (`4.566·10⁻¹⁰`
+обертів на `2·10⁷` семплів). Прогін: `scripts/cross-verify.sh` (Docker + QEMU
+для ARM, host + Node для wasm; `06_VERIFICATION.md §6`).
+
+**Компілюється чисто (`--no-default-features --release`), прогін ще ні:**
+`thumbv7em-none-eabihf` (Cortex-M4F/M7 — напр. Daisy Seed; VFP `f64` як
+armv7-hf → біт-екзактність переноситься), `thumbv6m-none-eabi` (M0, без FPU —
+програмний `f64`), `riscv32imac-unknown-none-elf`, `aarch64-unknown-none`.
+`cross-verify.sh` робить ці compile-check автоматично. **Ще не покрито:**
+реальне залізо (не емуляція).
 
 ---
 
@@ -236,7 +251,8 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 Перевірити бітову ідентичність математики на ARM перед постачанням:
 `scripts/cross-verify.sh` проганяє весь тестовий набір під QEMU на
 `aarch64-unknown-linux-gnu` та `armv7-unknown-linux-gnueabihf` (VFP `f64`
-тотожний Cortex-M4F) і звіряє хеш сигналу з x86-64 референсом.
+тотожний Cortex-M4F), звіряє хеш сигналу з x86-64 референсом, тоді на хості
+проганяє `wasm32` (Node) і compile-check bare-metal цілей.
 
 `--features portable-simd` потребує **nightly** і не застосовний до
 вбудованих таргетів без `core::simd`-підтримки — використовуйте дефолтну
@@ -248,10 +264,10 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 
 | Гарантовано | Не гарантовано (поки) |
 |---|---|
-| Нуль алокацій, нуль паніки, `panic = "abort"` | Bit-exactness виміряно на `aarch64` + `armv7-hf` (QEMU); Cortex-M **залізо**, `thumbv6m` (soft-float), RISC-V прогін — ще ні |
+| Нуль алокацій, нуль паніки, `panic = "abort"` | Bit-exactness виміряно на `aarch64` + `armv7-hf` (QEMU) + `wasm32` (Node); bare-metal цілі компілюються чисто; Cortex-M **залізо** — ще ні |
 | Θ(log n) / Θ(1) вартість; ~20–22 M семпл/с (x86, скаляр) | SIMD у гарячому циклі `render_sample` — **скаляр** |
 | Стійкість SVF (`Q≤32`, cutoff-кламп), no-div-by-zero | 4× оверсемплінг · оверсемплінг фільтра (є лише 2× для character) |
 | SR клампиться зі статус-кодом (не тиха підміна) | Кламп-шлях SR у реальному хості не тестований |
 | POD-макет, безпечне побітове копіювання / серіалізація | Валідація в живому DAW / `pluginval` (скрипт готовий) |
-| 106 тестів (в т.ч. ворожий RT-safety набір + друге геом. ядро + мікротюнінг) + дрейф-стрес; біт-у-біт на `aarch64` + `armv7-hf` (QEMU) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація; реальне залізо Cortex-M ще не прогонялось |
+| 106 тестів (в т.ч. ворожий RT-safety набір + друге геом. ядро + мікротюнінг) + дрейф-стрес; біт-у-біт на `aarch64` + `armv7-hf` (QEMU) + `wasm32` (Node) | Сертифікація (IEC 62304 тощо) — `no_std` + `panic=abort` + zero-alloc це **передумови**, не сертифікація; реальне залізо Cortex-M ще не прогонялось |
 | Alias-free **чистий** осцилятор під Найквіста | Alias-free при активних `character`/FM — лише в **HQ mode** (2× OS); без нього навмисний «цифровий характер» |

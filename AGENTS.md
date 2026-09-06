@@ -37,7 +37,8 @@ diff-able against the real repo.
 ```
 cd harmonic_core
 cargo test                                     # 106 tests (88 unit + 18 integration; 11 of them tests/stress.rs) + 1 #[ignore] drift
-bash scripts/cross-verify.sh                    # 106/106 bit-identical on aarch64 + armv7-hf (Docker + QEMU)
+bash scripts/cross-verify.sh                    # 106/106 bit-identical on aarch64 + armv7-hf (QEMU) + wasm32 (Node); bare-metal compile-check
+node scripts/verify-wasm.mjs                    # wasm32 render == x86-64/ARM reference hash (needs the wasm32 build)
 cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib per_sample_smoothing
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0
