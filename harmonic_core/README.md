@@ -85,7 +85,7 @@ Artifacts land in `target/release/`:
 | `tests/stress.rs` | adversarial RT-safety: `NaN`/`±∞`/`±1e300` into every public setter, parameter & note-event storms at sample rate, sample-rate extremes, HQ under load, 2 M-sample run — output stays finite, bounded, and the voice pool always recovers. |
 | `tests/cross_platform_bit_exact.rs` | whole-tract render hash vs an x86-64 reference, at 48 **and** 96 kHz, and independent of render block size — bit-identical on `aarch64` / `armv7-hf` under QEMU and `wasm32` under Node. |
 | `scripts/` | `cross-verify.sh` (QEMU ARM + wasm + bare-metal compile-check), `verify-wasm.mjs` (render hash in Node). |
-| `examples/` | `render_wav`, `poly_demo`, `character_demo`, `filter_demo`, `wide_demo` (unison), `bench_hc`. |
+| `examples/` | `render_wav`, `poly_demo`, `character_demo`, `filter_demo`, `wide_demo` (unison); benches `bench_hc`, `bench_poly`, `bench_hq_bus`. |
 
 ## `character` module — the dirt, on purpose
 
@@ -195,7 +195,10 @@ sample-rate validation, the batched oscillator, the HQ oversampling bus, the
 clean-voice fast path, the `wasm32` build (`contrib/wasm-demo/` — same DSP,
 same render hash), the CI matrix, and the `nih_plug_vizia` GUI are all done.
 `pluginval --strictness 8` and `clap-validator 35/35` pass; a first live-DAW
-pass in REAPER is done (`../docs/11_DAW_CHECKLIST.md`).
+pass in REAPER is done (`../docs/11_DAW_CHECKLIST.md`). The plugin ships as
+**Cosine** with an enforced free-Core / paid-Studio split (watermarked
+Ed25519 key file, `../harmonic_synth/license/`); the engine itself is not
+gated.
 
 What's left, and the deliberately-deferred directions with their reasons, are in
 **[`../docs/09_ROADMAP.md`](../docs/09_ROADMAP.md)** — the short version is: the

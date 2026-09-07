@@ -106,6 +106,17 @@ VST3 копіюється як **тека** `harmonic_synth.vst3` цілком, 
 
 ## 4. Параметри
 
+> **Core / Studio.** Гейт увімкнено (`TIER_ENFORCED = true`). Зібраний з коду
+> плагін без ліцензійного keyfile працює як безкоштовний **Core**: доступні
+> Oscillator, Brightness, Partials, Attack/Release, Gain, Filter + Cutoff/
+> Resonance, Free-Run, Unison, Bend Range, 12-TET. Решта (Expr → Bright,
+> Formant, Drive/Fold/Grit, FM, Feedback, Filter Env + F.Env ADSR, HQ Mode,
+> уся LFO-матриця, будь-який Tuning поза Equal/A=440) — **Studio**: у Core
+> тримаються на нейтралі, редактор їх сіріє. Щоб зібрати Studio для розробки:
+> `export COSINE_LICENSE="$PWD/harmonic_synth/license/SAMPLE_LICENSE.key"` перед
+> запуском DAW, або покласти `SAMPLE_LICENSE.key` у `<config>/Cosine/license.key`.
+> `harmonic_synth/license/README.md`.
+
 | Параметр | Діапазон | Що робить |
 |---|---|---|
 | **Oscillator** | Geometric / Saw / Triangle | Geometric — закрита адитивна форма (реагує на Brightness + HQ). Saw/Triangle — PolyBLEP/PolyBLAMP (ігнорують Brightness і HQ). |

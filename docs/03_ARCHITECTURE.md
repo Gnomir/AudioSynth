@@ -261,8 +261,8 @@ M]] − c_ref) / 1200)`, де `c_ref` — центи якірної ноти (н
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 108 тестів (90 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 108/108, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 114 тестів (96 юніт + 18 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 114/114, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |
@@ -298,7 +298,10 @@ free(mem);                              // викликач звільняє
 
 C-ABI у плагіні **не використовується**. `harmonic_synth` залежить від
 `harmonic_core` як звичайний Rust path-крейт і викликає `PolySynth`
-напряму.
+напряму. Друга залежність — `harmonic_license` (workspace-member,
+`harmonic_synth/license/`): один `ed25519-compact` для верифікації
+підпису, `default-features = false` → нуль транзитивних залежностей у
+плагіні. `verify` фічі `sign` немає в збірці плагіна.
 
 `nih-plug` та `nih_plug_vizia` беруться з `harmonic_synth/vendor/nih-plug/` —
 пропатчена копія pinned-дерева `de421011` (лише фікс CLAP `ext_state_load`,
@@ -314,20 +317,39 @@ struct HarmonicSynth {
     analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate + filter_cutoff + rolloff — audio→GUI, лок-free
     tuning_sig: Option<(i32,i32,i32,u64,u64)>, // (enum, root, ref×100, FNV Scala, FNV .kbm) — гейт ретюну в process
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
+    license: Arc<Option<harmonic_license::License>>, // верифікований keyfile, читається раз у Default (не в аудіо-потоці)
 // + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
 //           #[persist] seed: Mutex<u32> — останній seed рандомайзера (0 = немає)
+//           #[persist] scala / kbm: Mutex<String> — компактні Scala .scl / .kbm (порожньо = вимкнено)
     sustain_held: bool,                 // CC#64 стан педалі
     sustained_notes: [bool; 128],       // NoteOff, відкладені, поки педаль тримається
 }
 
 fn process(&mut self, buffer, _aux, context) -> ProcessStatus {
-    // по-блоково: обгинаючі, FM-ratio, унісон, free-run, LFO, фільтр
+    // let studio = self.tier() == Tier::Studio;  // Core/Studio гейт, §8-bis
+    // по-блоково: обгинаючі, FM-ratio, унісон, free-run, LFO, фільтр,
+    //             мікротюнінг (Core → форс 12-TET/A440), HQ (Core → off)
     // подієвий цикл: NoteOn/Off/Choke/MidiPitchBend/CC#64 (sustain)/CC#123 (all notes off)
     //               + PolyBrightness/PolyPressure/MidiChannelPressure → понотна яскравість
-    // посемплово: brightness, gain, character, feedback → render_sample() → [L,R]
-    //             + analyzer.feed((L+R)/2)  лише якщо editor_state.is_open()
+    // посемплово: brightness, gain, character (Core → CLEAN), feedback (Core → 0)
+    //             → render_sample() → [L,R]  + analyzer.feed((L+R)/2) якщо editor_state.is_open()
 }
 ```
+
+### 8-bis. Free-Core / paid-Studio гейт
+
+`Tier { Core, Studio }` + `HarmonicSynth::tier()`: `Studio`, якщо `load_license()`
+знайшов валідний keyfile (`$COSINE_LICENSE`, тоді `<config>/Cosine/license.key`,
+тоді `~/cosine.key`) — інакше `Core`. `const TIER_ENFORCED: bool = true`. Один
+бінарник; Core vs Studio = наявність ключа. `process` тримає `CORE_LOCKS`
+(Formant, Character, FM amount + feedback, глибина filter-envelope, глибини
+LFO-матриці, expr-brightness, HQ) на нейтральному значенні інлайн-гілками
+`if studio {…} else {…}`; мікротюнінг форситься на 12-TET/A440 сентинелом
+`tuning_sig`. Редактор сіріє відповідні рядки + показує «Licensed to …».
+`harmonic_license` верифікує Ed25519-підпис офлайн; плагін несе лише
+`LICENSE_PUBKEY`. Деталі: `harmonic_synth/license/README.md`,
+`product/GO_TO_MARKET_RESEARCH.md §2 / §5`. Продукт називається **Cosine**
+(`NAME`); `harmonic_synth` лишається іменем крейта.
 
 `MidiConfig::MidiCCs`, `SAMPLE_ACCURATE_AUTOMATION = true`, стерео-вихід
 (`main_output_channels: NonZeroU32::new(2)`), 24 голоси (унісон ділить пул).
@@ -398,7 +420,7 @@ Notch зі спільного знаменника). Частота зрізу �
 знімають нормалізовані значення **всіх** параметрів (`Params::param_map`) у
 персистовані слоти. Слайдер пише `lerp(A, B, pos)` назад у справжні параметри
 через `RawParamEvent` — тож хост бачить звичайні автоматизовані рухи ручок, а
-звук точно відповідає ручкам. Фіксована архітектура (35 параметрів, без
+звук точно відповідає ручкам. Фіксована архітектура (39 параметрів, без
 модуляційної матриці) робить це коректним для кожного параметра; дискретні
 (Oscillator / Filter / HQ) стрибають на середині. Це інструмент етапу дизайну
 — діє лише поки редактор відкритий. `05 §3` / `12 §4` / `07 §18`.

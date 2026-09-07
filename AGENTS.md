@@ -9,9 +9,12 @@ character (drive/fold/grit), a ZDF state-variable filter, two ADSRs, a per-voice
 LFO (retrigger/free-run + mod matrix), unison (with a breathing drift), pitch
 bend, equal-power pan, and note→frequency microtuning (`Tuning`).
 `harmonic_synth` — a 24-voice polyphonic VST3 + CLAP plugin over it, via
-`nih-plug`. Full design docs: `docs/` (start at `docs/README.md`).
+`nih-plug`. The plugin ships as **Cosine** (`NAME = "Cosine"`; the crate keeps
+its name) with an enforced free-**Core** / paid-**Studio** split (`CORE_LOCKS`,
+`TIER_ENFORCED = true`, watermarked Ed25519 key file). Full design docs: `docs/`
+(start at `docs/README.md`); commercial material: `product/`.
 
-Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi}.rs`
+Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi,verify}.rs`
 · `harmonic_core/tests/{spectrum,stress,cross_platform_bit_exact}.rs` (integration) ·
 `harmonic_synth/src/{lib,editor,analyzer,presets,rando,tuning}.rs` (host glue +
 `nih_plug_vizia` GUI + a cheap filter-bank spectrum display + a 22-preset bank +
@@ -47,12 +50,13 @@ cargo test --lib <name-substr>                 # one test, e.g. cargo test --lib
 cargo clippy --all-targets                     # must be 0 warnings
 cargo clippy --no-default-features --release   # no_std lint — must also be 0
 cargo build --no-default-features --release    # the real no_std build (release only)
-cargo fmt                                       # default rustfmt, no config
 cargo check                                     # fast typecheck
+# NB: do NOT run `cargo fmt` — rustfmt 1.9 reformats every checked-in file
+#     (the style predates it). Match the surrounding style by hand. See *Code style*.
 
 cd harmonic_synth
 cargo build --release
-cargo test --workspace                           # 31 plugin + 9 harmonic_license tests
+cargo test --workspace                           # 34 plugin + 9 harmonic_license tests
 cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_synth.{vst3,clap}
 cargo xtask keygen new                          # license signing keypair (see license/README.md)
@@ -71,8 +75,10 @@ Still run the lints and tests yourself before pushing.
 
 ## Code style
 
-- Default `rustfmt` (4-space, no project config). Imports: grouped `use` lines,
-  `core`/`std` then `crate::`.
+- Style approximates default `rustfmt` (4-space, no project config) but the repo
+  is **not** rustfmt-1.9-clean — that release's stricter defaults would rewrite
+  every file, so `cargo fmt` is not run and CI does not check it. Match the
+  checked-in style by hand. Imports: grouped `use` lines, `core`/`std` then `crate::`.
 - `snake_case` fns, `CamelCase` types, `SCREAMING_SNAKE` consts; one concept per
   module. Setters are `set_*`; smoothed param fields carry a `_z` suffix
   (`freq_z`, `pan_z`); per-sample effective values are `_eff`.

@@ -57,8 +57,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "portable-simd", feature(portable_simd))]
 #![deny(unsafe_op_in_unsafe_fn)]
-// `f64::clamp` is not `core`-stable for our MSRV target, so the crate uses
-// small hand-written clamp helpers on the no_std path. That is deliberate.
+// The crate uses small hand-written clamp helpers instead of `f64::clamp`.
+// That is deliberate and must not be "cleaned up": `f64::clamp` passes NaN
+// straight through (`NaN.clamp(0.0, 1.0) == NaN`) and panics if `min > max`.
+// The helpers (`voice::clamp`, `poly::nan_clamp`, `tuning::clampf`) are the
+// C-ABI's argument sanitisers — a hostile caller must never latch NaN into
+// voice state — so they fold NaN to the low bound. `tests/stress.rs` is the
+// guarantee; switching to `f64::clamp` reintroduces the bugs it caught.
 #![allow(clippy::manual_clamp)]
 
 pub mod character;

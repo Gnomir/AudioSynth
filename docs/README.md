@@ -1,8 +1,11 @@
-# Технічна документація: harmonic_core / harmonic_synth
+# Технічна документація: harmonic_core / harmonic_synth (Cosine)
 
 Повний опис DSP-рушія band-limited адитивного синтезу на закритій формі
 **ядра Діріхле** та його геометричного узагальнення, разом із поліфонічним
-плагіном VST3/CLAP над ним.
+плагіном VST3/CLAP над ним. Плагін називається **Cosine**; `harmonic_core` /
+`harmonic_synth` — імена крейтів. Плагін ділиться на безкоштовний **Core** і
+платний **Studio** тір (`TIER_ENFORCED = true`), розблоковується водяним
+Ed25519-keyfile (`harmonic_synth/license/`, `product/`).
 
 Це **не** AQOE-AudioSynth: формула `cos²(2εθ)` та «квантово-натхнена»
 маршрутизація тут не використовуються (та ідея була проаналізована й
@@ -26,7 +29,7 @@
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, HQ-режим (Unified HQ Bus), ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 114 тестів ядра + 30 плагінних, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM + `wasm32` (bit-exact, 48+96к), CI, що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 114 тестів ядра + 34 плагінних + 9 `harmonic_license`, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM + `wasm32` (bit-exact, 48+96к), CI, що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; один MIDI-канал; педаль сустейну на рівні плагіна; DAW-валідація лише часткова (перший прогін — REAPER) тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, макет пам'яті, протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Що лишилось: активні задачі (жива DAW-валідація, upstream-PR) та свідомо відкладені напрямки з причиною |
@@ -57,11 +60,12 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-114 тестів ядра (96 юніт + 18 інтеграційних) + 30 у плагіні + 1 `#[ignore]`
-(дрейф), біт-у-біт (δ = 0.0) на `aarch64` + `armv7-hf` під QEMU **та `wasm32`
-у Node**, на 48 і 96 кГц, незалежно від розміру блоку (`cross-verify.sh` +
-`verify-wasm.mjs`) · CI (`.github/workflows/ci.yml`) ганяє всю матрицю на кожен
-push · clippy чистий (stable + `--no-default-features --release`
+114 тестів ядра (96 юніт + 18 інтеграційних) + 34 у плагіні + 9 у
+`harmonic_license` + 1 `#[ignore]` (дрейф), біт-у-біт (δ = 0.0) на
+`aarch64` + `armv7-hf` під QEMU **та `wasm32` у Node**, на 48 і 96 кГц,
+незалежно від розміру блоку (`cross-verify.sh` + `verify-wasm.mjs`) · CI
+(`.github/workflows/ci.yml`) ганяє всю матрицю на кожен push · clippy чистий
+(stable + `--no-default-features --release`
 + nightly `--features portable-simd`) · плагін збирається у VST3 + CLAP, має GUI
 (`nih_plug_vizia`: згруповані секції + спектр із гребінкою партіалів закритої форми + кривою фільтра + метр аліасингу + морф + рандом + Scala + пресети) · **pluginval
 `--strictness-level 8`: повний прохід (VST3, з GUI-тестами)** ·
@@ -74,8 +78,9 @@ retrigger/free-run + матриця (→ brightness / pitch / cutoff / FM index)
 голос) · «Formant» — резонансний горб (другий закритий член) · мікротюнінг (12-TET дефолт побайтово + JI / Пифагор / мезотоніка / 19·24·31-EDO / Bohlen-Pierce + імпорт `.scl` + `.kbm` клавіатурна мапа з мертвими клавішами) · CC#64 sustain (рівень плагіна) · чесний метр аліасингу в редакторі
 (смуга біля Найквіста → коли вмикати HQ) · A/B морф між патчами (кожен
 параметр інтерполюється чисто) · seed-рандомайзер із 6-символьним кодом (детермінований на будь-якій машині) · стартовий банк 22 пресети · ворожий RT-safety набір
-(`tests/stress.rs`) · `panic=abort` в обох крейтах · перший живий прогін у
-REAPER 7.79 зроблено (`11_DAW_CHECKLIST.md`).
+(`tests/stress.rs`) · `panic=abort` в обох крейтах · free-Core / paid-Studio
+гейт (`CORE_LOCKS`, водяний Ed25519-keyfile, офлайн-верифікація, без донгла) ·
+перший живий прогін у REAPER 7.79 зроблено (`11_DAW_CHECKLIST.md`).
 
 Комерційне пакування (spec sheet потужностей, позиціювання, ціни, канали
 перших клієнтів) — **[`../product/`](../product/README.md)**.

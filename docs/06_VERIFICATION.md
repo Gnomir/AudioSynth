@@ -368,7 +368,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 108 / 108 (90 юніт + 18 інтеграційних) |
+| Тести | `cargo test` | 114 / 114 (96 юніт + 18 інтеграційних) + 1 `#[ignore]` |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -506,8 +506,8 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **108 / 108 pass** (90 юніт + 18 інтеграційних) |
-| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **97 / 97 pass** |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **114 / 114 pass** (96 юніт + 18 інтеграційних) |
+| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **114 / 114 pass** |
 | `wasm32-unknown-unknown` (Node) | нативний wasm `f64` | **хеш = референс** (`scripts/verify-wasm.mjs`) |
 
 Сценарій рендеру та константи-хеші живуть у `harmonic_core::verify`
@@ -545,7 +545,7 @@ Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
 - **ARM під QEMU + wasm32 під Node — покрито** (§6-bis: `aarch64` + `armv7-hf`
-  108/108, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
+  114/114, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
   (`thumbv7em` / `thumbv6m`), прогін під RISC-V — усе крос-компілюється чисто
   (compile-check у `cross-verify.sh`), але на залізі не проганялось.
 - **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі

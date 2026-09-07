@@ -1,9 +1,13 @@
 # 09 — Що лишилось зробити
 
-Ядро й плагін стабільні: `108/108` тестів, біт-у-біт на `aarch64` + `armv7-hf`
-під QEMU, clippy чистий (std / no_std / nightly-simd), VST3 проходить
-`pluginval --strictness 8` (з GUI-тестами), CLAP — `clap-validator 35/35`,
-плагін має GUI (`nih_plug_vizia`).
+Ядро й плагін стабільні: `114/114` тестів ядра + `34` плагінних + `9`
+`harmonic_license`, біт-у-біт на `aarch64` + `armv7-hf` під QEMU, clippy
+чистий (std / no_std / nightly-simd), VST3 проходить `pluginval --strictness 8`
+(з GUI-тестами), CLAP — `clap-validator 35/35`, плагін має GUI (`nih_plug_vizia`).
+Free-Core / paid-Studio гейт **увімкнено** (`TIER_ENFORCED = true`) + водяний
+Ed25519-keyfile — це вже зроблено (`harmonic_synth/license/`,
+`product/GO_TO_MARKET_RESEARCH.md`); продукт названо **Cosine**. Нижче — DSP /
+інтеграційні напрямки; комерційний трек — у `product/`.
 
 Нижче — **тільки незавершене**: активні задачі та свідомо відкладені
 напрямки з причиною відкладення. Кожен пункт: **Проблема / Напрямок /

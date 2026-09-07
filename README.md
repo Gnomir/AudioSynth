@@ -82,8 +82,9 @@ nightly.
 ## Status
 
 114 `harmonic_core` tests pass (96 unit + 18 integration, 11 of them an
-adversarial RT-safety suite) plus 30 plugin tests, plus a `#[ignore]` long-run
-drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
+adversarial RT-safety suite) plus 34 plugin tests and 9 `harmonic_license`
+tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`,
+`no_std` and nightly `portable-simd`. The
 whole core suite — including a whole-signal-path FNV-1a hash compared against an
 x86-64 reference — passes **bit-for-bit (delta 0.0)** on
 `aarch64-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` under QEMU, and
@@ -93,6 +94,14 @@ passes on the VST3 (editor tests included); `clap-validator` passes **35/35** on
 the CLAP — the `nih-plug` `ext_state_load` bugs (one an OOM abort on a corrupt
 preset) are fixed via a `[patch]` onto a vendored copy, see
 [`docs/10_NIH_PLUG_CLAP_BUGS.md`](docs/10_NIH_PLUG_CLAP_BUGS.md).
+
+**Free-Core / paid-Studio split:** enforced (`TIER_ENFORCED = true`). An
+unlicensed build is the free **Core** tier — oscillator, Brightness, Partials,
+amp envelope, the full filter, unison, pitch bend, 12-TET; a watermarked
+Ed25519 key file (verified offline, no dongle, no server) unlocks **Studio**
+(Formant, Character, FM, filter envelope, LFO matrix, MPE, microtuning, HQ).
+`harmonic_synth/license/` · [`product/GO_TO_MARKET_RESEARCH.md`](product/GO_TO_MARKET_RESEARCH.md).
+The DAW-visible product name is **Cosine**.
 
 **Live-DAW status:** a first pass in REAPER 7.79 (CLAP, Windows 11) is done —
 sound, editor, spectrum, presets and the randomiser all work; it also caught and
