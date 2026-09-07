@@ -182,7 +182,7 @@ intonation stops beating, but bell inharmonicity needs a different kernel
 | PolyBLEP saw / triangle | ~90 M / ~77 M samples/s (cheaper than the geometric carrier) |
 | Cross-architecture render hash | **delta 0.0** on `aarch64` + `armv7-hf` (QEMU) and `wasm32` (Node), 48 + 96 kHz, any block size |
 | `no_std` cdylib | ~14 KB native, ~45 KB `wasm32` |
-| Tests | **114** (96 unit + 18 integration, 11 = adversarial `stress.rs`) + 1 `#[ignore]` drift; run on every push by CI (`.github/workflows/ci.yml`) |
+| Tests | **116** (98 unit + 18 integration, 11 = adversarial `stress.rs`) + 1 `#[ignore]` drift; run on every push by CI (`.github/workflows/ci.yml`) |
 
 ## Status & roadmap
 

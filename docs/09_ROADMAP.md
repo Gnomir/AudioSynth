@@ -1,6 +1,6 @@
 # 09 — Що лишилось зробити
 
-Ядро й плагін стабільні: `114/114` тестів ядра + `34` плагінних + `9`
+Ядро й плагін стабільні: `116/116` тестів ядра + `34` плагінних + `9`
 `harmonic_license`, біт-у-біт на `aarch64` + `armv7-hf` під QEMU, clippy
 чистий (std / no_std / nightly-simd), VST3 проходить `pluginval --strictness 8`
 (з GUI-тестами), CLAP — `clap-validator 35/35`, плагін має GUI (`nih_plug_vizia`).

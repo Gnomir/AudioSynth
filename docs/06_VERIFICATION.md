@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **114 тестів `harmonic_core`** (96 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+Що перевірено, як, і якими числами. Статус: **116 тестів `harmonic_core`** (98 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
 `tests/stress.rs`) + **34 у плагіні** + **9 у `harmonic_license`** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону, ліцензійний keyfile) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
@@ -144,7 +144,7 @@
 | `formant_adds_a_movable_mid_spectrum_bump_and_zero_is_inert` | при `rolloff 0.4` формант `0.42` піднімає 6-ту гармоніку `> 8×`; низький формант тримає енергію на партіалі 4, високий зсуває її на 15; `formant 0.0` рендериться **бітово** як без форманту (`04 §0.2`) |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (25)
+### `poly` (27)
 
 | Тест | Що доводить |
 |---|---|
@@ -173,6 +173,8 @@
 | `representative_rolloff_moves_with_lfo_to_brightness` | `PolySynth::representative_rolloff` → `0` коли тихо; при стійкій яскравості без LFO осідає на базу (`0.6 ± 0.02`); повільний глибокий LFO→brightness розгойдує `r` на `> 0.2` в межах `[ROLLOFF_MIN, ROLLOFF_MAX]`; після `all_notes_off` → `0`. Живить нахил гребінки |
 | `render_is_block_size_independent_bit_for_bit` | скриптований прохід (FM + унісон + LFO + фільтр, 6 подій на точних кадрах) хешується **побайтово однаково** через `render_block` розміром 7 / 64 / 256 / 512 / весь блок і посемпловий цикл. «Freeze == realtime»; фіксує гарантію до інтеграції векторного block-x4 (`09`) |
 | `zero_latency_hq_off_and_exactly_16_samples_hq_on` | `PolySynth::HQ_LATENCY == 16`, `Voice::HQ_LATENCY == 3` (compile-time); HQ-off побайтово тотожний незалежно від того, чи вмикали HQ (жодної залишкової лінії затримки); крос-кореляція стабільного тону HQ-off vs HQ-on дає лаг **рівно 16** |
+| `re_asserting_hq_every_block_is_a_no_op_not_a_decimator_reset` | `set_hq(x)` коли `x` == поточного стану — **повний no-op**: майстер-дециматор не чіпається. Плагінний `process` перепідтверджує HQ-параметр щоблоку; безумовний `hq_decim.reset()` там стирав би 65-тапну історію FIR на кожній межі блоку → блок-швидкісний перехідний процес. Regression: `set_hq(true)` раз vs `set_hq(true)` кожні 128 семплів → **побітово** той самий вихід на 12000 семплах |
+| `carrier_phase_stays_wrapped_when_step_exceeds_one` | `step = f_eff/fs` може перевищити `1.0` (bend ×32, вібрато ×2, `freq` до `fs/2`). Голе `phase -= 1.0` не загортало б це, і акумулятор ріс би необмежено. Голос на `step ~ 3.8` (23 кГц + bend ×4 + вібрато ±окт): фаза лишається в `[0,1)` **кожен семпл** на 200000 семплах, вихід скінченний і обмежений `≤ 4.0`. Фікс — `phase -= floor_f64(phase)` (біт-ідентично `-= 1.0` для `step < 1`) |
 
 ### `tests/spectrum.rs` — інтеграційні (6)
 
@@ -368,7 +370,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 114 / 114 (96 юніт + 18 інтеграційних) + 1 `#[ignore]` |
+| Тести | `cargo test` | 116 / 116 (98 юніт + 18 інтеграційних) + 1 `#[ignore]` |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -506,8 +508,8 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **114 / 114 pass** (96 юніт + 18 інтеграційних) |
-| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **114 / 114 pass** |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **116 / 116 pass** (98 юніт + 18 інтеграційних) |
+| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **116 / 116 pass** |
 | `wasm32-unknown-unknown` (Node) | нативний wasm `f64` | **хеш = референс** (`scripts/verify-wasm.mjs`) |
 
 Сценарій рендеру та константи-хеші живуть у `harmonic_core::verify`
@@ -545,7 +547,7 @@ Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
 - **ARM під QEMU + wasm32 під Node — покрито** (§6-bis: `aarch64` + `armv7-hf`
-  114/114, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
+  116/116, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
   (`thumbv7em` / `thumbv6m`), прогін під RISC-V — усе крос-компілюється чисто
   (compile-check у `cross-verify.sh`), але на залізі не проганялось.
 - **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі

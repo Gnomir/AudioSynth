@@ -917,8 +917,13 @@ impl Voice {
             self.fm_phase -= floor_f64(self.fm_phase);
         }
         self.phase += step;
+        // `step` is `f_eff / fs`; `f_eff` (bend ×32, vibrato ×2, `freq` up to
+        // `fs/2`) can exceed `fs`, so `step` can exceed `1.0` — a bare `-= 1.0`
+        // would not fully wrap and the accumulator would run away over a long
+        // held note. `floor_f64` is exact for `|x| < 2⁶³`, and for `step < 1`
+        // this is bit-identical to `-= 1.0` (`⌊x⌋ == 1` on `[1, 2)`).
         if self.phase >= 1.0 {
-            self.phase -= 1.0;
+            self.phase -= floor_f64(self.phase);
         }
 
         // ---- equal-power pan ---- (a modulator → fast trig is plenty)
@@ -931,6 +936,15 @@ impl Voice {
             self.pan_cos = c;
             self.pan_cache_z = self.pan_z;
         }
+    }
+
+    /// The carrier phase accumulator, in turns. Test-only — for asserting the
+    /// wrap in [`Self::advance_phase_and_pan`] keeps it in `[0, 1)` even when
+    /// `step` exceeds `1.0`.
+    #[cfg(test)]
+    #[inline]
+    pub fn carrier_phase_for_test(&self) -> f64 {
+        self.phase
     }
 
     /// Fill `left` / `right` with rendered samples (up to the shorter length).

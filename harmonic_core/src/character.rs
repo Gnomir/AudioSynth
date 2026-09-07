@@ -275,7 +275,9 @@ impl Default for Character {
 /// discontinuity.) This matches [`crate::poly::soft_clip`].
 #[inline]
 pub fn tanh_pade(x: f32) -> f32 {
-    let x = if x > 3.0 {
+    let x = if x.is_nan() {
+        0.0 // NaN backstop — matches `poly::soft_clip`; finite inputs unaffected
+    } else if x > 3.0 {
         3.0
     } else if x < -3.0 {
         -3.0

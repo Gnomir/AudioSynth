@@ -345,7 +345,16 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     /// independently. Adds [`PolySynth::HQ_LATENCY`] samples of latency
     /// (constant; the host reports it once and re-syncs when this toggles).
     /// `false` is bit-identical to leaving HQ off.
+    ///
+    /// **No-op when `hq` already matches the current state.** The unconditional
+    /// `hq_decim.reset()` below wipes the master decimator's 65-tap history, so
+    /// a caller that re-asserts the same value every block (as a plugin's
+    /// `process` naturally does) would otherwise zero the delay line at every
+    /// block boundary — a block-rate settling transient in the HQ output.
     pub fn set_hq(&mut self, hq: bool) {
+        if hq == self.hq {
+            return;
+        }
         self.hq = hq;
         for v in &mut self.voices {
             // Kept in sync for anyone introspecting a voice directly, but
@@ -921,9 +930,17 @@ impl<const VOICES: usize> PolySynth<VOICES> {
 }
 
 /// Smooth ℝ → (−1, 1) saturator (Padé approximation of `tanh`).
+///
+/// A last-resort NaN backstop for the master mix: `NaN` folds to `0.0` rather
+/// than through (`NaN > 3.0` and `NaN < -3.0` are both false, so a bare clamp
+/// chain would pass it). The per-setter clamps upstream are the real defence —
+/// this only stops one regressed setter from poisoning the whole output
+/// silently. Finite inputs are unaffected (bit-identical).
 #[inline]
 pub fn soft_clip(x: f32) -> f32 {
-    let x = if x > 3.0 {
+    let x = if x.is_nan() {
+        0.0
+    } else if x > 3.0 {
         3.0
     } else if x < -3.0 {
         -3.0
@@ -1825,6 +1842,66 @@ mod tests {
         for _ in 0..4800 {
             let [l, r] = s.render_sample();
             assert!(l.is_finite() && r.is_finite(), "NaN input latched into the output");
+        }
+    }
+
+    #[test]
+    fn re_asserting_hq_every_block_is_a_no_op_not_a_decimator_reset() {
+        // `set_hq(x)` when `x` is already the current state must not touch the
+        // master decimator's delay line: a plugin's `process` re-asserts the
+        // HQ param every block, and an unconditional `hq_decim.reset()` there
+        // would wipe the FIR history at every block boundary — a block-rate
+        // settling transient in the HQ output.
+        let cfg = |s: &mut PolySynth<8>| {
+            s.set_gain(0.9);
+            s.set_rolloff(0.9);
+            s.set_free_running(true);
+            s.set_amp_adsr(0.002, 0.02, 1.0, 0.05);
+        };
+        let mut once: PolySynth<8> = PolySynth::new(48_000.0);
+        cfg(&mut once);
+        once.set_hq(true);
+        once.note_on(57, 1.0);
+
+        let mut per_block: PolySynth<8> = PolySynth::new(48_000.0);
+        cfg(&mut per_block);
+        per_block.set_hq(true);
+        per_block.note_on(57, 1.0);
+
+        for i in 0..12_000 {
+            if i % 128 == 0 {
+                per_block.set_hq(true); // the redundant per-block re-assert
+            }
+            assert_eq!(
+                once.render_sample()[0].to_bits(),
+                per_block.render_sample()[0].to_bits(),
+                "redundant set_hq perturbed the HQ output at sample {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn carrier_phase_stays_wrapped_when_step_exceeds_one() {
+        // `step = f_eff / fs` can exceed 1.0 (bend ×32, vibrato ×2, freq up to
+        // fs/2). A bare `phase -= 1.0` cannot wrap that, so the accumulator
+        // would grow without bound over a held note and lose precision. Drive
+        // one voice with `step ~ 3.8` and check the phase stays in `[0, 1)`
+        // every sample, and the output stays finite/bounded.
+        let mut v = Voice::new(48_000.0);
+        v.set_gain(1.0);
+        v.set_frequency(23_000.0); // just under Nyquist
+        v.set_pitch_bend(4.0); // ×4
+        v.set_lfo(6.0, LfoShape::Sine);
+        v.set_lfo_targets(0.0, 1200.0, 0.0, 0.0); // ±1 octave vibrato
+        v.reset();
+        for i in 0..200_000 {
+            let [l, r] = v.render_sample();
+            assert!(l.is_finite() && r.is_finite() && l.abs() <= 4.0 && r.abs() <= 4.0);
+            assert!(
+                (0.0..1.0).contains(&v.carrier_phase_for_test()),
+                "carrier phase escaped [0,1) at sample {i}: {}",
+                v.carrier_phase_for_test()
+            );
         }
     }
 }
