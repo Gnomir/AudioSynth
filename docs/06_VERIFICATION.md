@@ -1,7 +1,7 @@
 # 06 — Верифікація
 
 Що перевірено, як, і якими числами. Статус: **114 тестів `harmonic_core`** (96 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **30 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону) + 1 `#[ignore]`
+`tests/stress.rs`) + **31 у плагіні** + **9 у `harmonic_license`** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону, ліцензійний keyfile) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -411,7 +411,19 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 чистий / дефолтний шлях **побайтово** незмінним (крос-платформний хеш §6-bis
 не зачеплено).
 
-### `harmonic_synth` — плагінні (25, `cargo test -p harmonic_synth`)
+### `harmonic_license` — ліцензійний keyfile (9, `cargo test -p harmonic_license [--features sign]`)
+
+| Тест | Що доводить |
+|---|---|
+| `the_embedded_pubkey_is_a_valid_ed25519_point` | `LICENSE_PUBKEY` парситься як коректна точка Ed25519 — форсує заміну dev-ключа на робочий перед релізом |
+| `the_committed_sample_key_verifies` | `SAMPLE_LICENSE.key` (у репо) верифікується проти `LICENSE_PUBKEY`, `tier == "studio"`, вотермарк непорожній |
+| `a_signed_keyfile_verifies_and_carries_the_watermark` | згенерована пара → підпис → верифікація повертає точно ті самі поля; `watermark()` = `"Ім'я <email>"` |
+| `editing_any_signed_field_breaks_it` | зміна будь-якого підписаного поля (name / email / order / tier / issued) → `SignatureMismatch` |
+| `a_key_from_a_different_seller_is_rejected` | верифікація проти чужого публічного ключа → `SignatureMismatch` |
+| `malformed_files_are_rejected_not_panicked` | порожній / без `product` / без email / чужий product / нехекс-підпис / порожнє ім'я → `Err`, без паніки |
+| `hex_round_trips` / `field_needs_a_real_separator` / `watermark_without_email` | хелпери: hex-кодек, парсер полів (`name` не матчить `name_of_thing`), вотермарк без email = лише ім'я |
+
+### `harmonic_synth` — плагінні (31, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -445,6 +457,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `tuning::build_with_kbm_falls_back_to_a_chromatic_scale_when_no_scl` | `.kbm` без `.scl` → мапить на 12-EDO хроматику; 6-й запис патерну → хроматичний ступінь 3 (300 ц), реф = 440, мертва клавіша скінченна |
 | `tuning::malformed_kbm_is_rejected_not_panicked` | порожній / обрізаний / розмір 0 / реф-частота 0 / усі клавіші мертві / нечисловий запис → `Err`, без паніки; `build_with_kbm("", "")` / `("", "garbage")` → `None` |
 | `tuning::kbm_formal_octave_degree_sets_the_repeat_interval` | «формальна октава» = ступінь 2 (чиста квінта): один повний повтор мапи вгору = `3:2`, не `2:1` |
+| `load_license_honours_the_explicit_path_and_verifies_it` | `HARMONIC_SYNTH_LICENSE` → `SAMPLE_LICENSE.key` → `load_license()` повертає верифіковану ліцензію (`tier == "studio"`, вотермарк `name <email>`); шлях-оверрайд працює, читання поза аудіо-потоком |
 
 ---
 

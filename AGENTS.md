@@ -15,16 +15,20 @@ Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,tuni
 · `harmonic_core/tests/{spectrum,stress,cross_platform_bit_exact}.rs` (integration) ·
 `harmonic_synth/src/{lib,editor,analyzer,presets,rando,tuning}.rs` (host glue +
 `nih_plug_vizia` GUI + a cheap filter-bank spectrum display + a 22-preset bank +
-a seed randomiser + built-in microtuning scales) · `harmonic_synth/xtask/` (bundler) ·
+a seed randomiser + built-in microtuning scales) · `harmonic_synth/xtask/`
+(bundler + `keygen`) · `harmonic_synth/license/` (`harmonic_license` — the
+watermarked Ed25519 key-file format, one dep: `ed25519-compact`) ·
 `harmonic_synth/vendor/nih-plug/` (patched framework copy, see below).
 
 ## Setup
 
 Rust stable (1.97 known-good). `harmonic_core` has **no dependencies** — keep it
 that way. `harmonic_synth` pulls `nih-plug` + `nih_plug_vizia` (heavy tree:
-baseview, vizia/femtovg, fonts) at **one** pinned rev, plus `atomic_float` —
-**first build needs network** and takes a few minutes. The `portable-simd`
-feature (core) needs nightly.
+baseview, vizia/femtovg, fonts) at **one** pinned rev, plus `atomic_float` and
+`harmonic_license` (→ `ed25519-compact`, zero transitive deps in the plugin's
+verify-only mode; the `sign` feature used by `cargo xtask keygen` adds
+`getrandom`) — **first build needs network** and takes a few minutes. The
+`portable-simd` feature (core) needs nightly.
 
 `harmonic_synth/vendor/nih-plug/` is a **trimmed, patched copy** of that pinned
 tree, wired in via `[patch]` in `harmonic_synth/Cargo.toml` — it carries the
@@ -48,8 +52,10 @@ cargo check                                     # fast typecheck
 
 cd harmonic_synth
 cargo build --release
-cargo test                                      # 30 plugin tests (…, tuning, Scala .scl/.kbm, spectrum comb + hover + filter curve + unison smear)
+cargo test --workspace                           # 31 plugin + 9 harmonic_license tests
+cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_synth.{vst3,clap}
+cargo xtask keygen new                          # license signing keypair (see license/README.md)
 cargo xtask validate                            # build + pluginval (VST3) + clap-validator (CLAP)
 ```
 
@@ -91,6 +97,13 @@ Still run the lints and tests yourself before pushing.
 ## Security
 
 - Pure DSP math — no secrets, keys, tokens, or `.env` anywhere. Do not add any.
+- **Exception, and it is deliberate:** `harmonic_synth/license/DEV_SECRET_KEY.txt`
+  is a *development* Ed25519 signing secret. It is **not confidential** — it
+  signs only `SAMPLE_LICENSE.key`, which verifies against the equally-throwaway
+  `LICENSE_PUBKEY` in `license/src/lib.rs`. The real production secret is
+  generated with `cargo xtask keygen new` at launch and never committed
+  (`.gitignore` blocks `*SECRET*` / `license.key`). Do not treat the dev file as
+  a leak.
 - `VENDOR`, `URL`, `EMAIL` in `harmonic_synth/src/lib.rs` are `example.invalid`
   placeholders; `CLAP_ID` (`com.harmonic-core.harmonic-synth`) and
   `VST3_CLASS_ID` (`HarmonicSynth\0\0\0`) are provisional. Leave all of them

@@ -16,6 +16,17 @@ harmonic_core/contrib/wasm-demo/harmonic_core.wasm
 # downloaded validation tooling (pluginval etc.)
 harmonic_synth/tools/
 
+# --- licensing ---
+# The PRODUCTION signing secret and any real customer key files must never be
+# committed. `keygen new` prints the secret to the terminal only; keep it in a
+# password manager / the store webhook's env. The committed dev files
+# (license/DEV_SECRET_KEY.txt, license/SAMPLE_LICENSE.key) are throwaway — see
+# AGENTS.md "Security".
+**/license.key
+*PRODUCTION_SECRET*
+*production-secret*
+harmonic_synth/license/CUSTOMER_KEYS/
+
 # --- test scratch ---
 .playwright-mcp/
 
