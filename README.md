@@ -1,8 +1,10 @@
-# AudioSynth
+# Cosine
 
 Band-limited **additive synthesis from a closed-form oscillator** — no wavetable,
-no per-partial loop, no oversampling filter. A `no_std` Rust DSP core and a
-polyphonic VST3 / CLAP synth plugin built on it.
+no per-partial loop, no oversampling filter. A `no_std` Rust DSP core
+(`harmonic_core`) and a polyphonic VST3 / CLAP synth plugin (**Cosine**) built on
+it. The repository is `Gnomir/AudioSynth`; the crate / directory names still read
+`harmonic_synth` pending a launch-time rename.
 
 ## What it is
 

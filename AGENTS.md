@@ -104,17 +104,20 @@ Still run the lints and tests yourself before pushing.
   generated with `cargo xtask keygen new` at launch and never committed
   (`.gitignore` blocks `*SECRET*` / `license.key`). Do not treat the dev file as
   a leak.
-- `VENDOR`, `URL`, `EMAIL` in `harmonic_synth/src/lib.rs` are `example.invalid`
-  placeholders; `CLAP_ID` (`com.harmonic-core.harmonic-synth`) and
-  `VST3_CLASS_ID` (`HarmonicSynth\0\0\0`) are provisional. Leave all of them
-  until the user picks a real product name / domain (`product/COMMERCIAL_BRIEF.md`
-  "Before launch") — changing `VST3_CLASS_ID` or `CLAP_ID` after release breaks
-  every saved project that references the plugin.
+- The product is named **Cosine** (`NAME = "Cosine"`, `VENDOR = "Cosine Audio"`).
+  `URL` / `EMAIL` in `harmonic_synth/src/lib.rs` stay `example.invalid`
+  placeholders until a domain is registered; `CLAP_ID`
+  (`com.cosine-audio.cosine`) and `VST3_CLASS_ID` (`CosineSynth\0\0\0\0\0`) are
+  provisional and follow the final domain — **freeze both at the first public
+  release** (`product/GO_TO_MARKET_RESEARCH.md §9`); changing either afterwards
+  breaks every saved project that references the plugin. The crate / directory /
+  bundle filename are still `harmonic_synth` — renaming them is a separate
+  launch-prep step.
 - The **Core/Studio split is enforced** (`TIER_ENFORCED = true` in
   `harmonic_synth/src/lib.rs`): an unlicensed build is the free `Core` tier
   (`CORE_LOCKS` held at neutral, microtuning forced to 12-TET); a valid key file
   unlocks `Studio`. **To run a Studio build in dev / a DAW:** set
-  `HARMONIC_SYNTH_LICENSE=<repo>/harmonic_synth/license/SAMPLE_LICENSE.key`, or
+  `COSINE_LICENSE=<repo>/harmonic_synth/license/SAMPLE_LICENSE.key`, or
   drop that file at the `load_license` config path. The gated audio path and the
   greyed editor aren't unit-testable (nih-plug walls off the host param
   setters) — a real change to the gate needs a pluginval-s8 pass plus eyes in a
