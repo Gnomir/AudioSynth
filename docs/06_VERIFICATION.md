@@ -1,7 +1,7 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **108 тестів `harmonic_core`** (90 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **25 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import, спектр-гребінка + hover + крива фільтра + гребінка унісону) + 1 `#[ignore]`
+Що перевірено, як, і якими числами. Статус: **114 тестів `harmonic_core`** (96 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+`tests/stress.rs`) + **30 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -45,7 +45,7 @@
 |---|---|
 | `sample_rate_validation_reports_instead_of_substituting` | `validate_sample_rate` клампить (не підставляє 48k) і повертає `Ok`/`ClampedLow`/`ClampedHigh`/`Defaulted`; `Voice::new_checked` та `PolySynth::set_sample_rate` пробрасують статус |
 
-### `tuning` (6)
+### `tuning` (11 + 1 у `poly`)
 
 | Тест | Що доводить |
 |---|---|
@@ -55,6 +55,12 @@
 | `bohlen_pierce_repeats_at_the_tritave` | 13 рівних кроків «тритави» `1901.955` ц: 13 клавіш угору = точно `×3` |
 | `hostile_scales_still_produce_finite_positive_frequencies` | `from_cents` із `NaN`/`±∞`/`±1e9` центами, `NaN` періодом і `NaN` ref-Hz → усі 128 нот дають скінченну додатну частоту (ref → 440, період → 1 ц) |
 | `reference_frequency_scales_the_whole_scale` | `Tuning::equal(12, 432.0, 69)` → A4 = 432, а решта нот — 12-TET × `432/440` |
+| `identity_kbm_is_bit_identical_to_the_linear_mapping` | явна тотожня `.kbm`-мапа над 12-EDO → `hz(n).to_bits()` **точно** дорівнює `equal(12,…)` на всіх 128 клавішах: `from_kbm` на дефолтному патерні недоторканий побайтово |
+| `kbm_folds_a_seven_key_pattern_into_the_octave` | 7-клавішний патерн `[0,2,4,5,7,9,11]` над хроматикою: 7 клавіш угору = точно октава, клавіша +1 = ступінь 2 |
+| `kbm_dead_keys_report_unmapped` | патерн із `-1` через клавішу: `is_mapped` = `false` на мертвих, `true` на живих; лінійна шкала мапить усе |
+| `hostile_kbm_still_produces_finite_positive_frequencies` | `from_kbm` зі ступенями поза шкалою, величезними від'ємними, `NaN` формальною октавою і `∞` ref-Hz → усі 128 нот скінченні й додатні |
+| `a_kbm_tuning_is_not_mistaken_for_the_default_fast_path` | нетотожній `keymap` → `is_equal_440()` = `false` (вимикає короткий обхід `midi_to_hz`) |
+| `poly::a_dead_key_under_a_kbm_map_sounds_nothing` | `PolySynth` під `.kbm` із мертвими клавішами: `note_on(мертва)` — no-op (синт лишається тихим), жива клавіша грає, `set_tuning_equal` повертає все у мапу |
 
 ### `kernel` (8)
 
@@ -434,6 +440,11 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `tuning::build_scala_puts_the_fifth_on_a_pure_3_2` | `build_scala(compact, root=C, 440)` → C4 як 12-TET, G4 — чиста `3:2`, октава подвоюється |
 | `tuning::malformed_scl_is_rejected_not_panicked` | порожній / без лічильника / невірна кількість / `0/0` / від'ємний період → `Err`, без паніки; `build_scala("")` / `("garbage")` → `None` (фолбек на enum) |
 | `tuning::a_scale_bigger_than_the_cap_is_truncated_not_rejected` | 100-нотна шкала → обрізана до `MAX_SCALA_DEGREES = 64`, період збережено, усі 128 нот скінченні |
+| `tuning::parses_a_kbm_and_reports_dead_keys` | реальний `.kbm` (12-клавішний патерн «білі клавіші», чорні = `x`) → `entries == [0,-1,1,-1,2,3,-1,4,-1,5,-1,6]`, `mid_note`/`ref_note`/`ref_hz` з файлу; round-trip через `to_compact_kbm` / `expand_kbm` |
+| `tuning::build_with_kbm_kills_the_black_keys_and_keeps_the_diatonic_scale` | мапа «білі клавіші» над 7-нотним JI-мажором: A4 (реф `.kbm`) = точно 440, E4 (ступінь 2) — чиста `5:4`, октава подвоюється, усі 128 нот (і мертві) скінченні, `is_equal_440()` = `false` |
+| `tuning::build_with_kbm_falls_back_to_a_chromatic_scale_when_no_scl` | `.kbm` без `.scl` → мапить на 12-EDO хроматику; 6-й запис патерну → хроматичний ступінь 3 (300 ц), реф = 440, мертва клавіша скінченна |
+| `tuning::malformed_kbm_is_rejected_not_panicked` | порожній / обрізаний / розмір 0 / реф-частота 0 / усі клавіші мертві / нечисловий запис → `Err`, без паніки; `build_with_kbm("", "")` / `("", "garbage")` → `None` |
+| `tuning::kbm_formal_octave_degree_sets_the_repeat_interval` | «формальна октава» = ступінь 2 (чиста квінта): один повний повтор мапи вгору = `3:2`, не `2:1` |
 
 ---
 

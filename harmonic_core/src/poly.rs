@@ -598,8 +598,24 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         }
     }
 
+    /// `true` iff `note` sounds something under the current tuning. Always
+    /// `true` on the default (12-TET) path; a Scala `.kbm` keyboard map can
+    /// mark keys "dead" (see [`Tuning::is_mapped`]), and [`note_on`] ignores
+    /// those. A host GUI can call this to grey out dead keys.
+    ///
+    /// [`note_on`]: PolySynth::note_on
+    #[inline]
+    pub fn note_is_mapped(&self, note: u8) -> bool {
+        self.tuning_default || self.tuning.is_mapped(note)
+    }
+
     /// MIDI note-on. Stacks `unison_count` detuned, stereo-spread voices.
     pub fn note_on(&mut self, note: u8, velocity: f32) {
+        // A dead key under a `.kbm` keyboard map sounds nothing. Guarded by
+        // `tuning_default` so the 12-TET path is untouched, bit-for-bit.
+        if !self.tuning_default && !self.tuning.is_mapped(note) {
+            return;
+        }
         // A fresh press starts from neutral per-note expression; the host
         // re-sends MPE timbre / pressure right after note-on if it has any.
         if let Some(slot) = self.note_bright.get_mut(note as usize) {
@@ -1019,6 +1035,39 @@ mod tests {
         s.note_on(45, 1.0);
         s.render_sample();
         assert!((s.lowest_sounding_hz() - 108.0).abs() < 0.2);
+    }
+
+    #[test]
+    fn a_dead_key_under_a_kbm_map_sounds_nothing() {
+        let sr = 48_000.0;
+        let mut s: PolySynth<4> = PolySynth::new(sr);
+        s.set_envelope(0.005, 0.1);
+
+        // 12-EDO scale; a 2-key pattern where every other key is dead, anchored
+        // on a live key (C4 = 60) so the map isn't rejected.
+        let chromatic: [f64; 12] = core::array::from_fn(|k| k as f64 * 100.0);
+        let map: [i8; 2] = [0, -1];
+        s.set_tuning(crate::Tuning::from_kbm(
+            &chromatic, 1200.0, &map, 2, 60, 1200.0, 60, 261.625_565,
+        ));
+
+        assert!(s.note_is_mapped(60) && !s.note_is_mapped(61));
+
+        // a dead key: note_on is a no-op, the synth stays silent
+        s.note_on(61, 1.0);
+        for _ in 0..64 {
+            s.render_sample();
+        }
+        assert_eq!(s.lowest_sounding_hz(), 0.0, "a dead key started a voice");
+
+        // a live key still plays
+        s.note_on(60, 1.0);
+        s.render_sample();
+        assert!(s.lowest_sounding_hz() > 0.0);
+
+        // default path: every key is mapped again
+        s.set_tuning_equal();
+        assert!(s.note_is_mapped(61));
     }
 
     #[test]

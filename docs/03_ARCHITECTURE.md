@@ -53,7 +53,7 @@ trig ──────────────┬──────────
 | `lfo` | ~180 | `Lfo` (+ `LfoMode`) |
 | `voice` | ~370 | `Voice` — повний тракт одного голосу, стерео-вихід |
 | `poly` | ~460 | `PolySynth<VOICES>` |
-| `tuning` | ~250 | `Tuning` — нота→частота: 12-TET (дефолт, побайтово = `midi_to_hz`), n-EDO, довільна Scala-шкала |
+| `tuning` | ~300 | `Tuning` — нота→частота: 12-TET (дефолт, побайтово = `midi_to_hz`), n-EDO, довільна Scala-шкала, Scala `.kbm` клавіатурна мапа (мертві клавіші) |
 | `ffi` | ~230 | C-ABI (+ `wasm32`-only статичне сховище `harmonic_wasm_*`) |
 | `verify` | ~150 | канонічний крос-платформний рендер + хеш (тест + ARM-звірка + wasm-звірка); `wasm32` експорти `hc_verify_*` |
 
@@ -186,10 +186,16 @@ struct PolyVoice { core: Voice, amp: Adsr, filt_env: Adsr, note: u8, velocity: f
 **Мікротюнінг** (`set_tuning` / `set_tuning_equal`): `note_hz(note)` дає
 частоту тоніки/ноти. Поки `tuning_default` (12-TET, A4=440) — це **побайтово**
 `midi_to_hz(note)` (тест `tuning::equal_440_is_bit_identical_to_midi_to_hz`).
-`Tuning` = період у центах + центи кожного ступеня + якір (ref-нота, ref-Hz);
-`hz(n)` = `ref_hz · 2^((period·⌊rel/N⌋ + degrees[rel mod N]) / 1200)`. Шкала
-діє з **наступного** note-on (звучні ноти не ретюняться). `06 §2` (шість
-тестів), `07 §20`.
+`Tuning` = період у центах + центи кожного ступеня + якір (ref-нота, ref-Hz) +
+**клавіатурна мапа** (`keymap[k]` = ступінь для `k`-ї клавіші патерну, `-1` =
+мертва клавіша; дефолт — тотожня мапа `k→k`, і тоді `hz` **побайтово** = старий
+лінійний шлях). `hz(n)` = `ref_hz · 2^((formal·⌊rel/M⌋ + degrees[keymap[rel mod
+M]] − c_ref) / 1200)`, де `c_ref` — центи якірної ноти (на дефолтному шляху
+рівно `0.0`, тож формула згортається до `ref_hz · 2^(c/1200)`). `Tuning::from_kbm`
+приймає Scala `.kbm`; `is_mapped(n)` / `PolySynth::note_is_mapped(n)` кажуть, чи
+клавіша жива — `note_on` мовчки ігнорує мертві (гейт за `tuning_default`, тож
+12-TET шлях недоторканий). Шкала діє з **наступного** note-on (звучні ноти не
+ретюняться). `06 §2`, `07 §20`.
 
 **Унісон** (`note_on`): `n = clamp(unison_count, 1, 8)` голосів на одну
 ноту, кожен `i` отримує:
@@ -306,7 +312,7 @@ struct HarmonicSynth {
     dly: [[f32;2]; HQ_LAT], dly_pos,    // PDC-компенсація коли HQ off
     analyzer: Box<SpectrumAnalyzer>,    // 30× band-pass Svf + 1 near-Nyquist BP (aliasing meter) + followers
     analyzer_bands: Arc<AnalyzerBands>, // [AtomicF32; 30] + alias_dbfs + voice_f0 + sample_rate + filter_cutoff + rolloff — audio→GUI, лок-free
-    tuning_sig: Option<(i32,i32,i32,u64)>, // (enum, root, ref×100, FNV Scala) — гейт ретюну в process
+    tuning_sig: Option<(i32,i32,i32,u64,u64)>, // (enum, root, ref×100, FNV Scala, FNV .kbm) — гейт ретюну в process
     mpe_timbre / poly_press: [f32; 128],// понотна експресія: MPE-тембр + поліафтертач на клавішу
 // + params: #[persist] morph_a / morph_b: Mutex<Vec<(id, norm)>>, morph_pos: Mutex<f32> — A/B знімки
 //           #[persist] seed: Mutex<u32> — останній seed рандомайзера (0 = немає)

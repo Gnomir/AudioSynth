@@ -21,8 +21,8 @@ On top: a resonant "Formant" hump (a second closed-form term), a character stage
 operator feedback, a ZDF state-variable filter, two ADSR envelopes, a per-voice
 LFO (retrigger / free-run, routed to brightness / pitch / cutoff / FM index),
 unison with a slow per-voice drift so the stack breathes, microtuning (just
-intonation / historical / equal-division scales), pitch bend and equal-power
-pan.
+intonation / historical / equal-division scales, Scala `.scl` + `.kbm` import),
+pitch bend and equal-power pan.
 
 > Cost is **Θ(log n)** per sample (one `rⁿ` by exponentiation-by-squaring),
 > **Θ(1)** at fixed partial count — measured **~26 M samples/s per clean voice**
@@ -37,8 +37,8 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 
 | Path | What |
 |---|---|
-| `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,ffi}.rs` + C ABI |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
+| `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi}.rs` + C ABI |
+| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala `.scl` / `.kbm` import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
@@ -48,9 +48,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 108 (90 unit + 18 integration); + `-- --ignored` drift test
+cargo test                                    # 114 (96 unit + 18 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 108/108 bit-identical on ARM (QEMU) + wasm32 (Node) + bare-metal compile-check
+bash scripts/cross-verify.sh                   # 114/114 bit-identical on ARM (QEMU) + wasm32 (Node) + bare-metal compile-check
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -68,8 +68,8 @@ nightly.
 
 ## Status
 
-108 `harmonic_core` tests pass (90 unit + 18 integration, 11 of them an
-adversarial RT-safety suite) plus 25 plugin tests, plus a `#[ignore]` long-run
+114 `harmonic_core` tests pass (96 unit + 18 integration, 11 of them an
+adversarial RT-safety suite) plus 30 plugin tests, plus a `#[ignore]` long-run
 drift test; `clippy` clean on `std`, `no_std` and nightly `portable-simd`. The
 whole core suite — including a whole-signal-path FNV-1a hash compared against an
 x86-64 reference — passes **bit-for-bit (delta 0.0)** on

@@ -7,9 +7,11 @@
 //! A [`Tuning`] describes any regular scale in the Scala sense: a repeat
 //! interval ("period", 1200 cents = an octave, but e.g. 1901.955 for
 //! Bohlen-Pierce), a list of scale-degree offsets in cents from the tonic, and
-//! a reference (MIDI note, frequency) the whole thing hangs off. The keyboard
-//! mapping is the simple linear one: MIDI note `ref_note` is degree 0, each
-//! higher key is the next degree, wrapping into the next period.
+//! a reference (MIDI note, frequency) the whole thing hangs off. By default the
+//! keyboard mapping is linear — MIDI note `ref_note` is degree 0, each higher
+//! key the next degree — but [`Tuning::from_kbm`] takes an explicit
+//! key → degree table (a Scala `.kbm` keyboard map), including "dead" keys
+//! that sound nothing.
 //!
 //! This is *fundamental* retuning — it moves where a played note sits. It does
 //! **not** (and with the closed form cannot) move an individual overtone off
@@ -37,6 +39,20 @@ pub struct Tuning {
     degrees: [f64; Self::MAX_DEGREES],
     /// Number of degrees per period. Clamped to `[1, MAX_DEGREES]`.
     n_degrees: u8,
+    /// Keyboard map: `keymap[k]` is the scale degree for the `k`-th key of the
+    /// repeating pattern; `-1` means the key sounds nothing ("x" in a Scala
+    /// `.kbm`). The default is the identity map (key `k` → degree `k`), with
+    /// `map_size == n_degrees`, `mid_note == ref_note`, `formal_cents ==
+    /// period_cents` — which makes [`Tuning::hz`] bit-identical to the linear
+    /// mapping this module has always used.
+    keymap: [i8; Self::MAX_DEGREES],
+    /// Keys before the map pattern repeats. Clamped to `[1, MAX_DEGREES]`.
+    map_size: u8,
+    /// MIDI note that gets `keymap[0]`.
+    mid_note: u8,
+    /// Cents added per full map repeat — the scale degree the `.kbm` file names
+    /// as the "formal octave". Clamped to `[1, 4800]`.
+    formal_cents: f64,
 }
 
 impl Tuning {
@@ -49,14 +65,36 @@ impl Tuning {
     /// treats this exactly like the pre-tuning `midi_to_hz` path (bit-identical).
     pub const EQUAL_440: Tuning = {
         let mut d = [0.0f64; Self::MAX_DEGREES];
-        // 0, 100, 200, … 1100 — exact in f64
+        let mut km = [0i8; Self::MAX_DEGREES];
+        // 0, 100, 200, … 1100 — exact in f64; identity key→degree map
         let mut k = 0;
         while k < 12 {
             d[k] = (k as f64) * 100.0;
             k += 1;
         }
-        Tuning { ref_hz: 440.0, ref_note: 69, period_cents: 1200.0, degrees: d, n_degrees: 12 }
+        let mut k = 0;
+        while k < Self::MAX_DEGREES {
+            km[k] = k as i8; // MAX_DEGREES = 64 ≤ i8::MAX
+            k += 1;
+        }
+        Tuning {
+            ref_hz: 440.0,
+            ref_note: 69,
+            period_cents: 1200.0,
+            degrees: d,
+            n_degrees: 12,
+            keymap: km,
+            map_size: 12,
+            mid_note: 69,
+            formal_cents: 1200.0,
+        }
     };
+
+    /// The identity key → degree map — `[0, 1, 2, …]`.
+    #[inline]
+    fn identity_keymap() -> [i8; Self::MAX_DEGREES] {
+        core::array::from_fn(|k| k as i8)
+    }
 
     /// n-tone equal temperament: `edo` equal steps of `1200 / edo` cents per
     /// octave, one step per MIDI key. `ref_note` (usually 69) sits at `ref_hz`.
@@ -76,6 +114,10 @@ impl Tuning {
             period_cents: 1200.0,
             degrees,
             n_degrees: n,
+            keymap: Self::identity_keymap(),
+            map_size: n,
+            mid_note: ref_note,
+            formal_cents: 1200.0,
         }
     }
 
@@ -101,7 +143,56 @@ impl Tuning {
             period_cents: clampf(period, 1.0, 4800.0),
             degrees,
             n_degrees,
+            keymap: Self::identity_keymap(),
+            map_size: n_degrees,
+            mid_note: ref_note,
+            formal_cents: clampf(period, 1.0, 4800.0),
         }
+    }
+
+    /// A scale plus an explicit Scala `.kbm` keyboard map.
+    ///
+    /// * `cents` / `period` — the scale, as for [`Tuning::from_cents`].
+    /// * `keymap[k]` — scale degree for the `k`-th key of the repeating pattern,
+    ///   or a **negative** value for a key that sounds nothing. Entries past
+    ///   `map_size` (clamped to `[1, MAX_DEGREES]`) are ignored; a degree past
+    ///   the scale is clamped to the last degree.
+    /// * `mid_note` — the MIDI note that gets `keymap[0]`.
+    /// * `formal_octave_cents` — cents added per full map repeat; pass the
+    ///   scale's period unless the `.kbm` names a different "formal octave"
+    ///   degree.
+    /// * `(ref_note, ref_hz)` — anchor: `ref_note` comes out at exactly `ref_hz`.
+    ///
+    /// If `ref_note` itself lands on a dead key the map is unusable and this
+    /// falls back to [`Tuning::from_cents`] (linear) with the same anchor.
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_kbm(
+        cents: &[f64],
+        period: f64,
+        keymap: &[i8],
+        map_size: usize,
+        mid_note: u8,
+        formal_octave_cents: f64,
+        ref_note: u8,
+        ref_hz: f64,
+    ) -> Tuning {
+        let mut base = Tuning::from_cents(cents, period, ref_hz, ref_note);
+        let ms = clampu(map_size.min(u8::MAX as usize) as u8, 1, Self::MAX_DEGREES as u8);
+        let mut km = [-1i8; Self::MAX_DEGREES];
+        let take = (ms as usize).min(keymap.len());
+        km[..take].copy_from_slice(&keymap[..take]);
+        base.keymap = km;
+        base.map_size = ms;
+        base.mid_note = mid_note;
+        base.formal_cents = clampf(formal_octave_cents, 1.0, 4800.0);
+        // guard the anchor — an unusable map degrades gracefully to linear
+        if base.cents_of(ref_note).is_none() {
+            base.keymap = Self::identity_keymap();
+            base.map_size = base.n_degrees;
+            base.mid_note = ref_note;
+            base.formal_cents = base.period_cents;
+        }
+        base
     }
 
     /// `true` iff this is exactly [`Tuning::EQUAL_440`] — the engine's fast path.
@@ -111,12 +202,15 @@ impl Tuning {
             || self.ref_note != 69
             || self.period_cents != 1200.0
             || self.n_degrees != 12
+            || self.map_size != 12
+            || self.mid_note != 69
+            || self.formal_cents != 1200.0
         {
             return false;
         }
         let mut k = 0usize;
         while k < 12 {
-            if self.degrees[k] != (k as f64) * 100.0 {
+            if self.degrees[k] != (k as f64) * 100.0 || self.keymap[k] != k as i8 {
                 return false;
             }
             k += 1;
@@ -124,19 +218,47 @@ impl Tuning {
         true
     }
 
+    /// Cents of `note` from `mid_note`'s degree-0 pitch, or `None` if the key is
+    /// unmapped ("dead").
+    #[inline]
+    fn cents_of(&self, note: u8) -> Option<f64> {
+        let ms = self.map_size.max(1) as i32;
+        let rel = note as i32 - self.mid_note as i32;
+        let repeat = rel.div_euclid(ms);
+        let pos = rel.rem_euclid(ms) as usize; // 0 ..< ms ≤ MAX_DEGREES
+        let deg = self.keymap[pos];
+        if deg < 0 {
+            return None;
+        }
+        let deg = (deg as usize).min(self.n_degrees.max(1) as usize - 1);
+        Some(repeat as f64 * self.formal_cents + self.degrees[deg])
+    }
+
+    /// `true` iff `note` is a live key under the current keyboard map (always
+    /// `true` for a linear tuning). A caller can skip `note_on` for a dead key.
+    #[inline]
+    pub fn is_mapped(&self, note: u8) -> bool {
+        self.cents_of(note).is_some()
+    }
+
     /// Frequency, in Hz, for a MIDI note under this scale. Always finite and
-    /// positive. Pitch bend / unison detune are applied by the caller on top.
+    /// positive. A dead key (see [`Tuning::is_mapped`]) still returns a sane
+    /// value so the contract holds — the caller should check `is_mapped` first.
+    /// Pitch bend / unison detune are applied by the caller on top.
     #[inline]
     pub fn hz(&self, note: u8) -> f64 {
-        let n = self.n_degrees.max(1) as i32;
-        let rel = note as i32 - self.ref_note as i32;
-        let period = rel.div_euclid(n);
-        let degree = rel.rem_euclid(n) as usize; // 0 ..< n ≤ MAX_DEGREES
-        let cents = period as f64 * self.period_cents + self.degrees[degree];
-        let hz = self.ref_hz * exp2(cents / 1200.0);
+        let c = match self.cents_of(note) {
+            Some(c) => c,
+            None => return 8.0,
+        };
+        // Anchor: `ref_note` comes out at exactly `ref_hz`. On the default
+        // (linear) path `cents_of(ref_note)` is a bit-exact `0.0`, so this
+        // reduces to the original `ref_hz · exp2(c / 1200)`.
+        let c_ref = self.cents_of(self.ref_note).unwrap_or(0.0);
+        let hz = self.ref_hz * exp2((c - c_ref) / 1200.0);
         // exp2 is finite for finite input and ref_hz is already sane, but a
-        // huge |cents| (only reachable via from_cents with wild input) could
-        // still overflow — keep the contract absolute.
+        // huge |cents| (only reachable via wild input) could still overflow —
+        // keep the contract absolute.
         if hz.is_finite() && hz > 0.0 {
             hz
         } else {
@@ -263,5 +385,72 @@ mod tests {
         let t432 = Tuning::equal(12, 432.0, 69);
         assert!((t432.hz(69) - 432.0).abs() < 1e-9);
         assert!((t432.hz(60) - midi_to_hz(60.0) * (432.0 / 440.0)).abs() < 1e-6);
+    }
+
+    // --- .kbm keyboard maps ---
+
+    #[test]
+    fn identity_kbm_is_bit_identical_to_the_linear_mapping() {
+        // an explicit identity map over a 12-EDO scale must render exactly the
+        // same bits as `equal(12, …)` on every key
+        let ji: Vec<f64> = (0..12).map(|k| k as f64 * 100.0).collect();
+        let km: Vec<i8> = (0..12).collect();
+        let kbm = Tuning::from_kbm(&ji, 1200.0, &km, 12, 69, 1200.0, 69, 440.0);
+        let lin = Tuning::equal(12, 440.0, 69);
+        for n in 0u8..=127 {
+            assert_eq!(kbm.hz(n).to_bits(), lin.hz(n).to_bits(), "note {n}");
+        }
+    }
+
+    #[test]
+    fn kbm_folds_a_seven_key_pattern_into_the_octave() {
+        // a 7-key repeating pattern picking the diatonic degrees out of a
+        // 12-EDO chromatic scale: C D E F G A B, then the pattern repeats an
+        // octave up. (No dead keys here — see `kbm_dead_keys_report_unmapped`.)
+        let chromatic: Vec<f64> = (0..12).map(|k| k as f64 * 100.0).collect();
+        let map: [i8; 7] = [0, 2, 4, 5, 7, 9, 11];
+        let t = Tuning::from_kbm(&chromatic, 1200.0, &map, 7, 60, 1200.0, 69, 440.0);
+
+        // key 60 → degree 0 (C4), key 67 (7 keys up) → one octave up
+        assert!((t.hz(67) / t.hz(60) - 2.0).abs() < 1e-9, "map period is not an octave");
+        // key 61 → degree 2 = a whole tone above C4 (200 cents). The ratio is
+        // two `exp2` calls divided, so it carries ~2× the kernel's approx error.
+        assert!((t.hz(61) / t.hz(60) - exp2(200.0 / 1200.0)).abs() < 1e-6);
+        // the reference note still comes out at exactly 440
+        assert!((t.hz(69) - 440.0).abs() < 1e-6, "ref note drifted: {}", t.hz(69));
+        for n in 0u8..=127 {
+            assert!(t.hz(n).is_finite() && t.hz(n) > 0.0);
+        }
+    }
+
+    #[test]
+    fn kbm_dead_keys_report_unmapped() {
+        // 12 keys, every other one dead
+        let scale: Vec<f64> = (0..6).map(|k| k as f64 * 200.0).collect();
+        let map: [i8; 12] = [0, -1, 1, -1, 2, -1, 3, -1, 4, -1, 5, -1];
+        let t = Tuning::from_kbm(&scale, 1200.0, &map, 12, 60, 1200.0, 60, 261.63);
+        assert!(t.is_mapped(60) && t.is_mapped(62) && t.is_mapped(64));
+        assert!(!t.is_mapped(61) && !t.is_mapped(63));
+        // a linear tuning maps every key
+        assert!(Tuning::EQUAL_440.is_mapped(61));
+    }
+
+    #[test]
+    fn hostile_kbm_still_produces_finite_positive_frequencies() {
+        let scale = [0.0, 400.0, 700.0];
+        let wild: [i8; 8] = [99, -1, -128, 2, 0, 50, -5, 1]; // degrees past the scale, huge negatives
+        let t = Tuning::from_kbm(&scale, 1200.0, &wild, 8, 200, f64::NAN, 200, f64::INFINITY);
+        for n in 0u8..=127 {
+            let h = t.hz(n);
+            assert!(h.is_finite() && h > 0.0, "note {n} → {h}");
+        }
+    }
+
+    #[test]
+    fn a_kbm_tuning_is_not_mistaken_for_the_default_fast_path() {
+        let chromatic: Vec<f64> = (0..12).map(|k| k as f64 * 100.0).collect();
+        let map: [i8; 7] = [0, 2, 4, 5, 7, 9, 11];
+        let t = Tuning::from_kbm(&chromatic, 1200.0, &map, 7, 69, 1200.0, 69, 440.0);
+        assert!(!t.is_equal_440(), "a non-identity keymap must disable the midi_to_hz short-circuit");
     }
 }
