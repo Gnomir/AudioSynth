@@ -194,12 +194,18 @@
   скриптованих сценаріїв; ганяти на послідовностях `{note event, param set,
   render}` проти інваріантів «скінченне, обмежене, пул відновлюється».
 - **Чому не зараз.** Детермінованого набору вистачає для наявного периметра
-  API; фазер має сенс, коли API розшириться (напр. C-ABI поліфонія) або
-  з'явиться CI, щоб ганяти його довго.
+  API. CI тепер є (`06 §8`) — блокер «нема де ганяти довго» знято; лишається
+  вибір інструмента (`proptest` — dev-dependency, не чіпає zero-dep контракт
+  постачання) і час на інваріанти. Наступний природний крок після цього.
 
-### CI-матриця
+### CI-матриця — базове зроблено
 
-- **Напрямок.** `.github/workflows`: `cargo test` (вкл. `tests/stress.rs`) +
-  clippy (3 конфіги) + `cross-verify.sh` (Docker+QEMU ARM) + `cargo xtask
-  validate` на кожен push.
-- **Чому не зараз.** Немає CI-інфраструктури; усе проганяється локально.
+- **Зроблено** (`.github/workflows/ci.yml`, 2026-09-07). На push / PR у `main`:
+  `harmonic_core` test + `tests/stress.rs` + обидва clippy-конфіги + `no_std`
+  build + wasm32 build & `verify-wasm.mjs` + compile-check bare-metal цілей;
+  nightly `portable-simd` clippy+build; `harmonic_synth` test + clippy + bundle
+  (артефакт Linux VST3/CLAP); `cross-verify.sh` (ARM QEMU) окремою джобою. Без
+  `cargo fmt --check` (стиль передує rustfmt 1.9).
+- **Що лишилось.** `cargo xtask validate` (pluginval + clap-validator) — тягне
+  зовнішні бінарники; додати кроком, що їх завантажує, або лишити локальним.
+  macOS / Windows раннери, коли з'являться збірки під ці платформи.

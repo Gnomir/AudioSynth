@@ -524,3 +524,13 @@ Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
 - **`geometric_partials_x4_simd`** на nightly перевірено лише що
   **компілюється** — числова еквівалентність скаляру не має окремого тесту
   (батч-версія `geometric_partials_x4` — має).
+
+## 8. CI
+
+`.github/workflows/ci.yml` (push / PR → `main`): `harmonic_core` test +
+обидва clippy-конфіги + `no_std` build + wasm32 build & `verify-wasm.mjs` +
+compile-check `thumbv7em`/`thumbv6m`/`riscv32imac`/`aarch64-none`; nightly
+`portable-simd` clippy+build; `harmonic_synth` test + clippy + `xtask bundle`
+(артефакт Linux); `cross-verify.sh` (ARM QEMU, окрема джоба). **Не в CI:**
+`cargo xtask validate` (pluginval / clap-validator тягнуть зовнішні бінарники —
+локально), `cargo fmt --check` (стиль передує rustfmt 1.9). `09`.

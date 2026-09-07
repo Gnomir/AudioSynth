@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+# NB: no `cargo fmt --check`. The checked-in style predates rustfmt 1.9's
+# stricter defaults and running fmt churns every file (see AGENTS.md and the
+# repo history). Style is matched by hand.
+
+jobs:
+  core:
+    name: harmonic_core · test + lint + wasm + bare-metal
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: harmonic_core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: >-
+            wasm32-unknown-unknown,
+            thumbv7em-none-eabihf,
+            thumbv6m-none-eabi,
+            riscv32imac-unknown-none-elf,
+            aarch64-unknown-none
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: harmonic_core
+
+      - name: test (std)
+        run: cargo test
+
+      - name: clippy (std)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: clippy (no_std, release)
+        run: cargo clippy --no-default-features --release -- -D warnings
+
+      - name: build (real no_std)
+        run: cargo build --no-default-features --release
+
+      - name: wasm32 build + bit-exact cross-check
+        run: |
+          cargo build --no-default-features --release --target wasm32-unknown-unknown
+          node scripts/verify-wasm.mjs
+
+      - name: bare-metal compile-check
+        run: |
+          for t in thumbv7em-none-eabihf thumbv6m-none-eabi \
+                   riscv32imac-unknown-none-elf aarch64-unknown-none; do
+            echo "::group::$t"
+            cargo build --no-default-features --release --target "$t"
+            echo "::endgroup::"
+          done
+
+  core-simd:
+    name: harmonic_core · nightly portable-simd
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: harmonic_core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: harmonic_core
+      - name: clippy (portable-simd)
+        run: cargo clippy --no-default-features --release --features portable-simd -- -D warnings
+      - name: build (portable-simd)
+        run: cargo build --no-default-features --release --features portable-simd
+
+  plugin:
+    name: harmonic_synth · test + lint + bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: harmonic_synth
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: harmonic_synth
+
+      - name: Linux GUI / audio dev libraries (nih_plug_vizia)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libasound2-dev libjack-jackd2-dev \
+            libx11-dev libxcb1-dev libxcb-icccm4-dev libxcb-dri2-0-dev \
+            libxcb-dri3-dev libxcb-present-dev libxcb-sync-dev \
+            libxcb-xfixes0-dev libxcb-xkb-dev libxcb-shape0-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libgl1-mesa-dev
+
+      - name: test
+        run: cargo test
+
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: bundle (VST3 + CLAP)
+        run: cargo xtask bundle harmonic_synth --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harmonic_synth-linux
+          path: harmonic_synth/target/bundled/
+          if-no-files-found: error
+
+  cross-verify:
+    name: harmonic_core · bit-exact on emulated ARM (QEMU)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: register QEMU / binfmt for arm64 + arm
+        run: docker run --rm --privileged tonistiigi/binfmt --install arm64,arm
+      - name: cross-verify.sh
+        working-directory: harmonic_core
+        run: bash scripts/cross-verify.sh

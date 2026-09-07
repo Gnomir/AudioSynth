@@ -53,9 +53,15 @@ cargo xtask bundle harmonic_synth --release    # → target/bundled/harmonic_syn
 cargo xtask validate                            # build + pluginval (VST3) + clap-validator (CLAP)
 ```
 
-There is **no CI** — run the lints and tests yourself. `cargo xtask validate`
-(or `scripts/validate.{ps1,sh}`) covers state recall, block-size / sample-rate
-changes, and allocation checks via `pluginval` once it's on PATH.
+CI (`.github/workflows/ci.yml`) runs on push / PR to `main`: `harmonic_core`
+test + both clippy configs + `no_std` build + wasm32 build & `verify-wasm.mjs` +
+bare-metal compile-check (thumbv7em / thumbv6m / riscv32imac / aarch64-none),
+nightly `portable-simd` clippy+build, `harmonic_synth` test + clippy + bundle
+(uploads the Linux VST3/CLAP), and `cross-verify.sh` (ARM QEMU bit-exactness) as
+its own job. **No `cargo fmt --check`** — see *Code style*. `cargo xtask
+validate` (pluginval + clap-validator) is **not** in CI — run it locally; it
+covers state recall, block-size / sample-rate changes and allocation checks.
+Still run the lints and tests yourself before pushing.
 
 ## Code style
 
