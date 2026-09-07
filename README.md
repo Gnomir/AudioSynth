@@ -39,7 +39,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi,verify}.rs` + C ABI; also builds to `wasm32` (`contrib/wasm-demo/`) |
 | `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala `.scl` / `.kbm` import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
-| `harmonic_synth/license/` | `harmonic_license` — watermarked Ed25519 key-file format, verified offline (no dongle, no activation server). `cargo xtask keygen` issues them. |
+| `harmonic_synth/license/` | `harmonic_license` — watermarked Ed25519 key-file format, verified offline (no dongle, no activation server). Drives the enforced free-**Core** / paid-**Studio** split; `cargo xtask keygen` issues keys. |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |

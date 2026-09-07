@@ -460,7 +460,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `tuning::root_name_round_trips_and_is_lenient` | `root_from_name`: кожне ім'я з `ROOT_NAMES` парситься назад у свій індекс; толерантний вхід (` c# `, `Db`, `cb→11`, `Cs`); `""`/`H`/`C##`/`7`/`#` → `None` без паніки. Інверсія `value_to_string` для `Tune Root` (вимога `clap-validator param-conversions`) |
 | `load_license_honours_the_explicit_path_and_verifies_it` | `HARMONIC_SYNTH_LICENSE` → `SAMPLE_LICENSE.key` → `load_license()` повертає верифіковану ліцензію (`tier == "studio"`, вотермарк `name <email>`); шлях-оверрайд працює, читання поза аудіо-потоком |
 | `every_core_lock_names_a_real_parameter` | кожен `#[id]` у `CORE_LOCKS` (список Studio-only параметрів для free Core тіру) — реальний параметр; без дублікатів. `product/GO_TO_MARKET_RESEARCH.md §2` |
-| `tier_is_studio_by_default_and_core_only_when_forced` | `HarmonicSynth::tier()` = `Studio` без ліцензії, поки `!TIER_ENFORCED`; `force_core` → `Core`. Канарка: `TIER_ENFORCED == false` (гейт вимкнений у репо — фліп потребує живого прогону в DAW) |
+| `tier_follows_the_licence_when_the_split_is_enforced` | `TIER_ENFORCED == true`: `SAMPLE_LICENSE.key` через `$HARMONIC_SYNTH_LICENSE` → `HarmonicSynth::tier() == Studio`; `force_core` перекриває навіть валідну ліцензію → `Core`; без ключа (чиста машина) → `Core` |
 
 ---
 
@@ -474,7 +474,12 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | Формат | Утиліта | Результат |
 |---|---|---|
 | VST3 | `pluginval --strictness-level 8 --validate-in-process` | **SUCCESS — повний прохід**, включно з `Editor` / `Open editor whilst processing` / `Editor Automation` (редактор `nih_plug_vizia`) та Plugin state / state restoration |
-| CLAP | `clap-validator` (без `--exclude`) | **35 / 35, 0 failed, 0 warnings** (9 skipped — N/A: note-ports тощо) |
+| CLAP | `clap-validator` (без `--exclude`) | **35 / 35, 0 failed, 0 warnings** (9 skipped — N/A: note-ports тощо). `param-conversions` пройшов після інверсії `Tune Root` (раніше падав) |
+
+Обидва прогони — з `TIER_ENFORCED = true` без ключа, тобто **редактор і аудіо-шлях
+у режимі Core**: сірі Studio-рядки й гейтовані параметри не ламають дерево
+вигляду vizia, стилі, автоматизацію чи обробку. Живий прогін у ≥3 DAW і
+візуальна перевірка сірого редактора лишаються за людиною (`09` / `11`).
 
 CLAP `35/35` вимагає локального `[patch]` на `harmonic_synth/vendor/nih-plug/`
 — пропатченої копії pinned-дерева, що усуває два баги `ext_state_load`

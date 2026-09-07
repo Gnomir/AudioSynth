@@ -110,11 +110,15 @@ Still run the lints and tests yourself before pushing.
   until the user picks a real product name / domain (`product/COMMERCIAL_BRIEF.md`
   "Before launch") — changing `VST3_CLASS_ID` or `CLAP_ID` after release breaks
   every saved project that references the plugin.
-- `TIER_ENFORCED` in `harmonic_synth/src/lib.rs` is `false` — the Core/Studio
-  feature gate (`Tier` / `CORE_LOCKS`) is built but every build ships as Studio.
-  Do not flip it without the user's go-ahead; flipping it also means a live-DAW
-  pass (the gated audio path / greyed editor aren't unit-testable) and updating
-  `tier_is_studio_by_default_and_core_only_when_forced`.
+- The **Core/Studio split is enforced** (`TIER_ENFORCED = true` in
+  `harmonic_synth/src/lib.rs`): an unlicensed build is the free `Core` tier
+  (`CORE_LOCKS` held at neutral, microtuning forced to 12-TET); a valid key file
+  unlocks `Studio`. **To run a Studio build in dev / a DAW:** set
+  `HARMONIC_SYNTH_LICENSE=<repo>/harmonic_synth/license/SAMPLE_LICENSE.key`, or
+  drop that file at the `load_license` config path. The gated audio path and the
+  greyed editor aren't unit-testable (nih-plug walls off the host param
+  setters) — a real change to the gate needs a pluginval-s8 pass plus eyes in a
+  DAW.
 
 ## Git / commit & PR rules
 
