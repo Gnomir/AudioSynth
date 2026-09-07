@@ -19,9 +19,9 @@ use crate::{CharParams, FilterMode, LfoMode, LfoShape, PolySynth};
 
 /// Frames the verification render produces (stereo). A [`render_verification`]
 /// buffer must hold `2 ×` this many `f32`s.
-pub const VERIFY_FRAMES: usize = 4_800; // 100 ms @ 48 kHz
+pub const VERIFY_FRAMES: usize = 4_800;
 
-/// FNV-1a hash of a correct [`render_verification`] output. Produced on
+/// FNV-1a hash of a correct [`render_verification`] output (48 kHz). Produced on
 /// `x86_64-pc-windows-msvc` (rustc 1.97.1, release) and confirmed identical
 /// under QEMU on `aarch64-unknown-linux-gnu` / `armv7-unknown-linux-gnueabihf`
 /// and in `wasm32` under Node (`scripts/verify-wasm.mjs`).
@@ -30,12 +30,17 @@ pub const VERIFY_FRAMES: usize = 4_800; // 100 ms @ 48 kHz
 /// cross_platform_bit_exact -- --nocapture`.
 pub const VERIFY_HASH: u64 = 0xc7f7_86d4_0586_da75;
 
+/// Same as [`VERIFY_HASH`] for the pass rendered at **96 kHz** — proof that the
+/// "identical on any machine at any sample rate" claim holds at more than one
+/// rate. Regenerated the same way.
+pub const VERIFY_HASH_96K: u64 = 0xfd83_d6f3_91f8_2fb1;
+
 /// Render the fixed verification pass into `out` — frame-interleaved `L, R`;
 /// `out.len()` must be `>= VERIFY_FRAMES * 2`. Deterministic, no allocation,
 /// no `std`. Any single-ULP divergence anywhere changes [`verify_hash`] of the
-/// result.
-pub fn render_verification(out: &mut [f32]) {
-    let mut synth: PolySynth<8> = PolySynth::new(48_000.0);
+/// result. [`render_verification`] fixes the rate at 48 kHz.
+pub fn render_verification_at(sample_rate: f64, out: &mut [f32]) {
+    let mut synth: PolySynth<8> = PolySynth::new(sample_rate);
 
     synth.set_rolloff(0.93);
     synth.set_gain(0.8);
@@ -79,6 +84,12 @@ pub fn render_verification(out: &mut [f32]) {
         out[i * 2] = l;
         out[i * 2 + 1] = r;
     }
+}
+
+/// [`render_verification_at`] at 48 kHz — the canonical pass behind
+/// [`VERIFY_HASH`].
+pub fn render_verification(out: &mut [f32]) {
+    render_verification_at(48_000.0, out);
 }
 
 /// FNV-1a over the raw little-endian bits of every `f32` in `samples`, in order.

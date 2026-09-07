@@ -1212,6 +1212,142 @@ mod tests {
         assert!(peak(&mut s, 48_000) <= 1.5);
     }
 
+    #[test]
+    fn zero_latency_hq_off_and_exactly_16_samples_hq_on() {
+        // The compile-time promise.
+        assert_eq!(PolySynth::<8>::HQ_LATENCY, 16, "HQ bus latency is not exactly 16");
+        assert_eq!(crate::Voice::HQ_LATENCY, 3, "standalone Voice HQ latency is not 3");
+
+        let cfg = |s: &mut PolySynth<8>| {
+            s.set_gain(0.9);
+            s.set_rolloff(0.9);
+            s.set_free_running(true);
+            s.set_amp_adsr(0.002, 0.02, 1.0, 0.05);
+        };
+
+        // HQ off is bit-identical whether or not HQ was ever toggled — proves
+        // turning it off fully removes the path, no residual delay line.
+        let render = |touch_hq: bool| -> Vec<u32> {
+            let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+            cfg(&mut s);
+            if touch_hq {
+                s.set_hq(true);
+                s.set_hq(false);
+            }
+            s.note_on(57, 1.0);
+            (0..2_000).map(|_| s.render_sample()[0].to_bits()).collect()
+        };
+        assert_eq!(render(false), render(true), "toggling HQ off left a delay / path change");
+
+        // HQ on shifts the output by exactly HQ_LATENCY samples: cross-correlate
+        // a steady tone rendered both ways and the lag that lines them up is 16.
+        let steady = |hq: bool| -> Vec<f64> {
+            let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+            cfg(&mut s);
+            s.set_hq(hq);
+            s.note_on(57, 1.0);
+            for _ in 0..3_000 {
+                s.render_sample(); // let the amp env + filters settle
+            }
+            (0..2_048).map(|_| s.render_sample()[0] as f64).collect()
+        };
+        let off = steady(false);
+        let on = steady(true);
+        let (mut best_lag, mut best) = (0usize, f64::MIN);
+        for lag in 0..40 {
+            let c: f64 = (0..off.len() - 40).map(|i| off[i] * on[i + lag]).sum();
+            if c > best {
+                best = c;
+                best_lag = lag;
+            }
+        }
+        assert_eq!(best_lag, PolySynth::<8>::HQ_LATENCY, "measured HQ delay {best_lag}, want 16");
+    }
+
+    #[test]
+    fn render_is_block_size_independent_bit_for_bit() {
+        // "Freeze == realtime == yesterday's render": a scripted pass must hash
+        // the same whether the host hands us the whole thing at once, 512-frame
+        // blocks, 64-frame blocks, or one sample at a time. Events land at the
+        // same *absolute* frame regardless of where the block boundaries fall.
+        const N: usize = 3_000;
+        type Evt = (usize, fn(&mut PolySynth<8>));
+        let events: [Evt; 6] = [
+            (0, |s| s.note_on(45, 0.9)),
+            (411, |s| s.note_on(52, 0.6)),
+            (900, |s| s.set_pitch_bend(2.0)),
+            (1_337, |s| s.note_on(59, 1.0)),
+            (1_800, |s| s.note_off(45)),
+            (2_222, |s| s.note_off(52)),
+        ];
+
+        let configure = |s: &mut PolySynth<8>| {
+            s.set_gain(0.8);
+            s.set_rolloff(0.9);
+            s.set_character(CharParams { drive: 0.5, fold: 0.3, ..CharParams::CLEAN });
+            s.set_fm(1.5, 0.4);
+            s.set_unison(3, 10.0, 0.6, 0.5);
+            s.set_amp_adsr(0.004, 0.06, 0.5, 0.1);
+            s.set_filter(FilterMode::Low, 1_800.0, 0.6, 2.0);
+            s.set_lfo(6.0, LfoShape::Sine, LfoMode::FreeRun, 0.2, 12.0, 1.0, 0.3);
+        };
+
+        // block-rendered with a given chunk size, events applied at boundaries
+        let render_blocked = |chunk: usize| -> Vec<(u32, u32)> {
+            let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+            configure(&mut s);
+            let mut out = Vec::with_capacity(N);
+            let (mut l, mut r) = (vec![0.0f32; chunk], vec![0.0f32; chunk]);
+            let mut done = 0;
+            while done < N {
+                for &(at, f) in &events {
+                    if at == done {
+                        f(&mut s);
+                    }
+                }
+                // …but events strictly inside this block still have to fire at
+                // their exact frame, so split the block at every event.
+                let mut next_evt = N;
+                for &(at, _) in &events {
+                    if at > done && at < next_evt {
+                        next_evt = at;
+                    }
+                }
+                let this = chunk.min(next_evt - done).min(N - done);
+                s.render_block(&mut l[..this], &mut r[..this]);
+                for i in 0..this {
+                    out.push((l[i].to_bits(), r[i].to_bits()));
+                }
+                done += this;
+            }
+            out
+        };
+
+        // sample-by-sample reference
+        let mut sref: PolySynth<8> = PolySynth::new(48_000.0);
+        configure(&mut sref);
+        let mut reference = Vec::with_capacity(N);
+        for i in 0..N {
+            for &(at, f) in &events {
+                if at == i {
+                    f(&mut sref);
+                }
+            }
+            let [l, r] = sref.render_sample();
+            reference.push((l.to_bits(), r.to_bits()));
+        }
+
+        for chunk in [7, 64, 256, 512, N] {
+            assert_eq!(
+                render_blocked(chunk),
+                reference,
+                "render_block(chunk = {chunk}) diverged from the render_sample loop"
+            );
+        }
+        // and the reference actually made sound
+        assert!(reference.iter().any(|&(l, _)| f32::from_bits(l).abs() > 0.02));
+    }
+
     /// `|X(f)|` of `x` at absolute frequency `f` Hz, normalised by `N` — a
     /// single-bin Goertzel-style DFT (no FFT dependency), matching
     /// `tests/spectrum.rs::dft_bin_mag`.
