@@ -110,6 +110,11 @@ Still run the lints and tests yourself before pushing.
   until the user picks a real product name / domain (`product/COMMERCIAL_BRIEF.md`
   "Before launch") — changing `VST3_CLASS_ID` or `CLAP_ID` after release breaks
   every saved project that references the plugin.
+- `TIER_ENFORCED` in `harmonic_synth/src/lib.rs` is `false` — the Core/Studio
+  feature gate (`Tier` / `CORE_LOCKS`) is built but every build ships as Studio.
+  Do not flip it without the user's go-ahead; flipping it also means a live-DAW
+  pass (the gated audio path / greyed editor aren't unit-testable) and updating
+  `tier_is_studio_by_default_and_core_only_when_forced`.
 
 ## Git / commit & PR rules
 

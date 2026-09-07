@@ -1,7 +1,7 @@
 # 06 — Верифікація
 
 Що перевірено, як, і якими числами. Статус: **114 тестів `harmonic_core`** (96 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
-`tests/stress.rs`) + **31 у плагіні** + **9 у `harmonic_license`** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону, ліцензійний keyfile) + 1 `#[ignore]`
+`tests/stress.rs`) + **34 у плагіні** + **9 у `harmonic_license`** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону, ліцензійний keyfile) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
 + `armv7-hf` під QEMU (§6).
@@ -423,7 +423,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `malformed_files_are_rejected_not_panicked` | порожній / без `product` / без email / чужий product / нехекс-підпис / порожнє ім'я → `Err`, без паніки |
 | `hex_round_trips` / `field_needs_a_real_separator` / `watermark_without_email` | хелпери: hex-кодек, парсер полів (`name` не матчить `name_of_thing`), вотермарк без email = лише ім'я |
 
-### `harmonic_synth` — плагінні (31, `cargo test -p harmonic_synth`)
+### `harmonic_synth` — плагінні (34, `cargo test -p harmonic_synth`)
 
 | Тест | Що доводить |
 |---|---|
@@ -457,7 +457,10 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `tuning::build_with_kbm_falls_back_to_a_chromatic_scale_when_no_scl` | `.kbm` без `.scl` → мапить на 12-EDO хроматику; 6-й запис патерну → хроматичний ступінь 3 (300 ц), реф = 440, мертва клавіша скінченна |
 | `tuning::malformed_kbm_is_rejected_not_panicked` | порожній / обрізаний / розмір 0 / реф-частота 0 / усі клавіші мертві / нечисловий запис → `Err`, без паніки; `build_with_kbm("", "")` / `("", "garbage")` → `None` |
 | `tuning::kbm_formal_octave_degree_sets_the_repeat_interval` | «формальна октава» = ступінь 2 (чиста квінта): один повний повтор мапи вгору = `3:2`, не `2:1` |
+| `tuning::root_name_round_trips_and_is_lenient` | `root_from_name`: кожне ім'я з `ROOT_NAMES` парситься назад у свій індекс; толерантний вхід (` c# `, `Db`, `cb→11`, `Cs`); `""`/`H`/`C##`/`7`/`#` → `None` без паніки. Інверсія `value_to_string` для `Tune Root` (вимога `clap-validator param-conversions`) |
 | `load_license_honours_the_explicit_path_and_verifies_it` | `HARMONIC_SYNTH_LICENSE` → `SAMPLE_LICENSE.key` → `load_license()` повертає верифіковану ліцензію (`tier == "studio"`, вотермарк `name <email>`); шлях-оверрайд працює, читання поза аудіо-потоком |
+| `every_core_lock_names_a_real_parameter` | кожен `#[id]` у `CORE_LOCKS` (список Studio-only параметрів для free Core тіру) — реальний параметр; без дублікатів. `product/GO_TO_MARKET_RESEARCH.md §2` |
+| `tier_is_studio_by_default_and_core_only_when_forced` | `HarmonicSynth::tier()` = `Studio` без ліцензії, поки `!TIER_ENFORCED`; `force_core` → `Core`. Канарка: `TIER_ENFORCED == false` (гейт вимкнений у репо — фліп потребує живого прогону в DAW) |
 
 ---
 
