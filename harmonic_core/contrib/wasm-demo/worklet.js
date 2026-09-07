@@ -1,27 +1,25 @@
-// AudioWorkletProcessor that runs one harmonic_core `Voice` through the C ABI.
+// AudioWorkletProcessor: a small polyphonic synth on top of harmonic_core.
 //
 // The engine is `no_std` + zero-dependency. The main thread fetches
 // `harmonic_core.wasm` (built for `wasm32-unknown-unknown`) and hands the bytes
 // in via `processorOptions` — an AudioWorkletGlobalScope has no `fetch`. This
-// processor instantiates it, takes the module's static voice slot and scratch
-// buffer (`harmonic_wasm_*` — a no_std cdylib has no allocator), and calls
-// `harmonic_voice_process` once per render quantum. The attack/release gate
-// lives here in JS, because the core `Voice` has no amplitude envelope — that is
-// the host's job, exactly as it is on a Daisy Seed.
+// processor instantiates it and takes the module's static voice pool
+// (`harmonic_wasm_voice_at` — a no_std cdylib has no allocator). Each note gets
+// one `Voice` via the C ABI; **voice allocation, stealing and the per-voice
+// attack/release gate all live here in JS**, because that is the host's job —
+// identical in this page and in a Daisy Seed firmware.
 
-class HarmonicVoiceProcessor extends AudioWorkletProcessor {
+class HarmonicSynthProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     this.ready = false;
-    this.gateTarget = 0; // 0..1, set by note on/off messages
-    this.gate = 0;
-    this.attackCoeff = 0;
-    this.releaseCoeff = 0;
-
+    this.patch = { waveform: 0, brightness: 0.86, partials: 600, formant: 0, hq: 0 };
+    this.filter = [1, 6500, 0.18]; // mode, cutoff, resonance
+    this.lfo = [5, 0, 0];          // rate, vibrato cents, cutoff octaves
+    this.age = 0;
     this.port.onmessage = (e) => this._onMessage(e.data);
 
-    const bytes = options?.processorOptions?.wasm;
-    WebAssembly.instantiate(bytes, {})
+    WebAssembly.instantiate(options?.processorOptions?.wasm, {})
       .then((r) => this._boot(r))
       .catch((err) => this.port.postMessage({ type: 'error', message: String(err) }));
   }
@@ -29,98 +27,95 @@ class HarmonicVoiceProcessor extends AudioWorkletProcessor {
   _boot({ instance }) {
     const ex = instance.exports;
     this.ex = ex;
-    this.voice = ex.harmonic_wasm_voice();
     this.scratch = ex.harmonic_wasm_scratch();
-    ex.harmonic_voice_init(this.voice, sampleRate);
-    ex.harmonic_voice_set_gain(this.voice, 0.85);
-
-    // ~4 ms attack, ~120 ms release on the JS gate
-    this.attackCoeff = 1 - Math.exp(-1 / (0.004 * sampleRate));
-    this.releaseCoeff = 1 - Math.exp(-1 / (0.12 * sampleRate));
-
+    this.pool = ex.harmonic_wasm_pool_size();
+    this.voices = [];
+    for (let i = 0; i < this.pool; i++) {
+      const ptr = ex.harmonic_wasm_voice_at(i);
+      ex.harmonic_voice_init(ptr, sampleRate);
+      ex.harmonic_voice_set_gain(ptr, 0.32); // headroom for chords
+      this.voices.push({ ptr, note: null, gate: 0, gateTarget: 0, age: 0 });
+    }
+    this.atkC = 1 - Math.exp(-1 / (0.004 * sampleRate));
+    this.relC = 1 - Math.exp(-1 / (0.13 * sampleRate));
+    this._applyAll();
     this.ready = true;
-    this.port.postMessage({ type: 'ready' });
+    this.port.postMessage({ type: 'ready', pool: this.pool });
   }
 
   _onMessage(m) {
     if (!this.ready) return;
-    const ex = this.ex;
-    const v = this.voice;
-    switch (m.type) {
-      case 'noteOn':
-        ex.harmonic_voice_set_frequency(v, m.hz);
-        if (this.gateTarget === 0) ex.harmonic_voice_reset(v);
-        this.gateTarget = 1;
-        break;
-      case 'noteOff':
-        this.gateTarget = 0;
-        break;
-      case 'param':
-        this._param(m.name, m.value);
-        break;
-    }
+    if (m.type === 'noteOn') this._noteOn(m.hz, m.note);
+    else if (m.type === 'noteOff') this._noteOff(m.note);
+    else if (m.type === 'allOff') this.voices.forEach((v) => { v.gateTarget = 0; v.note = null; });
+    else if (m.type === 'param') { this._stashParam(m.name, m.value); this._applyAll(); }
   }
 
-  _param(name, value) {
-    const ex = this.ex;
-    const v = this.voice;
+  _noteOn(hz, note) {
+    // free voice → oldest releasing → oldest overall
+    let v = this.voices.find((x) => x.gateTarget === 0 && x.gate < 0.001);
+    if (!v) v = this.voices.filter((x) => x.gateTarget === 0).sort((a, b) => a.age - b.age)[0];
+    if (!v) v = this.voices.slice().sort((a, b) => a.age - b.age)[0];
+    v.note = note;
+    v.age = ++this.age;
+    v.gateTarget = 1;
+    this.ex.harmonic_voice_set_frequency(v.ptr, hz);
+    if (v.gate < 0.001) this.ex.harmonic_voice_reset(v.ptr);
+  }
+
+  _noteOff(note) {
+    for (const v of this.voices) if (v.note === note && v.gateTarget === 1) { v.gateTarget = 0; v.note = null; }
+  }
+
+  _stashParam(name, value) {
     switch (name) {
-      case 'brightness': ex.harmonic_voice_set_rolloff(v, value); break;
-      case 'partials':   ex.harmonic_voice_set_partial_limit(v, value); break;
-      case 'formant':    ex.harmonic_voice_set_formant(v, value); break;
-      case 'waveform':   ex.harmonic_voice_set_waveform(v, value | 0); break;
-      case 'hq':         ex.harmonic_voice_set_hq(v, value ? 1 : 0); break;
-      case 'filterMode': this._filterMode = value | 0; this._pushFilter(); break;
-      case 'cutoff':     this._cutoff = value; this._pushFilter(); break;
-      case 'resonance':  this._resonance = value; this._pushFilter(); break;
-      case 'lfoRate':    this._lfoRate = value; this._pushLfo(); break;
-      case 'lfoVibrato': this._lfoVibrato = value; this._pushLfo(); break;
-      case 'lfoCutoff':  this._lfoCutoff = value; this._pushLfo(); break;
+      case 'brightness': case 'partials': case 'formant': this.patch[name] = value; break;
+      case 'waveform': this.patch.waveform = value | 0; break;
+      case 'hq': this.patch.hq = value ? 1 : 0; break;
+      case 'filterMode': this.filter[0] = value | 0; break;
+      case 'cutoff': this.filter[1] = value; break;
+      case 'resonance': this.filter[2] = value; break;
+      case 'lfoRate': this.lfo[0] = value; break;
+      case 'lfoVibrato': this.lfo[1] = value; break;
+      case 'lfoCutoff': this.lfo[2] = value; break;
     }
   }
 
-  _pushFilter() {
-    this.ex.harmonic_voice_set_filter(
-      this.voice,
-      this._filterMode ?? 1,
-      this._cutoff ?? 6000,
-      this._resonance ?? 0.2,
-    );
-  }
-
-  _pushLfo() {
-    this.ex.harmonic_voice_set_lfo(
-      this.voice,
-      this._lfoRate ?? 5,
-      0, // sine
-      1, // free-run
-      0,
-      this._lfoVibrato ?? 0,
-      this._lfoCutoff ?? 0,
-      0,
-    );
+  _applyAll() {
+    const ex = this.ex, p = this.patch, f = this.filter, l = this.lfo;
+    for (const v of this.voices) {
+      ex.harmonic_voice_set_waveform(v.ptr, p.waveform);
+      ex.harmonic_voice_set_rolloff(v.ptr, p.brightness);
+      ex.harmonic_voice_set_partial_limit(v.ptr, p.partials);
+      ex.harmonic_voice_set_formant(v.ptr, p.formant);
+      ex.harmonic_voice_set_hq(v.ptr, p.hq);
+      ex.harmonic_voice_set_filter(v.ptr, f[0], f[1], f[2]);
+      ex.harmonic_voice_set_lfo(v.ptr, l[0], 0, 1, 0, l[1], l[2], 0);
+    }
   }
 
   process(_inputs, outputs) {
-    const out = outputs[0];
-    const frames = out[0].length;
     if (!this.ready) return true;
+    const out = outputs[0];
+    const L = out[0], R = out[1] ?? out[0];
+    const frames = L.length;
+    L.fill(0); R.fill(0);
 
-    this.ex.harmonic_voice_process(this.voice, this.scratch, frames);
-    const buf = new Float32Array(this.ex.memory.buffer, this.scratch, frames * 2);
-
-    let g = this.gate;
-    const coeff = this.gateTarget > g ? this.attackCoeff : this.releaseCoeff;
-    const L = out[0];
-    const R = out[1] ?? out[0];
-    for (let i = 0; i < frames; i++) {
-      g += coeff * (this.gateTarget - g);
-      L[i] = buf[i * 2] * g;
-      R[i] = buf[i * 2 + 1] * g;
+    for (const v of this.voices) {
+      if (v.gate < 1e-4 && v.gateTarget === 0) continue;
+      this.ex.harmonic_voice_process(v.ptr, this.scratch, frames);
+      const src = new Float32Array(this.ex.memory.buffer, this.scratch, frames * 2);
+      let g = v.gate;
+      const c = v.gateTarget > g ? this.atkC : this.relC;
+      for (let i = 0; i < frames; i++) {
+        g += c * (v.gateTarget - g);
+        L[i] += src[i * 2] * g;
+        R[i] += src[i * 2 + 1] * g;
+      }
+      v.gate = g;
     }
-    this.gate = g;
     return true;
   }
 }
 
-registerProcessor('harmonic-voice', HarmonicVoiceProcessor);
+registerProcessor('harmonic-synth', HarmonicSynthProcessor);

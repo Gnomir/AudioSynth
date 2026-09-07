@@ -313,11 +313,12 @@ pub unsafe extern "C" fn harmonic_voice_current_frequency(ptr: *const Voice) -> 
 ///
 /// A `no_std` `cdylib` on `wasm32-unknown-unknown` has no global allocator, so a
 /// browser / Node integrator cannot `malloc` a voice or an output buffer. These
-/// hand back fixed static storage instead — pass [`harmonic_wasm_voice`] to
-/// [`harmonic_voice_init`] once and to every other `harmonic_voice_*` call, and
-/// render into [`harmonic_wasm_scratch`], reading the result straight out of
-/// wasm linear memory. Single voice, single-threaded — exactly the shape an
-/// `AudioWorkletProcessor` needs (`contrib/wasm-demo/`).
+/// hand back fixed static storage instead — [`harmonic_wasm_voice`] (or
+/// [`harmonic_wasm_voice_at`] for a pool of up to [`harmonic_wasm_pool_size`]),
+/// each passed once to [`harmonic_voice_init`] then to every other
+/// `harmonic_voice_*` call — and render into [`harmonic_wasm_scratch`], reading
+/// the result straight out of wasm linear memory. Polyphony and voice stealing
+/// stay the host's job (in JS here, in firmware on a Daisy) — `contrib/wasm-demo/`.
 #[cfg(target_arch = "wasm32")]
 mod wasm_mem {
     use super::Voice;
@@ -329,12 +330,28 @@ mod wasm_mem {
     // calls below, in sequence, from one audio callback.
     unsafe impl<T> Sync for Slot<T> {}
 
-    static VOICE: Slot<MaybeUninit<Voice>> = Slot(UnsafeCell::new(MaybeUninit::uninit()));
+    /// Static voices available to the browser demo. One hand on a keyboard.
+    pub const POOL: usize = 8;
+    #[allow(clippy::declare_interior_mutable_const)]
+    const UNINIT: Slot<MaybeUninit<Voice>> = Slot(UnsafeCell::new(MaybeUninit::uninit()));
+    static VOICES: [Slot<MaybeUninit<Voice>>; POOL] = [UNINIT; POOL];
 
-    /// Pointer to the module's single static [`Voice`] slot.
+    /// Number of static voice slots ([`harmonic_wasm_voice_at`] takes `0..this`).
+    #[no_mangle]
+    pub extern "C" fn harmonic_wasm_pool_size() -> usize {
+        POOL
+    }
+
+    /// Pointer to static voice slot `i` (`i >= POOL` clamps to the last).
+    #[no_mangle]
+    pub extern "C" fn harmonic_wasm_voice_at(i: usize) -> *mut Voice {
+        VOICES[if i < POOL { i } else { POOL - 1 }].0.get().cast()
+    }
+
+    /// Pointer to static voice slot `0` — the mono shorthand.
     #[no_mangle]
     pub extern "C" fn harmonic_wasm_voice() -> *mut Voice {
-        VOICE.0.get().cast()
+        harmonic_wasm_voice_at(0)
     }
 
     /// Frames the scratch buffer holds (interleaved stereo → `2 ×` this `f32`s).

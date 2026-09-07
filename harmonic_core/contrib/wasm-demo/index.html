@@ -54,7 +54,9 @@
 <p class="sub">
   This is <code>wasm32-unknown-unknown</code>, no_std, zero-dependency — the byte-for-byte
   identical DSP that ships in the VST3/CLAP plugin and cross-compiles to a Cortex-M board.
-  One <code>Voice</code>, driven through the C ABI from an <code>AudioWorklet</code>.
+  8 <code>Voice</code>s through the C ABI; note allocation, stealing and the
+  amp gate are a few lines of JS in the <code>AudioWorklet</code> — the host's
+  job, same as in firmware.
 </p>
 
 <div class="card">
@@ -135,7 +137,7 @@ const NOTES = [ // C4..C5
   ['G','G',392.00], ['H','A',440.00], ['J','B',493.88], ['K','C',523.25],
 ];
 
-let ctx, node, ready = false, held = null;
+let ctx, node, ready = false;
 const $ = (id) => document.getElementById(id);
 
 function bindSlider(id, fmt, param, map = (x) => x) {
@@ -168,39 +170,44 @@ $('hq').addEventListener('click', (e) => {
   node?.port.postMessage({ type: 'param', name: 'hq', value: on });
 });
 
-// keyboard
+// keyboard — polyphonic: each key is an independent note id (its index)
 const keysEl = $('keys');
-const keyEls = new Map();
-NOTES.forEach(([code, name, hz]) => {
+const keyByChar = new Map();
+const down = new Set(); // note ids currently held
+NOTES.forEach(([code, name, hz], id) => {
   const d = document.createElement('div');
-  d.className = 'key'; d.textContent = name; d.dataset.hz = hz;
-  d.addEventListener('pointerdown', () => noteOn(hz, d));
-  d.addEventListener('pointerup', () => noteOff(d));
-  d.addEventListener('pointerleave', () => { if (held === d) noteOff(d); });
+  d.className = 'key'; d.textContent = name;
+  d.addEventListener('pointerdown', (e) => { d.setPointerCapture(e.pointerId); noteOn(id, hz, d); });
+  d.addEventListener('pointerup', () => noteOff(id, d));
+  d.addEventListener('pointercancel', () => noteOff(id, d));
   keysEl.appendChild(d);
-  keyEls.set(code, { el: d, hz });
+  keyByChar.set(code, { id, hz, el: d });
 });
 
-function noteOn(hz, el) {
-  if (!ready) return;
-  if (held) held.classList.remove('down');
-  held = el; el.classList.add('down');
-  node.port.postMessage({ type: 'noteOn', hz });
+function noteOn(id, hz, el) {
+  if (!ready || down.has(id)) return;
+  down.add(id); el.classList.add('down');
+  node.port.postMessage({ type: 'noteOn', hz, note: id });
 }
-function noteOff(el) {
-  if (!ready || held !== el) return;
-  el.classList.remove('down'); held = null;
-  node.port.postMessage({ type: 'noteOff' });
+function noteOff(id, el) {
+  if (!down.has(id)) return;
+  down.delete(id); el.classList.remove('down');
+  node.port.postMessage({ type: 'noteOff', note: id });
 }
 
 addEventListener('keydown', (e) => {
-  if (e.repeat) return;
-  const k = keyEls.get(e.key.toUpperCase());
-  if (k) noteOn(k.hz, k.el);
+  if (e.repeat || e.metaKey || e.ctrlKey) return;
+  const k = keyByChar.get(e.key.toUpperCase());
+  if (k) { e.preventDefault(); noteOn(k.id, k.hz, k.el); }
 });
 addEventListener('keyup', (e) => {
-  const k = keyEls.get(e.key.toUpperCase());
-  if (k) noteOff(k.el);
+  const k = keyByChar.get(e.key.toUpperCase());
+  if (k) noteOff(k.id, k.el);
+});
+addEventListener('blur', () => { // don't leave notes stuck when the tab loses focus
+  down.forEach((id) => NOTES[id] && keyByChar.get(NOTES[id][0])?.el.classList.remove('down'));
+  down.clear();
+  node?.port.postMessage({ type: 'allOff' });
 });
 
 $('start').addEventListener('click', async () => {
@@ -208,7 +215,7 @@ $('start').addEventListener('click', async () => {
   const wasm = await fetch(new URL('harmonic_core.wasm', import.meta.url)).then((r) => r.arrayBuffer());
   ctx = new AudioContext();
   await ctx.audioWorklet.addModule(new URL('worklet.js', import.meta.url));
-  node = new AudioWorkletNode(ctx, 'harmonic-voice', {
+  node = new AudioWorkletNode(ctx, 'harmonic-synth', {
     outputChannelCount: [2],
     processorOptions: { wasm },
   });
@@ -221,8 +228,8 @@ $('start').addEventListener('click', async () => {
     }
     if (e.data.type === 'ready') {
       ready = true;
-      $('start').textContent = '● running';
-      // push every current control value into the freshly-booted voice
+      $('start').textContent = `● running · ${e.data.pool} voices`;
+      // push every current control value into the freshly-booted voices
       refresh.forEach((f) => f());
       node.port.postMessage({ type: 'param', name: 'waveform', value: +$('wave').value });
       node.port.postMessage({ type: 'param', name: 'filterMode', value: +$('fmode').value });

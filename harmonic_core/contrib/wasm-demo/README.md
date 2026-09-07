@@ -22,10 +22,11 @@ cargo build --no-default-features --release --target wasm32-unknown-unknown
 cp target/wasm32-unknown-unknown/release/harmonic_core.wasm contrib/wasm-demo/
 ```
 
-The `.wasm` is ~20 KB. It exports the full single-voice C ABI (`harmonic_voice_*`)
-plus three `wasm32`-only helpers (`harmonic_wasm_voice` / `harmonic_wasm_scratch`
-/ `harmonic_wasm_scratch_frames`) that hand back static storage — a `no_std`
-`cdylib` has no allocator, so the page can't `malloc` a voice.
+The `.wasm` is ~45 KB. It exports the full C ABI (`harmonic_voice_*`) plus
+`wasm32`-only helpers that hand back static storage (a `no_std` `cdylib` has no
+allocator): `harmonic_wasm_voice_at(i)` / `harmonic_wasm_pool_size()` for the
+8-voice pool, `harmonic_wasm_voice()` for slot 0, and `harmonic_wasm_scratch` /
+`harmonic_wasm_scratch_frames` for the render buffer.
 
 ## Serve
 
@@ -38,18 +39,18 @@ python -m http.server 8080      # then open http://localhost:8080
 
 ## What it shows
 
-- **One `Voice`**, geometric / saw / triangle oscillator, the closed-form
+- **8 voices**, geometric / saw / triangle oscillator, the closed-form
   Brightness tilt, the fractional Partials ceiling, the Formant hump, the
-  Cytomic SVF, the per-voice LFO — all live.
-- The amplitude **attack/release gate lives in `worklet.js`, in JavaScript**,
-  because the core `Voice` has no envelope. That is deliberate: envelope and
-  polyphony are the host's job, identical here and on a Daisy Seed
-  (`docs/08_EMBEDDED_INTEGRATION.md`).
+  Cytomic SVF, the per-voice LFO — all live, playable as chords.
+- **Note allocation, voice stealing and the attack/release gate all live in
+  `worklet.js`, in JavaScript.** The core `Voice` has no envelope and no notion
+  of polyphony — that is deliberate: it is the host's job, identical here and in
+  a Daisy Seed firmware (`docs/08_EMBEDDED_INTEGRATION.md`). ~40 lines of JS.
 - No build step for the page, no framework, no bundler — `index.html` +
   `worklet.js` + the `.wasm`.
 
 ## Not here yet
 
-Polyphony (the page would manage N voices + stealing in JS, or the crate would
-grow a `harmonic_poly_*` C ABI — `docs/09_ROADMAP.md`), and a nicer UI. This is a
-proof, not a product.
+A `harmonic_poly_*` C ABI (so the polyphony policy could live in Rust for
+integrators who want it — `docs/09_ROADMAP.md`), and a nicer UI. This is a proof,
+not a product.
