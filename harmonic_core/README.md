@@ -23,6 +23,18 @@ no oversampling filter.
 with `c_k = cos(2π k p)`. Denominator `≥ (1−r)² > 0` for `r < 1` — well
 conditioned at every phase.
 
+**Resonant hump** — a *second* closed form, the difference of two geometric
+sums, weighting harmonic *k* by `a^k − b^k` (single peak, then decays):
+
+```
+Σ_{k=1}^{n} (a^k − b^k) cos(2π k p)  =  S_n(a) − S_n(b)
+```
+
+One knob drives it (`b = a²`, `a = 2^(−1/kc)`) so the bump lands on partial
+`kc ≈ 1.5 + 24·formant²` (≈ 2nd…26th). Mixed in at weight `h`; `h = 0` is
+bit-identical to the tilt-only sum. Tilt and hump are orthogonal and together
+cover most static spectral envelopes of musical interest.
+
 ## Honest cost & aliasing statement
 
 | Claim | Reality |
@@ -65,11 +77,14 @@ Artifacts land in `target/release/`:
 | `src/filter.rs` | ZDF SVF (LP/BP/HP/notch), resonance, **per-sample internal cutoff/res smoothing**. |
 | `src/env.rs` | `Adsr` — one impl for the amp envelope and the dedicated filter envelope. |
 | `src/lfo.rs` | `Lfo` — sine / triangle / saw, phase-aligned, `no_std`. |
-| `src/poly.rs` | `PolySynth<VOICES>` — alloc/stealing, unison, pitch bend, shared LFO, both ADSRs. Stereo out. |
-| `src/ffi.rs` | C ABI (interleaved-stereo `process`). Caller owns voice memory; crate never allocates. |
+| `src/poly.rs` | `PolySynth<VOICES>` — alloc/stealing, unison, pitch bend, shared LFO, both ADSRs, `set_tuning`. Stereo out. |
+| `src/tuning.rs` | `Tuning` — note→frequency: 12-TET (default, byte-identical to `midi_to_hz`), n-EDO, arbitrary Scala scale, Scala `.kbm` keyboard map (dead keys). |
+| `src/ffi.rs` | C ABI (interleaved-stereo `process`). Caller owns voice memory; crate never allocates. `wasm32`-only static-storage helpers (`harmonic_wasm_*`). |
+| `src/verify.rs` | The shared scripted whole-tract render + FNV-1a hash + reference constants — called by the integration test, the ARM cross-check and the `wasm32` cross-check so all three render the same bytes. |
 | `tests/spectrum.rs` | closed form == brute sum; rendered voice proven non-aliasing via single-bin DFT. |
 | `tests/stress.rs` | adversarial RT-safety: `NaN`/`±∞`/`±1e300` into every public setter, parameter & note-event storms at sample rate, sample-rate extremes, HQ under load, 2 M-sample run — output stays finite, bounded, and the voice pool always recovers. |
-| `tests/cross_platform_bit_exact.rs` | whole-tract render hash vs an x86-64 reference — bit-identical on `aarch64` / `armv7-hf` under QEMU. |
+| `tests/cross_platform_bit_exact.rs` | whole-tract render hash vs an x86-64 reference, at 48 **and** 96 kHz, and independent of render block size — bit-identical on `aarch64` / `armv7-hf` under QEMU and `wasm32` under Node. |
+| `scripts/` | `cross-verify.sh` (QEMU ARM + wasm + bare-metal compile-check), `verify-wasm.mjs` (render hash in Node). |
 | `examples/` | `render_wav`, `poly_demo`, `character_demo`, `filter_demo`, `wide_demo` (unison), `bench_hc`. |
 
 ## `character` module — the dirt, on purpose
@@ -146,6 +161,18 @@ without SIMD (Cortex-M). `--features portable-simd` (nightly) adds an explicit
 character stages are serial recursive filters; the batch API is for the bare
 oscillator / offline rendering.
 
+## Microtuning (`src/tuning.rs`)
+
+The oscillator sums on `k·f0` of a **retuned** fundamental, so any regular scale
+fits: `Tuning::equal(edo, …)`, `Tuning::from_cents(&cents, period, …)` (arbitrary
+Scala `.scl`), or `Tuning::from_kbm(…)` (an explicit key→degree table, with dead
+keys). The plugin adds `.scl` / `.kbm` file import. 12-TET / A = 440 is the
+**byte-identical** default path (`note_hz` short-circuits to `midi_to_hz`;
+`Tuning::from_kbm` on the identity map is bit-exact too — tested on all 128
+notes). It retunes the *fundamental*, not individual partials — a chord in just
+intonation stops beating, but bell inharmonicity needs a different kernel
+(`docs/09`).
+
 ## Measured (release, x86-64; `examples/bench_*`, `docs/06 §3`)
 
 | | number |
@@ -153,25 +180,28 @@ oscillator / offline rendering.
 | One clean voice | **~26 M samples/s** (~550× realtime @ 48 kHz), flat within 1 % from 3 to 1200 harmonics |
 | 64-voice chord (`PolySynth<64>`) | **~9.4× realtime @ 48 kHz** (~590 voice-realtime of margin) |
 | PolyBLEP saw / triangle | ~90 M / ~77 M samples/s (cheaper than the geometric carrier) |
-| Cross-architecture render hash | **delta 0.0** on `aarch64` + `armv7-hf` under QEMU |
-| `no_std` cdylib | ~14 KB |
+| Cross-architecture render hash | **delta 0.0** on `aarch64` + `armv7-hf` (QEMU) and `wasm32` (Node), 48 + 96 kHz, any block size |
+| `no_std` cdylib | ~14 KB native, ~45 KB `wasm32` |
+| Tests | **114** (96 unit + 18 integration, 11 = adversarial `stress.rs`) + 1 `#[ignore]` drift; run on every push by CI (`.github/workflows/ci.yml`) |
 
 ## Status & roadmap
 
 The plugin (`../harmonic_synth`), Character stage, ZDF filter, dual ADSR,
 stereo + unison + drift, pitch bend, per-voice LFO with a modulation matrix,
 per-note brightness expression (MPE / aftertouch → per-voice rolloff), a
-resonant "Formant" hump (a second closed-form term),
-PolyBLEP saw/triangle, the fractional "Partials" knob, sample-rate validation,
-the batched oscillator, the HQ oversampling bus, the clean-voice fast path, and
-the `nih_plug_vizia` GUI are all done. `pluginval --strictness 8` and
-`clap-validator 35/35` pass; a first live-DAW pass in REAPER is done
-(`../docs/11_DAW_CHECKLIST.md`).
+resonant "Formant" hump (a second closed-form term), microtuning with Scala
+`.scl` / `.kbm` import, PolyBLEP saw/triangle, the fractional "Partials" knob,
+sample-rate validation, the batched oscillator, the HQ oversampling bus, the
+clean-voice fast path, the `wasm32` build (`contrib/wasm-demo/` — same DSP,
+same render hash), the CI matrix, and the `nih_plug_vizia` GUI are all done.
+`pluginval --strictness 8` and `clap-validator 35/35` pass; a first live-DAW
+pass in REAPER is done (`../docs/11_DAW_CHECKLIST.md`).
 
 What's left, and the deliberately-deferred directions with their reasons, are in
 **[`../docs/09_ROADMAP.md`](../docs/09_ROADMAP.md)** — the short version is: the
-rest of the live-DAW checklist, an upstream PR for the nih-plug CLAP fix, and
-4× HQ / SoA-SIMD / more Formant terms if a concrete need ever appears.
+rest of the live-DAW checklist, an upstream PR for the nih-plug CLAP fix, real
+hardware / Daisy firmware, an MTS-ESP client, and an inharmonic third kernel /
+SoA-SIMD if a concrete need ever appears.
 
 Commercial packaging of all of the above — capability spec sheet, positioning,
 pricing models, first-customer channels — is in

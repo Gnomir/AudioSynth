@@ -37,11 +37,21 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 
 | Path | What |
 |---|---|
-| `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi}.rs` + C ABI |
+| `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi,verify}.rs` + C ABI; also builds to `wasm32` (`contrib/wasm-demo/`) |
 | `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala `.scl` / `.kbm` import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
+
+## Reading it
+
+| For | Start with |
+|---|---|
+| **Musicians / integrators** — every capability, with examples, workflows, MIDI map, shortcuts | [**Capabilities & Usage Handbook**](https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0) (published page) · [`harmonic_synth/MANUAL.md`](harmonic_synth/MANUAL.md) (ships with the download) |
+| **Evaluating the maths** | [Scientific monograph](https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d) → [`docs/01_MATHEMATICS.md`](docs/01_MATHEMATICS.md) → [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) |
+| **Integrating the engine** | [`docs/03_ARCHITECTURE.md`](docs/03_ARCHITECTURE.md) → [`docs/05_API_REFERENCE.md`](docs/05_API_REFERENCE.md) → [`docs/08_EMBEDDED_INTEGRATION.md`](docs/08_EMBEDDED_INTEGRATION.md) |
+| **Try it now** | [Playable browser demo](https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed) (the same DSP, `wasm32`) |
+| **Commercial picture** | [`product/README.md`](product/README.md) · [Go-to-market playbook](https://claude.ai/code/artifact/[redacted-internal-artifact-id]-cef8-43c2-ac3b-9eb9405e34d4) |
 
 ## Build
 
