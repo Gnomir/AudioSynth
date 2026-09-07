@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **106 тестів `harmonic_core`** (88 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+Що перевірено, як, і якими числами. Статус: **108 тестів `harmonic_core`** (90 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
 `tests/stress.rs`) + **25 у плагіні** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala import, спектр-гребінка + hover + крива фільтра + гребінка унісону) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
@@ -138,7 +138,7 @@
 | `formant_adds_a_movable_mid_spectrum_bump_and_zero_is_inert` | при `rolloff 0.4` формант `0.42` піднімає 6-ту гармоніку `> 8×`; низький формант тримає енергію на партіалі 4, високий зсуває її на 15; `formant 0.0` рендериться **бітово** як без форманту (`04 §0.2`) |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (23)
+### `poly` (25)
 
 | Тест | Що доводить |
 |---|---|
@@ -165,6 +165,8 @@
 | `lowest_sounding_hz_tracks_the_bottom_note` | `PolySynth::lowest_sounding_hz` → `0` коли тихо; A4 → 440, потім A3 → 220 (вища нота не рухає підлогу); слідує тюнінгу (`equal(12, 432, 69)` → A2 = `108`); після `all_notes_off` → `0`. Для спектр-дисплея, не на рендер-шляху |
 | `representative_cutoff_tracks_the_filter_envelope` | `PolySynth::representative_cutoff` → `0` коли тихо; LP зі зрізом 500 Гц + `+4` окт filter-envelope, A3: за ~40 мс атаки зріз піднявся `> 1.5×` і `> 1500` Гц, лишається скінченним `< 30 кГц`; після `all_notes_off` + 1 с → `0`. Живить живу криву фільтра в редакторі |
 | `representative_rolloff_moves_with_lfo_to_brightness` | `PolySynth::representative_rolloff` → `0` коли тихо; при стійкій яскравості без LFO осідає на базу (`0.6 ± 0.02`); повільний глибокий LFO→brightness розгойдує `r` на `> 0.2` в межах `[ROLLOFF_MIN, ROLLOFF_MAX]`; після `all_notes_off` → `0`. Живить нахил гребінки |
+| `render_is_block_size_independent_bit_for_bit` | скриптований прохід (FM + унісон + LFO + фільтр, 6 подій на точних кадрах) хешується **побайтово однаково** через `render_block` розміром 7 / 64 / 256 / 512 / весь блок і посемпловий цикл. «Freeze == realtime»; фіксує гарантію до інтеграції векторного block-x4 (`09`) |
+| `zero_latency_hq_off_and_exactly_16_samples_hq_on` | `PolySynth::HQ_LATENCY == 16`, `Voice::HQ_LATENCY == 3` (compile-time); HQ-off побайтово тотожний незалежно від того, чи вмикали HQ (жодної залишкової лінії затримки); крос-кореляція стабільного тону HQ-off vs HQ-on дає лаг **рівно 16** |
 
 ### `tests/spectrum.rs` — інтеграційні (6)
 
@@ -360,7 +362,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 106 / 106 (88 юніт + 18 інтеграційних) |
+| Тести | `cargo test` | 108 / 108 (90 юніт + 18 інтеграційних) |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -472,18 +474,20 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **106 / 106 pass** (88 юніт + 18 інтеграційних) |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **108 / 108 pass** (90 юніт + 18 інтеграційних) |
 | `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **97 / 97 pass** |
 | `wasm32-unknown-unknown` (Node) | нативний wasm `f64` | **хеш = референс** (`scripts/verify-wasm.mjs`) |
 
-Сценарій рендеру та константа-хеш живуть у `harmonic_core::verify`
-(`render_verification` / `verify_hash` / `VERIFY_HASH`), тож інтеграційний
-тест, ARM-звірка й wasm-звірка проганяють **той самий байт-у-байт прохід**.
-`rendered_signal_is_bit_identical_across_architectures` звіряє хеш 100-мс
-рендеру всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`:
+Сценарій рендеру та константи-хеші живуть у `harmonic_core::verify`
+(`render_verification_at(sr, …)` / `verify_hash` / `VERIFY_HASH` /
+`VERIFY_HASH_96K`), тож інтеграційний тест, ARM-звірка й wasm-звірка
+проганяють **той самий байт-у-байт прохід**.
+`rendered_signal_is_bit_identical_across_architectures` звіряє хеш рендеру
+всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`, **на двох
+частотах — 48 і 96 кГц** (щоб «на будь-якій частоті» мало підтвердження):
 **дельта `= 0.0`**. wasm-звірка (`hc_verify_*` експорти + `verify-wasm.mjs`)
 перевіряє і власний хеш модуля, і незалежний JS-фолд байтів — обидва
-`= 0xc7f786d40586da75`. Дрейф фазового акумулятора
+`= 0xc7f786d40586da75` (48 кГц). Дрейф фазового акумулятора
 (`voice::phase_accumulators_do_not_drift`, `DRIFT_SAMPLES=2·10⁷`) теж
 збігається до останньої значущої цифри (`4.566·10⁻¹⁰` обертів carrier,
 `3.483·10⁻¹⁰` FM) на x86-64 та `aarch64`.
@@ -509,7 +513,7 @@ Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
 - **ARM під QEMU + wasm32 під Node — покрито** (§6-bis: `aarch64` + `armv7-hf`
-  106/106, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
+  108/108, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
   (`thumbv7em` / `thumbv6m`), прогін під RISC-V — усе крос-компілюється чисто
   (compile-check у `cross-verify.sh`), але на залізі не проганялось.
 - **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі
@@ -519,8 +523,10 @@ Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
   fuzzer (`cargo-fuzz` / `proptest`) — `tests/stress.rs` детермінований і
   скриптований, не рандомізований пошук; вимірювання денормалей за часом
   (тестується коректність тиші, не її вартість у циклах).
-- **Автоматизація параметрів на межі блоку** в реальному хості (тестовано
-  лише логіку рушія, не marshalling `nih-plug`).
+- **Автоматизація параметрів на межі блоку у справжньому `nih-plug`-хості** —
+  marshalling самого фреймворку не тестований юнітами (покрито `pluginval
+  --strictness 8`, який міняє розмір блоку й SR). На рівні рушія
+  блок-незалежність **побайтова** — `poly::render_is_block_size_independent`.
 - **`geometric_partials_x4_simd`** на nightly перевірено лише що
   **компілюється** — числова еквівалентність скаляру не має окремого тесту
   (батч-версія `geometric_partials_x4` — має).

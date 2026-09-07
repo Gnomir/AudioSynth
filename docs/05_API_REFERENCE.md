@@ -213,10 +213,12 @@ pub fn cos4_turns(x: [f64; 4]) -> [f64; 4]
 // поза Voice; сигнатури див. відповідні модулі.
 
 // verify: канонічний крос-платформний рендер (self-check збірки інтегратора)
-pub const VERIFY_FRAMES: usize                // 4800 (стерео) — буфер потрібен ×2
-pub const VERIFY_HASH: u64                    // 0xc7f786d40586da75 — x86-64 / ARM / wasm32
-pub fn render_verification(out: &mut [f32])   // фіксований прохід через весь тракт, без алокацій, no_std
-pub fn verify_hash(samples: &[f32]) -> u64    // FNV-1a по бітах f32
+pub const VERIFY_FRAMES: usize                          // 4800 (стерео) — буфер потрібен ×2
+pub const VERIFY_HASH: u64                              // 0xc7f786d40586da75 — @48к, x86-64/ARM/wasm32
+pub const VERIFY_HASH_96K: u64                          // той самий прохід @96к — «будь-яка частота»
+pub fn render_verification_at(sr: f64, out: &mut [f32]) // фіксований прохід через весь тракт, без алокацій, no_std
+pub fn render_verification(out: &mut [f32])             // == render_verification_at(48_000.0, …)
+pub fn verify_hash(samples: &[f32]) -> u64              // FNV-1a по бітах f32
 // wasm32-only експорти: hc_verify_render / hc_verify_len / hc_verify_hash_{lo,hi}
 ```
 
