@@ -262,15 +262,17 @@ cargo build --no-default-features --release --target thumbv7em-none-eabihf
 
 `cargo build --no-default-features --release --target wasm32-unknown-unknown`
 дає `harmonic_core.wasm` (~44 KB) з повним C-ABI. Оскільки `no_std` cdylib не
-має алокатора, `wasm32`-збірка додатково експортує **`harmonic_wasm_voice()`**
-/ **`harmonic_wasm_scratch()`** / **`harmonic_wasm_scratch_frames()`** —
-статичне сховище для одного `Voice` та interleaved-стерео скретч-буфера. Далі
-все як у C: `harmonic_voice_init(harmonic_wasm_voice(), sampleRate)`, сеттери,
-`harmonic_voice_process(voice, harmonic_wasm_scratch(), quantum)` у
-`AudioWorkletProcessor.process()`, читаючи результат прямо з
-`WebAssembly.Memory`. Обгинаюча амплітуди — на боці хоста (кілька рядків JS),
-як і на Daisy. Готовий приклад: `contrib/wasm-demo/` (index.html + worklet.js,
-без фреймворку) + жива версія
+має алокатора, `wasm32`-збірка додатково експортує **`harmonic_wasm_voice_at(i)`**
+/ **`harmonic_wasm_pool_size()`** (статичний пул `[Voice; 8]`),
+**`harmonic_wasm_voice()`** (скорочення для слота 0) та
+**`harmonic_wasm_scratch()`** / **`harmonic_wasm_scratch_frames()`**
+(interleaved-стерео скретч). Далі все як у C: `harmonic_voice_init` на кожен
+голос, сеттери, `harmonic_voice_process(voice, harmonic_wasm_scratch(),
+quantum)` у `AudioWorkletProcessor.process()`, підсумовуючи голоси й читаючи
+результат прямо з `WebAssembly.Memory`. **Обгинаюча, розподіл нот і крадіжка
+голосів — на боці хоста** (кілька десятків рядків JS), як і на Daisy. Готовий
+приклад: `contrib/wasm-demo/` — 8-голосний синт (index.html + worklet.js, без
+фреймворку) + жива версія
 <https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed>.
 
 ---

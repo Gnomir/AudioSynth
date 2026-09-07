@@ -142,16 +142,18 @@
   `riscv32imac`, `aarch64-unknown-none`) компілюються чисто
   `--no-default-features --release` — `cross-verify.sh` робить compile-check.
   Браузерне демо — **є**: `harmonic_core/contrib/wasm-demo/` (index.html +
-  `AudioWorklet` + `.wasm`, без фреймворку), один `Voice` через C-ABI, живий
-  осцилограф; AR-гейт у JS, бо ядро без обгинаючої (робота хоста). Плюс
-  `ffi.rs` дає `harmonic_wasm_*` — статичне сховище для голосу/скретчу, бо
-  no_std cdylib не має алокатора. Перевірено в headless Chromium.
+  `AudioWorklet` + `.wasm`, без фреймворку) — **8-голосний** синт, акорди,
+  крадіжка голосів і AR-гейт у ~40 рядках JS (робота хоста, як на Daisy);
+  живий осцилограф. `ffi.rs` дає `harmonic_wasm_voice_at(i)` /
+  `harmonic_wasm_pool_size()` — статичний пул `[Voice; 8]`, бо no_std cdylib не
+  має алокатора. Перевірено в headless Chromium (тризвук ≈ 4.5× RMS однієї
+  ноти). Публічний артефакт `ad41ef31`.
 - **Не покрито.** Реальне залізо (не емуляція); `thumbv6m` (програмний `f64` —
   інший шлях округлення можливий) та RISC-V — прогін на пристрої.
 - **Наступний крок для «$30-модуля».** Firmware-скелет під Daisy Seed
   (`libdaisy` + `AudioCallback` → C-ABI `Voice` array + свій voice-stealing;
-  ядро вже дає всі примітиви). Для браузера: поліфонія (N голосів + крадіжка в
-  JS, або `harmonic_poly_*` C-ABI).
+  ядро вже дає всі примітиви). Для інтеграторів, яким треба поліфонія в Rust —
+  `harmonic_poly_*` C-ABI (відкладено — потрібен реальний споживач для дизайну).
 
 ### Полиш GUI
 

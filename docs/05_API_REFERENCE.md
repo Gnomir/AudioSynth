@@ -280,8 +280,10 @@ no_std cdylib не має алокатора — ці дають статичн�
 інтегратора (`08 §6`, `contrib/wasm-demo/`):
 
 ```c
-HarmonicVoice *harmonic_wasm_voice(void);      /* один статичний Voice */
-float         *harmonic_wasm_scratch(void);    /* interleaved-стерео скретч */
+size_t         harmonic_wasm_pool_size(void);       /* 8 */
+HarmonicVoice *harmonic_wasm_voice_at(size_t i);    /* слот i, 0..pool-1 */
+HarmonicVoice *harmonic_wasm_voice(void);           /* == voice_at(0) */
+float         *harmonic_wasm_scratch(void);         /* interleaved-стерео скретч */
 size_t         harmonic_wasm_scratch_frames(void);  /* 4096 */
 ```
 
