@@ -206,14 +206,21 @@ M]] − c_ref) / 1200)`, де `c_ref` — центи якірної ноти (н
 
 **Модуляція на всі звучні голоси:** `set_pitch_bend(semitones)`,
 `set_lfo(rate, shape, →rolloff, →pitch)`, `set_character`, `set_fm`,
-`set_feedback`, `set_free_running`.
+`set_feedback`, `set_free_running`. Фан-аут гейтований на `is_active()` —
+простій голос переконфігурується цілком у `trigger_one` на наступний
+note-on, тож пушити в нього тут — марна робота (× `VOICES` щосемпла на
+семпл-точній автоматизації).
 
 **Фільтрова обгинаюча:** якщо `filter_env ≠ 0`, `render_sample` посемплово
 на кожен активний голос: `v.core.set_filter_cutoff(base · 2^(filter_env · fe))`,
 де `fe` — рівень фільтрової ADSR.
 
-**Вихід:** `render_sample() -> [f32; 2]` — сума голосів (L/R окремо) ×
-`gain`, потім `soft_clip` покомпонентно.
+**Вихід:** `render_sample() -> [f32; 2]` — сума голосів (L/R окремо),
+майстер DC-блокер (одно-полюсний HPF, ~2 Гц), потім × `gain` і `soft_clip`
+покомпонентно. DC-блокер знімає реальний офсет, що його рефлективний
+вейвфолдер генерує на асиметричному вході (`drive` + `bias` разом — до
+~−7 дБFS); окремий `Voice` / C-ABI DC **не** блокують — примітив
+лишається плоским до DC.
 
 ---
 
@@ -261,8 +268,8 @@ M]] − c_ref) / 1200)`, де `c_ref` — центи якірної ноти (н
 
 | Ціль | Команда | Що виходить |
 |---|---|---|
-| Розробка / тести | `cargo test` | `std` (дефолт), 116 тестів (98 юніт + 18 інтеграційних) |
-| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 116/116, хеш = x86-64 |
+| Розробка / тести | `cargo test` | `std` (дефолт), 120 тестів (101 юніт + 19 інтеграційних) |
+| Bit-exact на ARM | `harmonic_core/scripts/cross-verify.sh` | Docker + QEMU: `aarch64` + `armv7-hf`, 120/120, хеш = x86-64 |
 | Приклади (WAV) | `cargo run --example <name> --release` | `*.wav` у теці крейта |
 | **Справжній `no_std`** | `cargo build --no-default-features --release` | `cdylib` + `staticlib`, нуль `libc`-math, `panic=abort` |
 | Явний SIMD | `cargo +nightly build --features portable-simd` | `#![feature(portable_simd)]` |

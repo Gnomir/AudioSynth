@@ -199,6 +199,20 @@ pub struct PolySynth<const VOICES: usize> {
     chan_bright: f32,
     note_bright: [f32; 128],
 
+    // Master DC blocker on the summed mix, ahead of `soft_clip`. The reflective
+    // wavefolder produces a real DC offset when fed an asymmetric input
+    // (`drive` + `bias` together — measured up to ~−7 dBFS at extreme settings,
+    // ~−18 dBFS on a typical dirty patch); left in, it eats master headroom,
+    // offsets the output, and — through a low-pass — dominates a filtered
+    // tone. One-pole high-pass, ~2 Hz corner (`< −0.02` dB at 28 Hz, so
+    // sub-bass is untouched). A standalone `Voice` / the C ABI is *not*
+    // DC-blocked here — `Voice` output stays flat to DC for embedded callers
+    // who want the raw primitive.
+    dc_x: [f32; 2],
+    dc_y: [f32; 2],
+    dc_r_1x: f32, // `render_sample` (base rate)
+    dc_r_2x: f32, // `render_sample_hq_bus` (2× rate — same corner in Hz)
+
     counter: u64,
 }
 
@@ -263,6 +277,12 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             bright_depth: 0.0,
             chan_bright: 0.0,
             note_bright: [0.0; 128],
+            dc_x: [0.0; 2],
+            dc_y: [0.0; 2],
+            // R = exp(-2π·fc/fs) with fc = 2 Hz; exp(-x) = exp2(-x·log2(e)),
+            // and 2π·2·log2(e) ≈ 18.132.
+            dc_r_1x: exp2(-18.132 / sr) as f32,
+            dc_r_2x: exp2(-18.132 / (2.0 * sr)) as f32,
             counter: 0,
         };
         (s, status)
@@ -284,10 +304,17 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.sample_rate
     }
 
+    // A note on the `is_active()` guards below: the per-voice fan-out only needs
+    // to reach *sounding* voices. An idle voice is fully reconfigured from the
+    // current `PolySynth`-level state by `trigger_one` the moment it is picked,
+    // so pushing to it here is wasted work — and the plugin calls several of
+    // these every sample for sample-accurate automation, ×`VOICES` each.
     pub fn set_rolloff(&mut self, r: f64) {
         self.rolloff = r;
         for v in &mut self.voices {
-            v.core.set_rolloff(r);
+            if v.amp.is_active() {
+                v.core.set_rolloff(r);
+            }
         }
     }
 
@@ -311,7 +338,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     pub fn set_character(&mut self, p: CharParams) {
         self.character = p;
         for v in &mut self.voices {
-            v.core.set_character(p);
+            if v.amp.is_active() {
+                v.core.set_character(p);
+            }
         }
     }
 
@@ -319,14 +348,18 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.fm_ratio = ratio;
         self.fm_index = index;
         for v in &mut self.voices {
-            v.core.set_fm(ratio, index);
+            if v.amp.is_active() {
+                v.core.set_fm(ratio, index);
+            }
         }
     }
 
     pub fn set_feedback(&mut self, fb: f64) {
         self.feedback = fb;
         for v in &mut self.voices {
-            v.core.set_feedback(fb);
+            if v.amp.is_active() {
+                v.core.set_feedback(fb);
+            }
         }
     }
 
@@ -334,7 +367,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     pub fn set_free_running(&mut self, free: bool) {
         self.free_running = free;
         for v in &mut self.voices {
-            v.core.set_free_running(free);
+            if v.amp.is_active() {
+                v.core.set_free_running(free);
+            }
         }
     }
 
@@ -373,7 +408,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     pub fn set_waveform(&mut self, w: Waveform) {
         self.waveform = w;
         for v in &mut self.voices {
-            v.core.set_waveform(w);
+            if v.amp.is_active() {
+                v.core.set_waveform(w);
+            }
         }
     }
 
@@ -388,7 +425,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             limit.clamp(1.0, crate::voice::MAX_PARTIALS as f32)
         };
         for v in &mut self.voices {
-            v.core.set_partial_limit(self.partial_limit);
+            if v.amp.is_active() {
+                v.core.set_partial_limit(self.partial_limit);
+            }
         }
     }
 
@@ -398,7 +437,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     pub fn set_formant(&mut self, f: f64) {
         self.formant = if f.is_nan() { 0.0 } else { f.clamp(0.0, 1.0) };
         for v in &mut self.voices {
-            v.core.set_formant(self.formant);
+            if v.amp.is_active() {
+                v.core.set_formant(self.formant);
+            }
         }
     }
 
@@ -520,7 +561,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
     pub fn set_pitch_bend(&mut self, semitones: f64) {
         self.bend_ratio = exp2(semitones / 12.0);
         for v in &mut self.voices {
-            v.core.set_pitch_bend(self.bend_ratio);
+            if v.amp.is_active() {
+                v.core.set_pitch_bend(self.bend_ratio);
+            }
         }
     }
 
@@ -546,9 +589,11 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.lfo_to_cutoff = to_cutoff_oct;
         self.lfo_to_fm = to_fm;
         for v in &mut self.voices {
-            v.core.set_lfo(rate_hz, shape);
-            v.core.set_lfo_mode(mode);
-            v.core.set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm);
+            if v.amp.is_active() {
+                v.core.set_lfo(rate_hz, shape);
+                v.core.set_lfo_mode(mode);
+                v.core.set_lfo_targets(to_rolloff, to_pitch_cents, to_cutoff_oct, to_fm);
+            }
         }
     }
 
@@ -580,10 +625,12 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.filter_res = resonance;
         self.filter_env = env_octaves;
         for v in &mut self.voices {
-            v.core.set_filter_mode(mode);
-            v.core.set_filter_resonance(resonance);
-            if env_octaves == 0.0 {
-                v.core.set_filter_cutoff(cutoff_hz);
+            if v.amp.is_active() {
+                v.core.set_filter_mode(mode);
+                v.core.set_filter_resonance(resonance);
+                if env_octaves == 0.0 {
+                    v.core.set_filter_cutoff(cutoff_hz);
+                }
             }
         }
     }
@@ -766,6 +813,9 @@ impl<const VOICES: usize> PolySynth<VOICES> {
         self.counter = 0;
         self.chan_bright = 0.0;
         self.note_bright = [0.0; 128];
+        self.dc_x = [0.0; 2];
+        self.dc_y = [0.0; 2];
+        self.hq_decim.reset();
     }
 
     fn pick_voice(&self) -> usize {
@@ -881,14 +931,15 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             ml += l * ae * v.velocity;
             mr += r * ae * v.velocity;
         }
+        let m = dc_block(&mut self.dc_x, &mut self.dc_y, [ml, mr], self.dc_r_1x);
         [
-            soft_clip(ml * self.gain as f32),
-            soft_clip(mr * self.gain as f32),
+            soft_clip(m[0] * self.gain as f32),
+            soft_clip(m[1] * self.gain as f32),
         ]
     }
 
     /// The unified HQ bus: sum every voice's `2×`-rate subsample pair,
-    /// master-saturate both, decimate once. See [`PolySynth::set_hq`].
+    /// DC-block, master-saturate both, decimate once. See [`PolySynth::set_hq`].
     #[inline]
     fn render_sample_hq_bus(&mut self) -> [f32; 2] {
         let mut lo = [0.0_f32; 2];
@@ -912,6 +963,10 @@ impl<const VOICES: usize> PolySynth<VOICES> {
             hi[1] += vh[1] * g;
         }
         let gain = self.gain as f32;
+        // Both 2×-rate sub-samples through the shared DC-blocker state, in
+        // time order (`lo` precedes `hi`), at the rate-matched coefficient.
+        let lo = dc_block(&mut self.dc_x, &mut self.dc_y, lo, self.dc_r_2x);
+        let hi = dc_block(&mut self.dc_x, &mut self.dc_y, hi, self.dc_r_2x);
         let clipped_lo = [soft_clip(lo[0] * gain), soft_clip(lo[1] * gain)];
         let clipped_hi = [soft_clip(hi[0] * gain), soft_clip(hi[1] * gain)];
         self.hq_decim.process(clipped_lo, clipped_hi)
@@ -949,6 +1004,35 @@ pub fn soft_clip(x: f32) -> f32 {
     };
     let x2 = x * x;
     x * (27.0 + x2) / (27.0 + 9.0 * x2)
+}
+
+/// `|x|` without `f32::abs` (which is `std`). See `trig::fabs` — same reason.
+#[inline(always)]
+fn fabs32(x: f32) -> f32 {
+    f32::from_bits(x.to_bits() & 0x7fff_ffff)
+}
+
+/// One-pole DC blocker (`y[n] = in − x[n−1] + r·y[n−1]`), run per channel in
+/// place on the shared `x` / `y` state. `r = exp(−2π·fc/fs)`; see the `dc_*`
+/// fields on [`PolySynth`]. The `< 1e-20` flush pins `y` to zero once the input
+/// has been silent for a while — unlike the per-voice DC blocker in
+/// `character.rs` (which stops being ticked when its voice goes idle), this one
+/// runs on every rendered sample forever, so its ~2 Hz pole would otherwise
+/// crawl `y` down through the whole subnormal range and stay there, costing
+/// ~100× arithmetic on an idle synth without hardware FTZ.
+#[inline(always)]
+fn dc_block(x: &mut [f32; 2], y: &mut [f32; 2], inp: [f32; 2], r: f32) -> [f32; 2] {
+    let mut out = [0.0_f32; 2];
+    for ch in 0..2 {
+        let mut hp = inp[ch] - x[ch] + r * y[ch];
+        if fabs32(hp) < 1.0e-20 {
+            hp = 0.0;
+        }
+        x[ch] = inp[ch];
+        y[ch] = hp;
+        out[ch] = hp;
+    }
+    out
 }
 
 /// NaN-safe `f64` clamp: `NaN` (and `-∞`) resolve to `lo`, `+∞` to `hi`.
@@ -1903,5 +1987,85 @@ mod tests {
                 v.carrier_phase_for_test()
             );
         }
+    }
+
+    #[test]
+    fn master_dc_blocker_removes_the_wavefolder_offset() {
+        // `drive` + `bias` together feed the reflective wavefolder an
+        // asymmetric wave, and folding that generates a real DC component the
+        // pre-fold per-voice DC blocker never sees — measured up to ~−7 dBFS
+        // (offset ~0.44) on an extreme patch. The master one-pole HPF on the
+        // summed mix (~2 Hz) must take it back out.
+        let run_mean = |hq: bool| {
+            let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+            s.set_gain(0.9);
+            s.set_hq(hq);
+            s.set_character(CharParams {
+                drive: 0.8,
+                bias: 0.5,
+                fold: 0.9,
+                crush: 0.0,
+                downsample: 0.0,
+            });
+            s.set_amp_adsr(0.002, 0.02, 1.0, 0.05);
+            s.note_on(41, 1.0);
+            // settle well past the HPF corner (~2 Hz), then average a long
+            // window — the tone's period does not divide the window evenly, so
+            // a short average leaves a ~1/N tail of the fundamental; 2 s pushes
+            // that under 1e-3 while a missing blocker would sit at ~0.44.
+            for _ in 0..96_000 {
+                s.render_sample();
+            }
+            let mut acc = 0.0_f64;
+            let n = 96_000;
+            for _ in 0..n {
+                let [l, r] = s.render_sample();
+                assert!(l.is_finite() && r.is_finite());
+                acc += 0.5 * (l as f64 + r as f64);
+            }
+            acc / n as f64
+        };
+        let dc_base = run_mean(false).abs();
+        let dc_hq = run_mean(true).abs();
+        assert!(dc_base < 5.0e-3, "base-rate path still has DC: {dc_base}");
+        assert!(dc_hq < 5.0e-3, "HQ-bus path still has DC: {dc_hq}");
+    }
+
+    #[test]
+    fn live_parameter_changes_reach_already_sounding_voices() {
+        // The `is_active()` fan-out guards must still deliver a parameter
+        // change to a voice that is *currently held* — only genuinely idle
+        // voices (reconfigured wholesale by `trigger_one` on their next
+        // note-on) may be skipped.
+        let mut s: PolySynth<8> = PolySynth::new(48_000.0);
+        s.set_gain(0.9);
+        s.set_amp_adsr(0.002, 0.02, 1.0, 0.05);
+        s.note_on(57, 1.0); // A3, 220 Hz
+
+        // Zero-crossing rate is a clean, unambiguous pitch proxy: a held voice
+        // that never got the pitch-bend would keep crossing at the old rate.
+        let zcr = |s: &mut PolySynth<8>| {
+            let mut prev = 0.0_f32;
+            let mut crossings = 0u32;
+            for _ in 0..12_000 {
+                let x = s.render_sample()[0];
+                if (x >= 0.0) != (prev >= 0.0) {
+                    crossings += 1;
+                }
+                prev = x;
+            }
+            crossings
+        };
+
+        let z0 = zcr(&mut s);
+        s.set_pitch_bend(12.0); // +1 octave — must reach the sounding voice
+        for _ in 0..2_000 {
+            s.render_sample(); // let the per-voice bend smoother glide up
+        }
+        let z1 = zcr(&mut s);
+        assert!(
+            z1 as f64 > z0 as f64 * 1.7,
+            "held voice ignored the pitch bend: zcr {z0} → {z1}"
+        );
     }
 }

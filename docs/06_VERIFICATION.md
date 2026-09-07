@@ -1,6 +1,6 @@
 # 06 — Верифікація
 
-Що перевірено, як, і якими числами. Статус: **116 тестів `harmonic_core`** (98 юніт + 18 інтеграційних, з них 11 — ворожий RT-safety набір
+Що перевірено, як, і якими числами. Статус: **120 тестів `harmonic_core`** (101 юніт + 19 інтеграційних, з них 11 — ворожий RT-safety набір
 `tests/stress.rs`) + **34 у плагіні** + **9 у `harmonic_license`** (analyzer, A/B morph, seed randomiser, preset bank, tuning, Scala `.scl` + `.kbm` import, спектр-гребінка + hover + крива фільтра + гребінка унісону, ліцензійний keyfile) + 1 `#[ignore]`
 (довготривалий дрейф, §3). Clippy чистий на трьох конфігураціях, плагін
 збирається у VST3 + CLAP, увесь набір ядра проходить біт-у-біт на `aarch64`
@@ -123,7 +123,7 @@
 | `triangle_and_saw_hit_their_peaks` | пік `> 0.95`, мін `< −0.95` |
 | `free_run_mode_survives_retrigger` | `FreeRun` — `retrigger()` не чіпає фазу; `Retrigger` (дефолт) — скидає в 0 |
 
-### `voice` (15 + 1 `#[ignore]`)
+### `voice` (16 + 1 `#[ignore]`)
 
 | Тест | Що доводить |
 |---|---|
@@ -142,9 +142,10 @@
 | `partial_frac_fades_in_the_next_partial` | стеля `n.5` → DFT-магнітуда `(n+1)`-ї гармоніки ≈ пів-значення проти стелі `n+1.0` (неперервний свіп, не сходинка); при стелі `n.0` вона відсутня; коли зв'язує Найквіст — `frac` скидається (не аліасить) |
 | `expr_brightness_tilts_the_spectrum_and_zero_is_inert` | понотний зсув `+0.3` / `−0.35` до `rolloff 0.7` → відношення 8-ї гармоніки до фундаменталу росте `> 2×` / падає `< 0.5×`; зсув `0.0` рендериться **бітово** так само, як без експресії |
 | `formant_adds_a_movable_mid_spectrum_bump_and_zero_is_inert` | при `rolloff 0.4` формант `0.42` піднімає 6-ту гармоніку `> 8×`; низький формант тримає енергію на партіалі 4, високий зсуває її на 15; `formant 0.0` рендериться **бітово** як без форманту (`04 §0.2`) |
+| `a_converged_smoother_snaps_to_its_target_instead_of_crawling_subnormals` | `pan`/`formant` one-pole, ведений до центрованої/вимкненої цілі, «прищібається» до неї рівно (`SNAP = 1e-11` у `tick_modulation`) за `< 0.5` с і більше не зрушується — інакше `z` решту ноти повзе крізь увесь субнормальний діапазон (`~100×` повільніше множення на x86 без FTZ) |
 | `phase_accumulators_do_not_drift` `#[ignore]` | `10⁹` семплів vs Kahan-еталон: похибка частоти несучої `< 10⁻³` ppm (виміряно `5·10⁻⁹`), FM так само (§3) |
 
-### `poly` (27)
+### `poly` (29)
 
 | Тест | Що доводить |
 |---|---|
@@ -175,6 +176,8 @@
 | `zero_latency_hq_off_and_exactly_16_samples_hq_on` | `PolySynth::HQ_LATENCY == 16`, `Voice::HQ_LATENCY == 3` (compile-time); HQ-off побайтово тотожний незалежно від того, чи вмикали HQ (жодної залишкової лінії затримки); крос-кореляція стабільного тону HQ-off vs HQ-on дає лаг **рівно 16** |
 | `re_asserting_hq_every_block_is_a_no_op_not_a_decimator_reset` | `set_hq(x)` коли `x` == поточного стану — **повний no-op**: майстер-дециматор не чіпається. Плагінний `process` перепідтверджує HQ-параметр щоблоку; безумовний `hq_decim.reset()` там стирав би 65-тапну історію FIR на кожній межі блоку → блок-швидкісний перехідний процес. Regression: `set_hq(true)` раз vs `set_hq(true)` кожні 128 семплів → **побітово** той самий вихід на 12000 семплах |
 | `carrier_phase_stays_wrapped_when_step_exceeds_one` | `step = f_eff/fs` може перевищити `1.0` (bend ×32, вібрато ×2, `freq` до `fs/2`). Голе `phase -= 1.0` не загортало б це, і акумулятор ріс би необмежено. Голос на `step ~ 3.8` (23 кГц + bend ×4 + вібрато ±окт): фаза лишається в `[0,1)` **кожен семпл** на 200000 семплах, вихід скінченний і обмежений `≤ 4.0`. Фікс — `phase -= floor_f64(phase)` (біт-ідентично `-= 1.0` для `step < 1`) |
+| `master_dc_blocker_removes_the_wavefolder_offset` | екстремальний патч `drive 0.8 · bias 0.5 · fold 0.9` дає реальний DC ~0.44 (фолд асиметричної хвилі, який пре-фолд DC-блокер голосу не бачить). Майстер-HPF ~2 Гц на сумі міксу (перед `soft_clip`) знімає його: середнє виходу `< 5e-3` на 2-секундному вікні — і на базовому рейті, і на HQ-шині (`2×`). `Voice` / C-ABI лишаються плоскими до DC (§4) |
+| `live_parameter_changes_reach_already_sounding_voices` | `is_active()`-гейти на фан-ауті сеттерів пропускають **лише** справді простій голос (його `trigger_one` переконфігурує повністю на наступний note-on). Утримувана нота: після `set_pitch_bend(+12)` частота перетинів нуля росте `> 1.7×` — зміна дійшла |
 
 ### `tests/spectrum.rs` — інтеграційні (6)
 
@@ -187,11 +190,12 @@
 | `default_partial_limit_is_bit_identical` | голос без `set_partial_limit` і голос, явно виставлений на `2048.0` (`frac = 0`), рендерять **побайтово** однаковий блок — деф. бере цілочисельну гілку `geometric_partials_pre`, крос-платформний хеш не зачеплено |
 | `cost_is_flat_in_partial_count` | час(1200 гарм.) / час(3 гарм.) `< 25×` (не `~400×`) |
 
-### `tests/cross_platform_bit_exact.rs` — інтеграційний (1)
+### `tests/cross_platform_bit_exact.rs` — інтеграційні (2)
 
 | Тест | Що доводить |
 |---|---|
-| `rendered_signal_is_bit_identical_across_architectures` | 100 мс рендеру `PolySynth<8>` через весь тракт (унісон 4 + drift + FM + feedback + 4 маршрути LFO + резонансний Low SVF + drive/bias/fold/crush/downsample), зі скриптованими note-on/off та pitch-bend; біти кожного семпла згортаються в FNV-1a хеш і звіряються з константою, знятою на `x86_64-pc-windows-msvc`. Будь-яка розбіжність в 1 ULP на ~9600 семплах змінює хеш. Зелений на x86-64, `aarch64-unknown-linux-gnu`, `armv7-unknown-linux-gnueabihf` (§6) |
+| `rendered_signal_is_bit_identical_across_architectures` | 100 мс рендеру `PolySynth<8>` через весь тракт (унісон 4 + drift + FM + feedback + 4 маршрути LFO + резонансний Low SVF + drive/bias/fold/crush/downsample), зі скриптованими note-on/off та pitch-bend; біти кожного семпла згортаються в FNV-1a хеш і звіряються з константою, знятою на `x86_64-pc-windows-msvc`. Будь-яка розбіжність в 1 ULP на ~9600 семплах змінює хеш. Зелений на x86-64, `aarch64-unknown-linux-gnu`, `armv7-unknown-linux-gnueabihf` (§6). Хеші @48/96 кГц: `VERIFY_HASH` / `VERIFY_HASH_96K` |
+| `second_pass_is_bit_identical_across_architectures` | другий скриптований прохід, що покриває те, чого перший не торкається: **HQ-шина** (весь голос на `2×` + майстер-дециматор + майстер DC-блокер на `2×`), хвилі `Saw` та `Triangle` (PolyBLEP/PolyBLAMP), **дробова** стеля партіалів (кросфейд ⌊n⌋↔⌈n⌉) і замкнена **формантна** горбина; перемикання хвилі при двох утримуваних нотах заразом перевіряє й `is_active()`-гейт у `set_waveform`. Хеші: `VERIFY_2_HASH` / `VERIFY_2_HASH_96K`; так само звіряється в `wasm32` (`verify-wasm.mjs`) |
 
 ### `tests/stress.rs` — інтеграційні, RT-safety (11)
 
@@ -370,7 +374,7 @@ _paths, tiny_downsample_is_bypassed_not_jittered}`) підтверджено л�
 | std, усі цілі | `cargo clippy --all-targets` | 0 попереджень / помилок |
 | no_std реліз | `cargo clippy --no-default-features --release` | 0 |
 | nightly SIMD | `cargo +nightly build --features portable-simd` | збирається |
-| Тести | `cargo test` | 116 / 116 (98 юніт + 18 інтеграційних) + 1 `#[ignore]` |
+| Тести | `cargo test` | 120 / 120 (101 юніт + 19 інтеграційних) + 1 `#[ignore]` |
 | no_std бінарник | `cargo build --no-default-features --release` | `harmonic_core.dll` (~14 КБ) + `.lib` |
 | Плагін | `cargo xtask bundle harmonic_synth --release` | `.vst3` + `.clap`; `clap_entry` присутній, VST3 має `GetPluginFactory`/`InitDll`/`ExitDll` |
 
@@ -508,20 +512,24 @@ CLAP-обгортки nih-plug (немає `rescan(CLAP_PARAM_RESCAN_VALUES)` п
 
 | Таргет | `f64`-FPU | Результат |
 |---|---|---|
-| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **116 / 116 pass** (98 юніт + 18 інтеграційних) |
-| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **116 / 116 pass** |
+| `aarch64-unknown-linux-gnu` | AdvSIMD/FP | **120 / 120 pass** (101 юніт + 19 інтеграційних) |
+| `armv7-unknown-linux-gnueabihf` | VFPv3-d16 — **тотожний Cortex-M4F** | **120 / 120 pass** |
 | `wasm32-unknown-unknown` (Node) | нативний wasm `f64` | **хеш = референс** (`scripts/verify-wasm.mjs`) |
 
 Сценарій рендеру та константи-хеші живуть у `harmonic_core::verify`
-(`render_verification_at(sr, …)` / `verify_hash` / `VERIFY_HASH` /
-`VERIFY_HASH_96K`), тож інтеграційний тест, ARM-звірка й wasm-звірка
+(`render_verification_at(sr, …)` / `render_verification_2_at(sr, …)` /
+`verify_hash` / `VERIFY_HASH` / `VERIFY_HASH_96K` / `VERIFY_2_HASH` /
+`VERIFY_2_HASH_96K`), тож інтеграційний тест, ARM-звірка й wasm-звірка
 проганяють **той самий байт-у-байт прохід**.
 `rendered_signal_is_bit_identical_across_architectures` звіряє хеш рендеру
 всього тракту з референсом, знятим на `x86_64-pc-windows-msvc`, **на двох
 частотах — 48 і 96 кГц** (щоб «на будь-якій частоті» мало підтвердження):
-**дельта `= 0.0`**. wasm-звірка (`hc_verify_*` експорти + `verify-wasm.mjs`)
-перевіряє і власний хеш модуля, і незалежний JS-фолд байтів — обидва
-`= 0xc7f786d40586da75` (48 кГц). Дрейф фазового акумулятора
+**дельта `= 0.0`**. `second_pass_…` робить те саме для другого проходу
+(HQ-шина + Saw/Triangle + дробові партіали + формант). wasm-звірка
+(`hc_verify_*` експорти + `verify-wasm.mjs`) перевіряє для обох проходів і
+власний хеш модуля, і незалежний JS-фолд байтів — усі збігаються з
+референсом (`0x272cf9c7ecbaf653` / `0x25660025905bedc4` @48 кГц). Дрейф
+фазового акумулятора
 (`voice::phase_accumulators_do_not_drift`, `DRIFT_SAMPLES=2·10⁷`) теж
 збігається до останньої значущої цифри (`4.566·10⁻¹⁰` обертів carrier,
 `3.483·10⁻¹⁰` FM) на x86-64 та `aarch64`.
@@ -547,7 +555,7 @@ Daisy Seed), `thumbv6m-none-eabi`, `riscv32imac-unknown-none-elf`,
 - **Регресійний тест на CLAP `ext_state_load`-фікс** — сам фікс перевіряється
   лише `clap-validator` (у `cargo xtask validate`, не в `cargo test`).
 - **ARM під QEMU + wasm32 під Node — покрито** (§6-bis: `aarch64` + `armv7-hf`
-  116/116, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
+  120/120, `wasm32` хеш = референс). **Не покрито:** реальне залізо Cortex-M
   (`thumbv7em` / `thumbv6m`), прогін під RISC-V — усе крос-компілюється чисто
   (compile-check у `cross-verify.sh`), але на залізі не проганялось.
 - **Частоти дискретизації поза `[8000, 768000]` Hz** — тепер клампляться зі

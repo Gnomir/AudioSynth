@@ -83,7 +83,7 @@ Artifacts land in `target/release/`:
 | `src/verify.rs` | The shared scripted whole-tract render + FNV-1a hash + reference constants — called by the integration test, the ARM cross-check and the `wasm32` cross-check so all three render the same bytes. |
 | `tests/spectrum.rs` | closed form == brute sum; rendered voice proven non-aliasing via single-bin DFT. |
 | `tests/stress.rs` | adversarial RT-safety: `NaN`/`±∞`/`±1e300` into every public setter, parameter & note-event storms at sample rate, sample-rate extremes, HQ under load, 2 M-sample run — output stays finite, bounded, and the voice pool always recovers. |
-| `tests/cross_platform_bit_exact.rs` | whole-tract render hash vs an x86-64 reference, at 48 **and** 96 kHz, and independent of render block size — bit-identical on `aarch64` / `armv7-hf` under QEMU and `wasm32` under Node. |
+| `tests/cross_platform_bit_exact.rs` | two whole-tract render hashes (pass 2 adds the HQ bus, Saw/Triangle, fractional partials, the Formant hump) vs an x86-64 reference, at 48 **and** 96 kHz, and independent of render block size — bit-identical on `aarch64` / `armv7-hf` under QEMU and `wasm32` under Node. |
 | `scripts/` | `cross-verify.sh` (QEMU ARM + wasm + bare-metal compile-check), `verify-wasm.mjs` (render hash in Node). |
 | `examples/` | `render_wav`, `poly_demo`, `character_demo`, `filter_demo`, `wide_demo` (unison); benches `bench_hc`, `bench_poly`, `bench_hq_bus`. |
 
@@ -182,7 +182,7 @@ intonation stops beating, but bell inharmonicity needs a different kernel
 | PolyBLEP saw / triangle | ~90 M / ~77 M samples/s (cheaper than the geometric carrier) |
 | Cross-architecture render hash | **delta 0.0** on `aarch64` + `armv7-hf` (QEMU) and `wasm32` (Node), 48 + 96 kHz, any block size |
 | `no_std` cdylib | ~14 KB native, ~45 KB `wasm32` |
-| Tests | **116** (98 unit + 18 integration, 11 = adversarial `stress.rs`) + 1 `#[ignore]` drift; run on every push by CI (`.github/workflows/ci.yml`) |
+| Tests | **120** (101 unit + 19 integration, 11 = adversarial `stress.rs`) + 1 `#[ignore]` drift; run on every push by CI (`.github/workflows/ci.yml`) |
 
 ## Status & roadmap
 

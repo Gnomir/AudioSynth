@@ -225,12 +225,16 @@ pub fn cos4_turns(x: [f64; 4]) -> [f64; 4]
 
 // verify: канонічний крос-платформний рендер (self-check збірки інтегратора)
 pub const VERIFY_FRAMES: usize                          // 4800 (стерео) — буфер потрібен ×2
-pub const VERIFY_HASH: u64                              // 0xc7f786d40586da75 — @48к, x86-64/ARM/wasm32
-pub const VERIFY_HASH_96K: u64                          // той самий прохід @96к — «будь-яка частота»
+pub const VERIFY_HASH: u64                              // 0x272cf9c7ecbaf653 — @48к, x86-64/ARM/wasm32
+pub const VERIFY_HASH_96K: u64                          // 0x2bd0d67f29d16c1f — той самий прохід @96к — «будь-яка частота»
+pub const VERIFY_2_HASH: u64                            // 0x25660025905bedc4 — @48к — 2-й прохід: HQ-шина + Saw/Triangle + дробові партіали + формант
+pub const VERIFY_2_HASH_96K: u64                        // 0x8adc3df7df5e7bb6 — @96к
 pub fn render_verification_at(sr: f64, out: &mut [f32]) // фіксований прохід через весь тракт, без алокацій, no_std
 pub fn render_verification(out: &mut [f32])             // == render_verification_at(48_000.0, …)
+pub fn render_verification_2_at(sr: f64, out: &mut [f32]) // 2-й прохід (див. VERIFY_2_HASH)
+pub fn render_verification_2(out: &mut [f32])           // == render_verification_2_at(48_000.0, …)
 pub fn verify_hash(samples: &[f32]) -> u64              // FNV-1a по бітах f32
-// wasm32-only експорти: hc_verify_render / hc_verify_len / hc_verify_hash_{lo,hi}
+// wasm32-only експорти: hc_verify_render{,_2} / hc_verify_len / hc_verify_hash_{lo,hi}
 ```
 
 ---

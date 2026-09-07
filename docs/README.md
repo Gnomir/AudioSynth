@@ -34,7 +34,7 @@ Ed25519-keyfile (`harmonic_synth/license/`, `product/`).
 | [03_ARCHITECTURE.md](03_ARCHITECTURE.md) | Граф модулів, `Voice` / `PolySynth`, сигнальний тракт, типи даних, контракт RT-safety, матриця збірки, модель володіння FFI |
 | [04_DSP_COMPONENTS.md](04_DSP_COMPONENTS.md) | Character-стадія, HQ-режим (Unified HQ Bus), ZDF SVF (повне виведення Cytomic), ADSR, LFO, панорама рівної потужності, де-клік, pitch bend, унісон, soft-clip |
 | [05_API_REFERENCE.md](05_API_REFERENCE.md) | Rust API (кожен публічний метод) та C-ABI (кожна експортована функція), одиниці, діапазони клампу, RT vs setup |
-| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 116 тестів ядра + 34 плагінних + 9 `harmonic_license`, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM + `wasm32` (bit-exact, 48+96к), CI, що НЕ покрито |
+| [06_VERIFICATION.md](06_VERIFICATION.md) | Методологія тестування, каталог усіх 120 тестів ядра + 34 плагінних + 9 `harmonic_license`, виміряні числа, бенчмарки, `pluginval`, крос-верифікація на ARM + `wasm32` (bit-exact, 48+96к), CI, що НЕ покрито |
 | [07_LIMITATIONS.md](07_LIMITATIONS.md) | Чесні межі: Θ(log n) а не O(1); аліасинг на нелінійних стадіях; стеля 2048 гармонік; один MIDI-канал; педаль сустейну на рівні плагіна; DAW-валідація лише часткова (перший прогін — REAPER) тощо |
 | [08_EMBEDDED_INTEGRATION.md](08_EMBEDDED_INTEGRATION.md) | Регламент інтеграції в C/C++/RTOS: `no_std`-контракт, макет пам'яті, протокол C-ABI, збірка під ARM/RISC-V, що гарантовано / що ні |
 | [09_ROADMAP.md](09_ROADMAP.md) | Що лишилось: активні задачі (жива DAW-валідація, upstream-PR) та свідомо відкладені напрямки з причиною |
@@ -65,7 +65,7 @@ cd harmonic_core && cargo doc --no-deps --open
 
 ## Статус
 
-116 тестів ядра (98 юніт + 18 інтеграційних) + 34 у плагіні + 9 у
+120 тестів ядра (101 юніт + 19 інтеграційних) + 34 у плагіні + 9 у
 `harmonic_license` + 1 `#[ignore]` (дрейф), біт-у-біт (δ = 0.0) на
 `aarch64` + `armv7-hf` під QEMU **та `wasm32` у Node**, на 48 і 96 кГц,
 незалежно від розміру блоку (`cross-verify.sh` + `verify-wasm.mjs`) · CI

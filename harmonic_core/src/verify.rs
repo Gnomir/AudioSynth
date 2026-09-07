@@ -15,7 +15,7 @@
 //!
 //! [`Character`]: crate::Character
 
-use crate::{CharParams, FilterMode, LfoMode, LfoShape, PolySynth};
+use crate::{CharParams, FilterMode, LfoMode, LfoShape, PolySynth, Waveform};
 
 /// Frames the verification render produces (stereo). A [`render_verification`]
 /// buffer must hold `2 ×` this many `f32`s.
@@ -28,12 +28,23 @@ pub const VERIFY_FRAMES: usize = 4_800;
 ///
 /// Regenerate with `RENDER_EMIT_HASH=1 cargo test --release --test
 /// cross_platform_bit_exact -- --nocapture`.
-pub const VERIFY_HASH: u64 = 0xc7f7_86d4_0586_da75;
+pub const VERIFY_HASH: u64 = 0x272c_f9c7_ecba_f653;
 
 /// Same as [`VERIFY_HASH`] for the pass rendered at **96 kHz** — proof that the
 /// "identical on any machine at any sample rate" claim holds at more than one
 /// rate. Regenerated the same way.
-pub const VERIFY_HASH_96K: u64 = 0xfd83_d6f3_91f8_2fb1;
+pub const VERIFY_HASH_96K: u64 = 0x2bd0_d67f_29d1_6c1f;
+
+/// FNV-1a of [`render_verification_2`] (48 kHz) — a second scripted pass that
+/// covers what the first one does not touch: the **HQ bus** (whole-voice `2×`
+/// path + master half-band decimator + the `2×`-rate master DC blocker), the
+/// `Saw` and `Triangle` PolyBLEP/PolyBLAMP waveforms, a **fractional**
+/// `partial_limit` (the ⌊n⌋↔⌈n⌉ crossfade), and the closed-form **Formant**
+/// hump term. Same regeneration command.
+pub const VERIFY_2_HASH: u64 = 0x2566_0025_905b_edc4;
+
+/// [`VERIFY_2_HASH`] rendered at **96 kHz**.
+pub const VERIFY_2_HASH_96K: u64 = 0x8adc_3df7_df5e_7bb6;
 
 /// Render the fixed verification pass into `out` — frame-interleaved `L, R`;
 /// `out.len()` must be `>= VERIFY_FRAMES * 2`. Deterministic, no allocation,
@@ -92,6 +103,67 @@ pub fn render_verification(out: &mut [f32]) {
     render_verification_at(48_000.0, out);
 }
 
+/// The second scripted pass — see [`VERIFY_2_HASH`] for what it covers that
+/// [`render_verification_at`] does not. Same contract: frame-interleaved
+/// `L, R`, `out.len() >= VERIFY_FRAMES * 2`, deterministic, no `std`.
+pub fn render_verification_2_at(sample_rate: f64, out: &mut [f32]) {
+    let mut synth: PolySynth<8> = PolySynth::new(sample_rate);
+
+    synth.set_hq(true); // whole-voice 2× bus + master decimator + 2× DC blocker
+    synth.set_rolloff(0.8);
+    synth.set_gain(0.75);
+    synth.set_waveform(Waveform::Saw);
+    synth.set_partial_limit(37.5); // fractional — ⌊n⌋↔⌈n⌉ crossfade
+    synth.set_formant(0.55); // the second closed-form (hump) term
+    synth.set_character(CharParams {
+        drive: 0.4,
+        bias: 0.15, // drive + bias together ⇒ the fold generates real DC
+        fold: 0.5,
+        crush: 0.0,
+        downsample: 0.0,
+    });
+    synth.set_fm(0.5, 0.3);
+    synth.set_unison(3, 9.0, 0.5, 0.4);
+    synth.set_amp_adsr(0.004, 0.10, 0.7, 0.20);
+    synth.set_filter(FilterMode::Band, 900.0, 0.6, 1.5);
+    synth.set_filter_envelope(0.003, 0.06, 0.25, 0.15);
+    synth.set_lfo(
+        0.9,
+        LfoShape::Sine,
+        LfoMode::Retrigger,
+        0.2, // → rolloff
+        6.0, // → pitch (cents)
+        0.8, // → cutoff (octaves)
+        0.0, // → FM index
+    );
+
+    for i in 0..VERIFY_FRAMES {
+        match i {
+            0 => synth.note_on(40, 0.8),
+            700 => synth.note_on(47, 1.0),
+            1_500 => synth.set_pitch_bend(-1.0),
+            2_400 => {
+                // waveform switched *while* two notes are held — also exercises
+                // the `is_active()` fan-out guard in `set_waveform`.
+                synth.set_waveform(Waveform::Triangle);
+                synth.note_on(55, 0.6);
+            }
+            3_000 => synth.note_off(40),
+            3_600 => synth.note_off(47),
+            4_200 => synth.note_off(55),
+            _ => {}
+        }
+        let [l, r] = synth.render_sample();
+        out[i * 2] = l;
+        out[i * 2 + 1] = r;
+    }
+}
+
+/// [`render_verification_2_at`] at 48 kHz — the pass behind [`VERIFY_2_HASH`].
+pub fn render_verification_2(out: &mut [f32]) {
+    render_verification_2_at(48_000.0, out);
+}
+
 /// FNV-1a over the raw little-endian bits of every `f32` in `samples`, in order.
 pub fn verify_hash(samples: &[f32]) -> u64 {
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -128,7 +200,17 @@ mod wasm {
         out.as_ptr()
     }
 
-    /// Number of `f32` samples the last [`hc_verify_render`] wrote.
+    /// Run [`super::render_verification_2`]; same buffer, same layout — the
+    /// `hc_verify_*` calls are always made in sequence.
+    #[no_mangle]
+    pub extern "C" fn hc_verify_render_2() -> *const f32 {
+        // SAFETY: single-threaded, no other live reference to BUF.
+        let out = unsafe { &mut *BUF.0.get() };
+        super::render_verification_2(out);
+        out.as_ptr()
+    }
+
+    /// Number of `f32` samples the last `hc_verify_render*` wrote.
     #[no_mangle]
     pub extern "C" fn hc_verify_len() -> usize {
         N

@@ -814,15 +814,34 @@ impl Voice {
     #[inline]
     fn tick_modulation(&mut self) -> Modulation {
         // ---- parameter smoothing ----
-        self.freq_z += (1.0 - self.smooth_coeff) * (self.freq - self.freq_z);
-        self.rolloff_z += (1.0 - self.smooth_coeff) * (self.rolloff - self.rolloff_z);
-        // Per-note brightness expression, smoothed on the same time constant.
-        // Stays at exactly 0.0 while unused, so `roll_eff` below is unchanged.
-        self.expr_bright_z += (1.0 - self.smooth_coeff) * (self.expr_bright - self.expr_bright_z);
-        // "Formant" hump depth, same time constant. Exactly 0.0 while unused.
-        self.formant_z += (1.0 - self.smooth_coeff) * (self.formant - self.formant_z);
-        self.bend_z += (1.0 - self.smooth_coeff) * (self.bend - self.bend_z);
-        self.pan_z += (1.0 - self.pan_smooth) * (self.pan - self.pan_z);
+        // Each one-pole snaps to its target once the gap is `< SNAP` — an
+        // inaudibly small residual (`1e-11` in Hz / r / pan / cents units). Two
+        // reasons: (1) `pan_z`/`formant_z`/`expr_bright_z` decay geometrically
+        // toward *zero* when their control is centred / off, and without the
+        // snap they crawl through the entire subnormal range (`< 2.2e-308`) —
+        // ~0.3 s of ~100×-slower denormal arithmetic on x86 without FTZ, once
+        // per centred note; (2) it also stops the pointless per-sample multiply
+        // once a value has converged. `SNAP` is far below any level a smoother
+        // reaches inside the verification render, so `VERIFY_HASH` is unchanged.
+        const SNAP: f64 = 1.0e-11;
+        #[inline(always)]
+        fn smooth(z: &mut f64, target: f64, one_minus_coeff: f64) {
+            let d = target - *z;
+            if fabs(d) < SNAP {
+                *z = target;
+            } else {
+                *z += one_minus_coeff * d;
+            }
+        }
+        let a = 1.0 - self.smooth_coeff;
+        smooth(&mut self.freq_z, self.freq, a);
+        smooth(&mut self.rolloff_z, self.rolloff, a);
+        // Per-note brightness expression / "Formant" depth, same time constant.
+        // Both are exactly 0.0 while unused, so `roll_eff` below is unchanged.
+        smooth(&mut self.expr_bright_z, self.expr_bright, a);
+        smooth(&mut self.formant_z, self.formant, a);
+        smooth(&mut self.bend_z, self.bend, a);
+        smooth(&mut self.pan_z, self.pan, 1.0 - self.pan_smooth);
 
         // ---- LFO ----
         // Fast path: when no LFO target is routed the modulator output is
@@ -912,8 +931,12 @@ impl Voice {
     /// caller, which knows whether it has one mono sample or a lo/hi pair).
     #[inline]
     fn advance_phase_and_pan(&mut self, step: f64) {
+        // `fm_ratio` (`≥ 0`) and `step` (`> 0`) are both non-negative, so
+        // `fm_phase` only ever increases — the `≤ −1.0` half of the old test
+        // was dead. `fm_ratio·step` can be large (up to ~2048), so `floor_f64`,
+        // not a bare `-= 1.0`.
         self.fm_phase += self.fm_ratio * step;
-        if self.fm_phase >= 1.0 || self.fm_phase <= -1.0 {
+        if self.fm_phase >= 1.0 {
             self.fm_phase -= floor_f64(self.fm_phase);
         }
         self.phase += step;
@@ -945,6 +968,16 @@ impl Voice {
     #[inline]
     pub fn carrier_phase_for_test(&self) -> f64 {
         self.phase
+    }
+
+    /// The pan and formant one-pole smoother states. Test-only — for asserting
+    /// the `SNAP` in [`Self::tick_modulation`] pins a converged smoother to
+    /// *exactly* its target instead of letting it crawl through the subnormal
+    /// range for the rest of the note.
+    #[cfg(test)]
+    #[inline]
+    pub fn smoother_states_for_test(&self) -> (f64, f64) {
+        (self.pan_z, self.formant_z)
     }
 
     /// Fill `left` / `right` with rendered samples (up to the shorter length).
@@ -1605,5 +1638,48 @@ mod tests {
         // regression (e.g. dropping the per-period wrap) blows straight past it.
         assert!(carrier_ppm < 1.0e-3, "carrier frequency drift {carrier_ppm:e} ppm");
         assert!(fm_ppm < 1.0e-3, "fm frequency drift {fm_ppm:e} ppm");
+    }
+
+    #[test]
+    fn a_converged_smoother_snaps_to_its_target_instead_of_crawling_subnormals() {
+        // A one-pole `z += a·(target − z)` approaches a centred target (pan 0,
+        // formant off) geometrically but never reaches it — left alone it
+        // spends the rest of the note grinding `z` down through the whole
+        // subnormal range (`|z| < 2.2e-308`), ~100× slower per multiply on x86
+        // without hardware flush-to-zero. `tick_modulation`'s `SNAP` pins it to
+        // the target once the residual is inaudible. Assert that pin actually
+        // happens, within a musically short window, and holds.
+        let mut v = Voice::new(48_000.0);
+        v.set_gain(1.0);
+        v.set_frequency(220.0);
+        v.set_pan(0.7);
+        v.set_formant(0.6);
+        v.reset(); // smoothers start pinned at 0.7 / 0.6
+
+        v.set_pan(0.0); // now a decaying gap toward zero
+        v.set_formant(0.0);
+
+        let mut snapped_at = None;
+        for i in 0..48_000 {
+            v.render_sample();
+            if v.smoother_states_for_test() == (0.0, 0.0) {
+                snapped_at = Some(i);
+                break;
+            }
+        }
+        let n = snapped_at.expect("pan/formant smoothers never snapped to exactly 0.0");
+        // 5 ms (formant) / 10 ms (pan) time constants → a few hundred ms to
+        // decay past `SNAP`; 0.5 s is comfortable headroom and a bare
+        // `z += a·d` with no snap would never trip this at all.
+        assert!(n < 24_000, "snap took {n} samples (> 0.5 s)");
+
+        for _ in 0..9_600 {
+            v.render_sample();
+            assert_eq!(
+                v.smoother_states_for_test(),
+                (0.0, 0.0),
+                "a snapped smoother drifted back off its target"
+            );
+        }
     }
 }

@@ -15,16 +15,22 @@
 //! --test cross_platform_bit_exact -- --nocapture`
 
 use harmonic_core::verify::{
-    render_verification, render_verification_at, verify_hash, VERIFY_FRAMES, VERIFY_HASH,
-    VERIFY_HASH_96K,
+    render_verification, render_verification_2, render_verification_2_at, render_verification_at,
+    verify_hash, VERIFY_2_HASH, VERIFY_2_HASH_96K, VERIFY_FRAMES, VERIFY_HASH, VERIFY_HASH_96K,
 };
 
-fn check(sr: f64, expected: u64, label: &str) {
+enum Pass {
+    One,
+    Two,
+}
+
+fn check(pass: Pass, sr: f64, expected: u64, label: &str) {
     let mut sig = vec![0.0_f32; VERIFY_FRAMES * 2];
-    if sr == 48_000.0 {
-        render_verification(&mut sig);
-    } else {
-        render_verification_at(sr, &mut sig);
+    match (pass, sr == 48_000.0) {
+        (Pass::One, true) => render_verification(&mut sig),
+        (Pass::One, false) => render_verification_at(sr, &mut sig),
+        (Pass::Two, true) => render_verification_2(&mut sig),
+        (Pass::Two, false) => render_verification_2_at(sr, &mut sig),
     }
 
     // sanity: the render actually produced sound and stayed finite / bounded
@@ -44,6 +50,13 @@ fn check(sr: f64, expected: u64, label: &str) {
 
 #[test]
 fn rendered_signal_is_bit_identical_across_architectures() {
-    check(48_000.0, VERIFY_HASH, "48 kHz");
-    check(96_000.0, VERIFY_HASH_96K, "96 kHz");
+    check(Pass::One, 48_000.0, VERIFY_HASH, "48 kHz");
+    check(Pass::One, 96_000.0, VERIFY_HASH_96K, "96 kHz");
+}
+
+#[test]
+fn second_pass_is_bit_identical_across_architectures() {
+    // HQ bus + Saw/Triangle + fractional partials + Formant hump.
+    check(Pass::Two, 48_000.0, VERIFY_2_HASH, "48 kHz pass 2");
+    check(Pass::Two, 96_000.0, VERIFY_2_HASH_96K, "96 kHz pass 2");
 }

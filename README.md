@@ -61,9 +61,9 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 ```sh
 # library + tests
 cd harmonic_core
-cargo test                                    # 116 (98 unit + 18 integration); + `-- --ignored` drift test
+cargo test                                    # 120 (101 unit + 19 integration); + `-- --ignored` drift test
 cargo build --no-default-features --release    # the real no_std build
-bash scripts/cross-verify.sh                   # 116/116 bit-identical on ARM (QEMU) + wasm32 (Node) + bare-metal compile-check
+bash scripts/cross-verify.sh                   # 120/120 bit-identical on ARM (QEMU) + wasm32 (Node) + bare-metal compile-check
 
 # plugin bundle (VST3 + CLAP)
 cd ../harmonic_synth
@@ -81,7 +81,7 @@ nightly.
 
 ## Status
 
-116 `harmonic_core` tests pass (98 unit + 18 integration, 11 of them an
+120 `harmonic_core` tests pass (101 unit + 19 integration, 11 of them an
 adversarial RT-safety suite) plus 34 plugin tests and 9 `harmonic_license`
 tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`,
 `no_std` and nightly `portable-simd`. The

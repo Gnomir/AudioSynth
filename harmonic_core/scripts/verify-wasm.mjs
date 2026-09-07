@@ -20,8 +20,9 @@ const wasmPath = join(
   here, '..', 'target', 'wasm32-unknown-unknown', 'release', 'harmonic_core.wasm',
 );
 
-// Keep in sync with harmonic_core::verify::VERIFY_HASH.
-const REFERENCE = 0xc7f786d40586da75n;
+// Keep in sync with harmonic_core::verify::VERIFY_HASH / VERIFY_2_HASH.
+const REFERENCE = 0x272cf9c7ecbaf653n;
+const REFERENCE_2 = 0x25660025905bedc4n;
 
 const MASK64 = (1n << 64n) - 1n;
 const FNV_PRIME = 0x100000001b3n;
@@ -59,6 +60,24 @@ if (wasmHash !== REFERENCE || jsHash !== REFERENCE) {
   process.exit(1);
 }
 console.log('OK — wasm32 render is bit-identical to the x86-64 / ARM reference.\n');
+
+// Second scripted pass — HQ bus, Saw/Triangle, fractional partials, Formant.
+const ptr2 = ex.hc_verify_render_2();
+const len2 = ex.hc_verify_len();
+const samples2 = new Float32Array(ex.memory.buffer, ptr2, len2);
+const jsHash2 = fnv1a(new Uint8Array(samples2.buffer, samples2.byteOffset, len2 * 4));
+const wasmHash2 =
+  (BigInt(ex.hc_verify_hash_hi() >>> 0) << 32n) | BigInt(ex.hc_verify_hash_lo() >>> 0);
+
+console.log(`pass 2 wasm self-hash : ${hex(wasmHash2)}`);
+console.log(`pass 2 js byte-hash   : ${hex(jsHash2)}`);
+console.log(`pass 2 reference      : ${hex(REFERENCE_2)}`);
+
+if (wasmHash2 !== REFERENCE_2 || jsHash2 !== REFERENCE_2) {
+  console.error('\nMISMATCH — the wasm32 pass-2 render is NOT bit-identical to the reference.');
+  process.exit(1);
+}
+console.log('OK — wasm32 pass-2 render is bit-identical to the x86-64 / ARM reference.\n');
 
 // ---------------------------------------------------------------------------
 // The browser-integration path: drive one `Voice` through the C ABI exactly as

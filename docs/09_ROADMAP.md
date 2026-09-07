@@ -1,6 +1,6 @@
 # 09 — Що лишилось зробити
 
-Ядро й плагін стабільні: `116/116` тестів ядра + `34` плагінних + `9`
+Ядро й плагін стабільні: `120/120` тестів ядра + `34` плагінних + `9`
 `harmonic_license`, біт-у-біт на `aarch64` + `armv7-hf` під QEMU, clippy
 чистий (std / no_std / nightly-simd), VST3 проходить `pluginval --strictness 8`
 (з GUI-тестами), CLAP — `clap-validator 35/35`, плагін має GUI (`nih_plug_vizia`).
@@ -141,8 +141,8 @@ Ed25519-keyfile — це вже зроблено (`harmonic_synth/license/`,
 
 - **Стан.** Біт-у-біт **виміряно** на `aarch64`, `armv7-hf` (VFP `f64` =
   Cortex-M4F/M7) під QEMU **і на `wasm32`** під Node (`scripts/verify-wasm.mjs`
-  — той самий `verify::render_verification`, той самий хеш
-  `0xc7f786d40586da75`). Тобто «той самий звук у браузері» — не обіцянка, а
+  — ті самі `verify::render_verification{,_2}`, ті самі хеші
+  `0x272cf9c7ecbaf653` / `0x25660025905bedc4`). Тобто «той самий звук у браузері» — не обіцянка, а
   виміряно. Bare-metal цілі (`thumbv7em` = Daisy Seed, `thumbv6m`,
   `riscv32imac`, `aarch64-unknown-none`) компілюються чисто
   `--no-default-features --release` — `cross-verify.sh` робить compile-check.
