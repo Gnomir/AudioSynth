@@ -1,0 +1,1157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%8A%3C/text%3E%3C/svg%3E">
+<title>Cosine</title>
+<meta name="description" content="A synthesiser whose oscillator is one closed-form equation — exactly band-limited, the same cost for 3 harmonics or 2000, and bit-identical on every CPU. VST3 / CLAP, and a no_std Rust engine underneath. English / Українська.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* Standalone page (no artifact skeleton providing a reset) — a couple of
+     defaults the skeleton used to give us for free. */
+  img { max-width: 100%; }
+
+  /* ============ tokens — light is the bare :root, dark redefined twice ============ */
+  :root {
+    color-scheme: light dark;
+    --bg:        #f6f6f3;
+    --surface:   #ffffff;
+    --surface-2: #edece7;
+    --inset:     #eceae3;
+    --ink:       #17181b;
+    --ink-soft:  #3c3e43;
+    --muted:     #6b6e75;
+    --line:      #e2e1da;
+    --rule:      #cfcec4;
+    --grid:      rgba(23,24,27,.055);
+    --teal:      #0f6f67;
+    --teal-ink:  #0b524b;
+    --teal-bg:   #dcecea;
+    --amber:     #9d5c14;
+    --amber-ink: #7f4a0f;
+    --amber-bg:  #f0e6d4;
+    --good:      #2f7c4f;
+    --warn:      #a9701a;
+    --bad:       #a5382b;
+    --trace:     #0f6f67;
+    --hump:      #b4701f;
+    --shadow:    0 1px 0 var(--rule), 0 24px 50px -34px rgba(0,0,0,.32);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg:        #0d0e11;
+    --surface:   #16171b;
+    --surface-2: #1e1f24;
+    --inset:     #101115;
+    --ink:       #e9e9e5;
+    --ink-soft:  #b8b9b4;
+    --muted:     #7f838c;
+    --line:      #26272d;
+    --rule:      #34353d;
+    --grid:      rgba(233,233,229,.05);
+    --teal:      #47bab0;
+    --teal-ink:  #71d2c9;
+    --teal-bg:   #10322e;
+    --amber:     #dd9a55;
+    --amber-ink: #ecb579;
+    --amber-bg:  #29200f;
+    --good:      #58b079;
+    --warn:      #d0923f;
+    --bad:       #d76a5b;
+    --trace:     #47bab0;
+    --hump:      #dd9a55;
+    --shadow:    0 1px 0 rgba(255,255,255,.03), 0 28px 60px -36px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg:        #0d0e11;
+      --surface:   #16171b;
+      --surface-2: #1e1f24;
+      --inset:     #101115;
+      --ink:       #e9e9e5;
+      --ink-soft:  #b8b9b4;
+      --muted:     #7f838c;
+      --line:      #26272d;
+      --rule:      #34353d;
+      --grid:      rgba(233,233,229,.05);
+      --teal:      #47bab0;
+      --teal-ink:  #71d2c9;
+      --teal-bg:   #10322e;
+      --amber:     #dd9a55;
+      --amber-ink: #ecb579;
+      --amber-bg:  #29200f;
+      --good:      #58b079;
+      --warn:      #d0923f;
+      --bad:       #d76a5b;
+      --trace:     #47bab0;
+      --hump:      #dd9a55;
+      --shadow:    0 1px 0 rgba(255,255,255,.03), 0 28px 60px -36px rgba(0,0,0,.7);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Spectral", Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: color-mix(in srgb, var(--teal) 28%, transparent); }
+
+  .wrap { max-width: 60rem; margin: 0 auto; padding-inline: 1.5rem; }
+  .narrow { max-width: 44rem; }
+
+  a { color: var(--teal-ink); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-color: var(--teal); }
+  strong { font-weight: 600; color: var(--ink); }
+  em { font-style: italic; }
+
+  code, .mono {
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: .82em;
+    font-variant-ligatures: none;
+  }
+  code {
+    background: var(--surface-2);
+    padding: .08em .38em;
+    border-radius: 4px;
+    color: var(--ink-soft);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    letter-spacing: -.006em;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  /* ---------- label / eyebrow / kicker — the instrument-readout voice ---------- */
+  .kick, .eyebrow, .label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .eyebrow { font-size: .72rem; letter-spacing: .2em; color: var(--teal-ink); margin: 0 0 1.15rem; }
+  .kick    { font-size: .68rem; letter-spacing: .17em; margin: 0 0 1rem; }
+
+  /* ---------- top bar ---------- */
+  .bar {
+    position: sticky; top: 0; z-index: 30;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .bar .wrap { display: flex; align-items: center; gap: 1rem; height: 3.5rem; }
+  .brand {
+    font-family: "Newsreader", Georgia, serif;
+    font-weight: 600; font-size: 1.12rem; letter-spacing: -.01em;
+    margin-right: auto; display: flex; align-items: baseline; gap: .55rem;
+  }
+  .brand .prov {
+    font-family: "JetBrains Mono", monospace; font-size: .58rem;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  }
+  .bar nav { display: flex; gap: 1.15rem; font-family: "JetBrains Mono", monospace; font-size: .73rem; }
+  .bar nav a { color: var(--ink-soft); text-decoration: none; }
+  .bar nav a:hover { color: var(--teal-ink); }
+  @media (max-width: 54rem) { .bar nav { display: none; } }
+  @media (max-width: 30rem) { .brand .prov { display: none; } }
+
+  .seg {
+    display: inline-flex; border: 1px solid var(--rule); border-radius: 5px; overflow: hidden;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .seg button {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    padding: .32rem .5rem; font: inherit; font-size: .66rem; letter-spacing: .04em;
+    color: var(--muted);
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; }
+  :root[data-theme="dark"] .seg button[aria-pressed="true"] { color: #0c1413; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { color: #0c1413; } }
+
+  .icon-btn {
+    appearance: none; border: 1px solid var(--rule); border-radius: 5px; background: transparent;
+    width: 1.9rem; height: 1.9rem; cursor: pointer; color: var(--ink-soft);
+    display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; line-height: 1;
+  }
+  .icon-btn:hover { border-color: var(--teal-ink); color: var(--teal-ink); }
+
+  /* ---------- buttons ---------- */
+  .cta-row { display: flex; flex-wrap: wrap; gap: .65rem; }
+  .btn {
+    display: inline-flex; align-items: center; gap: .45rem;
+    font-family: "JetBrains Mono", monospace; font-size: .78rem; font-weight: 500;
+    padding: .6rem 1rem; border-radius: 6px; text-decoration: none;
+    border: 1px solid var(--rule); color: var(--ink); background: var(--surface);
+    transition: border-color .15s;
+  }
+  .btn:hover { border-color: var(--teal-ink); }
+  .btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+  :root[data-theme="dark"] .btn.primary { color: #0c1413; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0c1413; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding-block: 4.25rem 3.25rem; border-bottom: 1px solid var(--line); }
+  .hero .grid { display: grid; grid-template-columns: 1.04fr 1fr; gap: 2.6rem; align-items: center; }
+  @media (max-width: 54rem) { .hero .grid { grid-template-columns: 1fr; gap: 2rem; } }
+  h1 {
+    font-weight: 500;
+    font-size: clamp(2.15rem, 5.2vw, 3.2rem);
+    line-height: 1.08;
+    margin: 0 0 1.15rem;
+  }
+  h1 em { color: var(--teal-ink); font-weight: 500; }
+  .sub { font-size: 1.09rem; color: var(--ink-soft); margin: 0 0 1.7rem; text-wrap: pretty; }
+
+  /* ---------- instrument panel ---------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1rem 1rem 1.15rem;
+    box-shadow: var(--shadow);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .panel { animation: rise .5s ease-out both; }
+    @keyframes rise { from { opacity: .55; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+  }
+  .panel .label {
+    font-size: .6rem; letter-spacing: .1em; color: var(--muted);
+    margin: 0 0 .55rem; display: flex; justify-content: space-between; gap: .5rem;
+  }
+  .panel .label .ok { color: var(--good); }
+  .screen {
+    background: var(--inset);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 2px;
+  }
+  canvas#cv {
+    display: block; width: 100%; aspect-ratio: 900 / 520; height: auto; border-radius: 5px;
+  }
+  .sliders { display: grid; gap: .5rem; margin-top: .85rem; }
+  .sld { display: grid; grid-template-columns: 5.4rem 1fr 3.9rem; align-items: center; gap: .7rem; }
+  .sld label { font-family: "JetBrains Mono", monospace; font-size: .67rem; color: var(--ink-soft); }
+  .sld output { font-family: "JetBrains Mono", monospace; font-size: .67rem; color: var(--teal-ink); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+    background: var(--rule); border-radius: 2px; outline-offset: 6px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 15px; height: 15px;
+    border-radius: 50%; background: var(--teal); border: 2px solid var(--surface); cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 13px; height: 13px; border-radius: 50%; background: var(--teal);
+    border: 2px solid var(--surface); cursor: pointer;
+  }
+  .cost {
+    margin-top: .8rem; padding: .55rem .7rem; border-radius: 6px;
+    background: var(--teal-bg);
+    border: 1px solid color-mix(in srgb, var(--teal) 32%, var(--line));
+    font-family: "JetBrains Mono", monospace; font-size: .67rem; color: var(--teal-ink); line-height: 1.55;
+  }
+  .cost b { color: var(--ink); }
+  .panel .note { font-family: "JetBrains Mono", monospace; font-size: .59rem; color: var(--muted); margin: .55rem 0 0; line-height: 1.55; }
+
+  /* ---------- sections ---------- */
+  main section { padding-block: 3.5rem; border-bottom: 1px solid var(--line); }
+  h2 { font-weight: 500; font-size: clamp(1.5rem, 3.5vw, 2rem); line-height: 1.16; margin: 0 0 1rem; }
+  h3 { font-weight: 600; font-size: 1.12rem; margin: 1.7rem 0 .5rem; }
+  p { margin: 0 0 1rem; }
+  .lead { font-size: 1.04rem; color: var(--ink-soft); }
+  ul { margin: 0 0 1rem; padding-left: 1.25rem; }
+  li { margin: .38rem 0; }
+  li::marker { color: var(--muted); }
+
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 48rem) { .three { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+    padding: 1.2rem 1.25rem;
+  }
+  .card h3 { margin: 0 0 .4rem; font-size: 1.06rem; }
+  .card p { font-size: .91rem; color: var(--ink-soft); margin: 0; }
+
+  .formula {
+    background: var(--inset); border: 1px solid var(--line); border-left: 3px solid var(--teal);
+    border-radius: 0 7px 7px 0; padding: 1rem 1.15rem; margin: 1.25rem 0;
+    font-family: "JetBrains Mono", monospace; font-size: .78rem; overflow-x: auto;
+    line-height: 1.85; color: var(--ink-soft);
+  }
+  .formula b { color: var(--ink); }
+
+  .feat {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 9px; overflow: hidden;
+  }
+  @media (max-width: 48rem) { .feat { grid-template-columns: 1fr; } }
+  .feat > div { background: var(--surface); padding: 1rem 1.15rem; }
+  .feat h4 {
+    font-family: "JetBrains Mono", monospace; font-size: .66rem; font-weight: 500;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 .4rem;
+  }
+  .feat p { font-size: .88rem; color: var(--ink-soft); margin: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 1.25rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: .6rem;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1.5px solid var(--rule); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+
+  /* Fixed column counts (not auto-fit) so 8 stat tiles always fill full rows —
+     auto-fit left a blank trailing cell whenever 8 didn't divide the computed
+     column count. 4 → 2 → 1 all divide 8 evenly. */
+  .specgrid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 9px; overflow: hidden;
+  }
+  @media (max-width: 46rem) { .specgrid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 26rem) { .specgrid { grid-template-columns: 1fr; } }
+  .specgrid > div { background: var(--surface); padding: .9rem 1rem; }
+  .specgrid .v {
+    font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 1.18rem;
+    color: var(--ink); font-variant-numeric: tabular-nums;
+  }
+  .specgrid .k {
+    font-family: "JetBrains Mono", monospace; font-size: .57rem; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted); margin-top: .25rem; line-height: 1.5;
+  }
+
+  .honest {
+    background: var(--amber-bg);
+    border: 1px solid color-mix(in srgb, var(--amber) 32%, var(--line));
+    border-radius: 9px; padding: 1.25rem 1.35rem; margin: 1.15rem 0;
+  }
+  .honest ul { margin: 0; }
+  .honest li { font-size: .92rem; }
+
+  .price { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 48rem) { .price { grid-template-columns: 1fr; } }
+  .tier { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 1.35rem 1.35rem 1.45rem; }
+  .tier.hi { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+  .tier .tname { font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .tier .amt { font-family: "Newsreader", serif; font-weight: 600; font-size: 2rem; margin: .3rem 0 .1rem; }
+  .tier .amt small { font-size: .88rem; color: var(--muted); font-weight: 400; }
+  .tier .was { font-family: "JetBrains Mono", monospace; font-size: .68rem; color: var(--muted); }
+  .tier ul { font-size: .89rem; margin: .85rem 0 0; }
+
+  details { border-bottom: 1px solid var(--line); padding: .9rem 0; }
+  details summary {
+    font-family: "Newsreader", serif; font-weight: 600; font-size: 1.02rem; cursor: pointer;
+    list-style: none; display: flex; justify-content: space-between; gap: 1rem;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: "+"; font-family: "JetBrains Mono", monospace; color: var(--teal-ink); }
+  details[open] summary::after { content: "\2013"; }
+  details p { margin: .8rem 0 0; font-size: .93rem; color: var(--ink-soft); }
+
+  .final { text-align: center; padding-block: 3.75rem; }
+  .final h2 { margin-bottom: .6rem; }
+  .final .sub { max-width: 34rem; margin: 0 auto 1.5rem; }
+  .final .cta-row { justify-content: center; }
+  form.notify { display: flex; gap: .5rem; max-width: 25rem; margin: 1.3rem auto 0; }
+  form.notify input[type=email] {
+    flex: 1; padding: .6rem .8rem; border-radius: 6px; border: 1px solid var(--rule);
+    background: var(--surface); color: var(--ink); font-family: "JetBrains Mono", monospace; font-size: .78rem;
+  }
+  @media (max-width: 34rem) { form.notify { flex-direction: column; } }
+  .formhint { font-family: "JetBrains Mono", monospace; font-size: .6rem; color: var(--muted); margin-top: .65rem; line-height: 1.55; }
+
+  footer { padding-block: 2.5rem 3.25rem; font-family: "JetBrains Mono", monospace; font-size: .69rem; color: var(--muted); line-height: 1.85; }
+  footer a { color: var(--ink-soft); }
+  footer .cols { display: flex; flex-wrap: wrap; gap: 1.3rem 2.4rem; margin-bottom: 1.5rem; }
+  footer .cols > div { display: flex; flex-direction: column; gap: .22rem; }
+  footer .cols strong { color: var(--ink-soft); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="wrap">
+    <span class="brand">Cosine <span class="prov" data-i18n="brand.prov">closed-form additive</span></span>
+    <nav>
+      <a href="#how" data-i18n="nav.how">How it works</a>
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#engine" data-i18n="nav.engine">For developers</a>
+      <a href="#limits" data-i18n="nav.limits">Limits</a>
+      <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+    </nav>
+    <div class="seg" role="group" aria-label="Language / Мова">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="uk" aria-pressed="false">УКР</button>
+    </div>
+    <button type="button" class="icon-btn" id="theme" aria-label="Toggle theme" title="Theme">◐</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap grid">
+    <div>
+      <p class="eyebrow" data-i18n="hero.eyebrow">Additive synthesis · closed form</p>
+      <h1 data-i18n-html="hero.h1"><em>Cosine.</em> One equation per note — not a wavetable, not an oscillator bank.</h1>
+      <p class="sub" data-i18n-html="hero.sub">The oscillator renders the first <em>n</em> harmonics of a
+        tone as a single algebraic expression — a sum of cosines in closed form,
+        exactly band-limited, the
+        <strong>same cost for 3 harmonics or 2000</strong>, and
+        <strong>bit-identical on every CPU</strong>. Sold as a finished VST3 /
+        CLAP plugin, and as the <code>no_std</code> Rust engine underneath it
+        that also runs on a $30 board and in a browser.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#pricing" data-i18n="hero.cta.pricing">See pricing</a>
+        <a class="btn" href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="hero.cta.demo">▶ Browser demo</a>
+        <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+
+    <div class="panel" id="demo">
+      <p class="label"><span data-i18n="panel.label">Live · the spectrum this patch defines</span><span class="ok" id="bl" data-i18n="panel.bandlimited">band-limited ✓</span></p>
+      <div class="screen">
+        <canvas id="cv" width="900" height="520" aria-label="Live harmonic spectrum of the closed-form oscillator"></canvas>
+      </div>
+      <div class="sliders">
+        <div class="sld">
+          <label for="s-b" data-i18n="panel.brightness">Brightness</label>
+          <input id="s-b" type="range" min="0" max="1000" value="770" aria-label="Brightness">
+          <output id="o-b">0.60</output>
+        </div>
+        <div class="sld">
+          <label for="s-p" data-i18n="panel.partials">Partials</label>
+          <input id="s-p" type="range" min="4" max="96" value="30" aria-label="Partials">
+          <output id="o-p">30</output>
+        </div>
+        <div class="sld">
+          <label for="s-f" data-i18n="panel.formant">Formant</label>
+          <input id="s-f" type="range" min="0" max="1000" value="440" aria-label="Formant">
+          <output id="o-f">off</output>
+        </div>
+      </div>
+      <div class="cost" id="cost"></div>
+      <p class="note" data-i18n="panel.note">Drag the sliders. The bars are the exact partial weights the
+        closed form produces — a tilt (rᵏ) plus one movable hump — and there is
+        nothing above the ceiling, ever. In the plugin this is drawn over a live
+        analyser.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="why">
+  <div class="wrap">
+    <p class="kick" data-i18n="why.kick">Why it's different</p>
+    <div class="three">
+      <div class="card">
+        <h3 data-i18n="why.1.h">Flat cost, any brightness</h3>
+        <p data-i18n-html="why.1.p">One knob sweeps dark→bright by weighting harmonic <em>k</em> by
+          <code>rᵏ</code>. Render cost stays <strong>flat within 1&nbsp;% from 3
+          to 1200 harmonics</strong> — a naïve additive bank is ~400× slower at
+          the top. <code>Θ(log n)</code>, never a per-partial loop.</p>
+      </div>
+      <div class="card">
+        <h3 data-i18n="why.2.h">Bit-identical everywhere</h3>
+        <p data-i18n-html="why.2.p">No fused multiply-add, no <code>x87</code>, saturating casts. The full
+          render hashes <strong>identically on x86-64, ARM and wasm32</strong> —
+          at 48 and 96&nbsp;kHz, any block size. Freeze equals real-time equals
+          yesterday's bounce, to the bit. Measured, not claimed.</p>
+      </div>
+      <div class="card">
+        <h3 data-i18n="why.3.h">The maths is on screen</h3>
+        <p data-i18n-html="why.3.p">The editor draws the <strong>actual closed-form partials</strong> of
+          your patch over the measured spectrum — not an FFT — and an
+          <strong>honest aliasing meter</strong> that only means something
+          because the oscillator is provably band-limited. It tells you exactly
+          when to turn on oversampling.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="how.kick">How it works</p>
+    <h2 data-i18n="how.h">The identity is older than recording. The engineering around it is the product.</h2>
+    <p data-i18n-html="how.p1">A tone made of the first <em>n</em> cosine harmonics with a geometric
+      rolloff has an exact closed form — a truncated complex geometric series,
+      Lagrange's finite trigonometric sum (~1830s), in the family of Moorer's
+      discrete summation formulae (1976):</p>
+    <div class="formula" aria-label="Closed form of the sum of r to the k times cosine of two pi k p">
+      <b>Σ</b><sub>k=1..n</sub> <b>rᵏ·cos(2πkp)</b>
+      &nbsp;=&nbsp;
+      ( r·c₁ − r² − r<sup>n+1</sup>·c<sub>n+1</sub> + r<sup>n+2</sup>·c<sub>n</sub> ) / ( 1 − 2r·c₁ + r² )
+      &nbsp;&nbsp;<span style="color:var(--muted)">c<sub>k</sub> = cos(2πkp)</span>
+    </div>
+    <p data-i18n-html="how.p2">The correction terms subtract the infinite tail <em>exactly</em>, so the
+      spectrum is precisely zero above harmonic <em>n</em> — no anti-aliased
+      tables, no oversampling filter on the clean path. <em>n</em> is clamped to
+      Nyquist by construction, so <strong>the oscillator cannot alias</strong>.
+      A second closed-form term — the difference of two such sums — adds one
+      movable resonant hump (<span class="mono">Formant</span>). Saw and triangle
+      are separate, band-limited PolyBLEP / PolyBLAMP, flat all the way to DC.</p>
+    <p data-i18n-html="how.p3">The one expensive quantity, <code>rⁿ</code>, is a single
+      exponentiation-by-squaring (≤ 22 multiplies for <em>n</em> ≤ 2048) and is
+      cached on a held note — which is why the cost is flat in practice. Full
+      derivation and every measured number:
+      <a href="https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d" target="_blank" rel="noopener">the scientific monograph</a>.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kick" data-i18n="feat.kick">What's in it</p>
+    <h2 data-i18n="feat.h">A 24-voice instrument, grouped the way you'd build a patch.</h2>
+    <div class="feat">
+      <div><h4 data-i18n="feat.osc.h">Oscillator</h4><p data-i18n-html="feat.osc.p">Geometric closed-form additive · Brightness tilt · fractional Partials ceiling (1→2048, never aliases, costs the same) · movable Formant hump · band-limited Saw / Triangle · free-run or phase-reset.</p></div>
+      <div><h4 data-i18n="feat.char.h">Character — the dirt, on purpose</h4><p data-i18n="feat.char.p">Asymmetric drive + bias · reflective wavefolder · bit-crush + downsample. Byte-clean at zero; PPG / DX7 grit when pushed.</p></div>
+      <div><h4 data-i18n="feat.fm.h">FM</h4><p data-i18n="feat.fm.p">Sine phase-modulation operator (ratio 0.5–12, amount 0–4) plus operator self-feedback: sine → saw → noise.</p></div>
+      <div><h4 data-i18n="feat.filt.h">Filter & envelopes</h4><p data-i18n-html="feat.filt.p">Zero-delay-feedback state-variable filter (LP/BP/HP/Notch, can't self-oscillate) · a dedicated bipolar filter envelope <em>and</em> an independent amp envelope · honest times (a 1&nbsp;s release finishes in ~1&nbsp;s).</p></div>
+      <div><h4 data-i18n="feat.voice.h">Voices & unison</h4><p data-i18n-html="feat.voice.p">24 voices · unison 1–8 with detune, stereo spread and a slow per-voice drift that makes the image breathe · HQ oversampling with a <strong>constant, exact 16-sample</strong> latency.</p></div>
+      <div><h4 data-i18n="feat.tune.h">Microtuning that's in tune with itself</h4><p data-i18n-html="feat.tune.p">Just intonation, historical temperaments, 19/24/31-EDO, Bohlen-Pierce, and Scala <code>.scl</code> / <code>.kbm</code> import (keyboard maps with dead keys). Because overtones sit on <code>k·f0</code>, a JI chord stops beating. 12-TET is the byte-identical default.</p></div>
+      <div><h4 data-i18n="feat.expr.h">Expression</h4><p data-i18n="feat.expr.p">Per-note brightness from MPE timbre, poly aftertouch or channel pressure — press one note of a chord for more overtones in that note only.</p></div>
+      <div><h4 data-i18n="feat.mod.h">Modulation</h4><p data-i18n="feat.mod.p">Per-voice LFO (sine/tri/saw, retrigger or free-run) into a 4-target matrix: brightness, vibrato, cutoff, FM index.</p></div>
+      <div><h4 data-i18n="feat.work.h">Workflow</h4><p data-i18n="feat.work.p">A/B patch morph that writes real automatable moves · a 6-character seed code that reproduces any random patch bit-for-bit on any machine · 22 starter presets.</p></div>
+      <div><h4 data-i18n="feat.see.h">See what you hear</h4><p data-i18n="feat.see.p">The closed-form partial comb + the analytic filter curve over the live spectrum, both tracking modulation in real time · hover any tone knob for ghost curves · the near-Nyquist aliasing meter.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="engine">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="eng.kick">For developers</p>
+    <h2 data-i18n="eng.h">The same engine, without the plugin.</h2>
+    <p class="lead" data-i18n-html="eng.lead">Underneath the Cosine plugin (<span class="mono">harmonic_synth</span>)
+      is <span class="mono">harmonic_core</span> — a <code>no_std</code>,
+      zero-dependency Rust DSP crate with a C ABI. The plugin is one host for it.</p>
+    <ul>
+      <li data-i18n-html="eng.li1"><strong>Zero dependencies, no <code>libm</code>, no allocator.</strong>
+        ~14&nbsp;KB <code>no_std</code> cdylib. Links into firmware as-is.</li>
+      <li data-i18n-html="eng.li2"><strong>One <code>Voice</code> is plain-old-data</strong> (624 bytes, no
+        pointers) — the caller owns the memory, the crate never allocates and
+        never panics on the audio path. Polyphony is the host's policy.</li>
+      <li data-i18n-html="eng.li3"><strong>Cross-compiles clean</strong> to Cortex-M4F/M7 (Daisy Seed),
+        Cortex-M0 (soft-float), RISC-V, AArch64 — and <code>wasm32</code>, where
+        an 8-voice browser demo runs the identical code with note allocation in
+        ~40 lines of JavaScript.</li>
+      <li data-i18n-html="eng.li4"><strong>Regression-test audio by hash.</strong> The determinism
+        contract means a render is reproducible across machines; a shared
+        <code>verify</code> module renders two scripted passes and every target
+        checks them against the same 64-bit values in CI.</li>
+      <li data-i18n-html="eng.li5"><strong>Verified:</strong> 120 core tests (11 an adversarial RT-safety
+        suite — NaN / ±∞ / parameter storms), 34 plugin + 9 licence tests,
+        <code>pluginval --strictness 8</code>, <code>clap-validator 35/35</code>,
+        ARM + wasm bit-exactness under QEMU / Node, all on every push.</li>
+    </ul>
+    <p data-i18n-html="eng.p">License the engine for a hardware product, a plugin, or a game —
+      per-product, per-seat or royalty. Integration and a determinism sign-off
+      for your CI are available as a fixed-fee package. <a href="#pricing">Get in
+      touch below.</a></p>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="cmp.kick">Where it sits</p>
+    <h2 data-i18n="cmp.h">Honest about the trade.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th data-i18n="cmp.th1">Approach</th><th data-i18n="cmp.th2">The trade vs this</th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="cmp.r1a">Wavetable additive (large partial banks)</td><td data-i18n-html="cmp.r1b">Full per-partial control, but <code>O(n)</code> and needs anti-aliased tables. This: one expression, flat cost, exact band-limiting — at the price of flat / geometric / one-hump spectra only.</td></tr>
+          <tr><td data-i18n="cmp.r2a">BLIT / DSF oscillators (Stilson &amp; Smith; Moorer)</td><td data-i18n="cmp.r2b">Same family. This adds the brightness tilt as a first-class control, the fractional partial ceiling, the second (Formant) term, and the cross-architecture determinism guarantee.</td></tr>
+          <tr><td data-i18n="cmp.r3a">Virtual-analog / PolyBLEP synths</td><td data-i18n-html="cmp.r3b">Great for classic waveforms — and this <em>includes</em> PolyBLEP saw/triangle, plus the additive core for spectra a subtractive chain can't reach.</td></tr>
+          <tr><td data-i18n="cmp.r4a">"Quantum-inspired" novelty synths</td><td data-i18n="cmp.r4b">This is the deliberate opposite: every claim is measured, and the limitations are published on this page.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="lim.kick">What it won't do</p>
+    <h2 data-i18n="lim.h">Published, not buried. In this market that's the marketing.</h2>
+    <div class="honest">
+      <ul>
+        <li data-i18n-html="lim.1"><strong>Not a general <code>O(1)</code> additive synth.</strong> The
+          closed form works for a spectral <em>tilt</em> plus one <em>hump</em>.
+          An arbitrary per-harmonic envelope is <code>Θ(n)</code> again.</li>
+        <li data-i18n-html="lim.2"><strong>The oscillator is alias-free; the effects are not.</strong>
+          Drive, Fold, Grit, FM, feedback and the soft-clip generate content
+          above Nyquist by design. HQ Mode cleans it for a fixed 16 samples of
+          latency.</li>
+        <li data-i18n-html="lim.3"><strong>HQ Mode does not reduce CPU.</strong> It's an anti-aliasing
+          quality mode, roughly CPU-neutral. Stated plainly everywhere.</li>
+        <li data-i18n-html="lim.4"><strong>Microtuning retunes the fundamental, not the partials.</strong>
+          Just / historical / EDO / Scala scales work; bell inharmonicity and
+          stretched-piano tuning need a different kernel.</li>
+        <li data-i18n-html="lim.5"><strong>Monotimbral</strong>, one MIDI channel. 2048-harmonic
+          ceiling. Voice-steal click past the polyphony limit.</li>
+        <li data-i18n-html="lim.6"><strong>Real embedded hardware isn't measured yet</strong> —
+          cross-compiles clean and is bit-exact under QEMU / in Node, but not
+          on a physical Cortex-M board. macOS / Linux builds and an AU format
+          are pre-launch work.</li>
+      </ul>
+    </div>
+    <p class="formhint" data-i18n-html="lim.foot">Full list, with the reason for each:
+      <a href="https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md" target="_blank" rel="noopener">docs/07_LIMITATIONS.md</a>.</p>
+  </div>
+</section>
+
+<section id="specs">
+  <div class="wrap">
+    <p class="kick" data-i18n="spec.kick">Measured</p>
+    <h2 data-i18n="spec.h">Every number here comes from a test.</h2>
+    <div class="specgrid">
+      <div><div class="v">~550×</div><div class="k" data-i18n="spec.k1">realtime, one voice @ 48 kHz</div></div>
+      <div><div class="v">±1%</div><div class="k" data-i18n="spec.k2">cost, 3 → 1200 harmonics</div></div>
+      <div><div class="v">Δ 0.0</div><div class="k" data-i18n="spec.k3">render hash: x86-64 · ARM · wasm32</div></div>
+      <div><div class="v">−94.6 dB</div><div class="k" data-i18n="spec.k4">HQ alias floor (target −75)</div></div>
+      <div><div class="v">0 / 16</div><div class="k" data-i18n="spec.k5">samples latency — HQ off / on, exact</div></div>
+      <div><div class="v">120 + 34 + 9</div><div class="k" data-i18n="spec.k6">core · plugin · licence tests, every push</div></div>
+      <div><div class="v">35 / 35</div><div class="k" data-i18n="spec.k7">clap-validator · pluginval s8</div></div>
+      <div><div class="v">~14 KB</div><div class="k" data-i18n="spec.k8">no_std engine · 0 dependencies</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="price.kick">Pricing</p>
+    <h2 data-i18n="price.h">A real free tier. One-time for the rest.</h2>
+    <div class="price">
+      <div class="tier">
+        <p class="tname">Core</p>
+        <p class="amt" data-i18n="price.core.amt">Free</p>
+        <p class="was" data-i18n="price.core.was">no watermark · no nag · yours</p>
+        <ul>
+          <li data-i18n="price.core.1">Geometric oscillator · Brightness · fractional Partials</li>
+          <li data-i18n="price.core.2">Band-limited Saw / Triangle</li>
+          <li data-i18n="price.core.3">Amp envelope · the full multimode filter (LP/BP/HP/Notch)</li>
+          <li data-i18n="price.core.4">Unison with drift · pitch bend · 12-TET</li>
+          <li data-i18n="price.core.5">A/B morph · seed codes · preset bank</li>
+        </ul>
+      </div>
+      <div class="tier hi">
+        <p class="tname">Studio</p>
+        <p class="amt" data-i18n-html="price.studio.amt">$89 <small>one-time</small></p>
+        <p class="was" data-i18n="price.studio.was">launch: $59 for the first 6 weeks</p>
+        <ul>
+          <li data-i18n="price.studio.1">Formant · Character · FM + feedback</li>
+          <li data-i18n="price.studio.2">Dedicated filter envelope · full LFO matrix · MPE expression</li>
+          <li data-i18n-html="price.studio.3">Microtuning + Scala <code>.scl</code> / <code>.kbm</code></li>
+          <li data-i18n="price.studio.4">HQ mode</li>
+          <li data-i18n="price.studio.5">The on-screen closed-form spectrum + aliasing meter</li>
+          <li data-i18n="price.studio.6">Free updates within v1</li>
+        </ul>
+      </div>
+    </div>
+    <p class="formhint" data-i18n="price.foot">One binary — Studio unlocks with a personal, watermarked
+      key file, verified offline. No dongle, no activation server, no nag.</p>
+    <h3 data-i18n="price.eng.h">License the engine</h3>
+    <p data-i18n-html="price.eng.p">For a hardware synth, a plugin, a game, or an embedded product — per
+      product, per seat, or royalty, and an integration + determinism sign-off
+      package. <code>harmonic_core</code> is <strong>AGPL-3.0 or a commercial
+      licence</strong>: free for open-source and evaluation, paid to ship it in a
+      closed product. <strong>Tell us what you're building.</strong></p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="faq.kick">FAQ</p>
+    <h2 data-i18n="faq.h">The questions a skeptic asks first.</h2>
+    <details>
+      <summary data-i18n="faq.q1">Is it really O(1)?</summary>
+      <p data-i18n-html="faq.a1">No — and we won't say it is. It's <code>Θ(log n)</code> worst case (one
+        <code>rⁿ</code> by squaring, ≤ 22 multiplies), and <code>Θ(1)</code>
+        amortised because that term is cached on a held note. Measured: flat
+        within 1&nbsp;% from 3 to 1200 harmonics. A brightness sweep or a pitch
+        change pays the <code>log n</code> again.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q2">Does it alias?</summary>
+      <p data-i18n-html="faq.a2">The oscillator does not — the harmonic count is clamped to Nyquist by
+        construction and the closed form is the exact finite sum, so nothing
+        lives above partial <em>n</em>. The nonlinear stages (Drive, Fold, Grit,
+        FM, feedback) <em>do</em> alias when pushed — that's intentional
+        character. The built-in aliasing meter tells you when, and HQ Mode is the
+        clean path.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q3">Why doesn't HQ Mode save CPU?</summary>
+      <p data-i18n-html="faq.a3">Because there was never a per-partial decimator to remove — the
+        oscillator is already band-limited. HQ oversamples the whole chain to
+        stop the <em>effects</em> aliasing; that costs about as much as it saves
+        from merging the decimators. It's a quality mode, not a performance mode,
+        and it adds exactly 16 samples of latency. We say this everywhere.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q4">What's "bit-identical" worth to me?</summary>
+      <p data-i18n-html="faq.a4">A freeze sounds exactly like real-time. A bounce on your laptop matches
+        the one on the studio Mac. A render today matches one from last month.
+        And if you ship the engine in hardware or a game, the same input
+        produces the same audio on every client — you can regression-test it by
+        hashing the output.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q5">VST3 and CLAP — where's AU / AAX?</summary>
+      <p data-i18n-html="faq.a5">VST3 + CLAP at launch. AU (for Logic) needs a wrapper and is planned.
+        AAX (Pro Tools) is not currently on the roadmap — it would require a
+        hardware dongle, which contradicts the no-dongle promise.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q6">Where does the name come from?</summary>
+      <p data-i18n-html="faq.a6">Every note is literally a finite sum of cosine partials in closed form —
+        <code>Σ rᵏ·cos(2πkp)</code>. The name states the method and claims
+        nothing. The domain is still being registered before the first public
+        release; the engine and the plugin are real and validated today.</p>
+    </details>
+  </div>
+</section>
+</main>
+
+<div class="final">
+  <div class="wrap narrow">
+    <h2 data-i18n="final.h">Hear it when it ships.</h2>
+    <p class="sub" data-i18n="final.sub">A free Core tier, the paid Studio at an intro price, and the
+      3-minute demo that is the whole pitch — one Brightness sweep, Drive until
+      the meter goes red, HQ, watch it drop.</p>
+    <form class="notify" id="notify">
+      <input type="email" id="notify-email" name="email" placeholder="you@studio.com" aria-label="Email address" required>
+      <button class="btn primary" type="submit" data-i18n="final.notify">Notify me</button>
+    </form>
+    <p class="formhint" id="notify-hint" data-i18n="final.hint">Pre-launch — this stores your address in this browser
+      only. A real mailing list is wired up before launch.</p>
+    <div class="cta-row" style="margin-top:1.5rem">
+      <a class="btn" href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="final.cta.demo">▶ Browser demo</a>
+      <a class="btn" href="https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0" target="_blank" rel="noopener" data-i18n="final.cta.handbook">Capabilities handbook</a>
+      <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <strong data-i18n="foot.product">Product</strong>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+        <a href="https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0" target="_blank" rel="noopener" data-i18n="foot.handbook">Handbook</a>
+        <a href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="foot.demo">Browser demo</a>
+      </div>
+      <div>
+        <strong data-i18n="foot.technical">Technical</strong>
+        <a href="https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d" target="_blank" rel="noopener" data-i18n="foot.monograph">Scientific monograph</a>
+        <a href="https://github.com/Gnomir/AudioSynth/tree/main/docs" target="_blank" rel="noopener" data-i18n="foot.docs">Full docs</a>
+        <a href="https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md" target="_blank" rel="noopener" data-i18n="nav.limits">Limits</a>
+        <a href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener" data-i18n="foot.source">Source</a>
+      </div>
+      <div>
+        <strong data-i18n="foot.status">Status</strong>
+        <span data-i18n="foot.s1">VST3 + CLAP · validated</span>
+        <span data-i18n="foot.s2">Windows built · mac / Linux pending</span>
+        <span data-i18n="foot.s3">Engine: AGPL-3.0 or commercial</span>
+      </div>
+    </div>
+    <p data-i18n-html="foot.fine">Cosine · Rust · <code>github.com/Gnomir/AudioSynth</code><br>
+      Pre-launch page. Name, price and the licence model are decided; the domain,
+      signed macOS / Linux builds and a real mailing list are still to come.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ================= i18n ================= */
+  // English is authored inline (readable with zero JS). We harvest it from the
+  // DOM, then only *swap* when the viewer picks Українська.
+  var UK = {
+    "brand.prov": "замкнена форма",
+    "nav.how": "Як це працює", "nav.features": "Можливості", "nav.engine": "Розробникам",
+    "nav.limits": "Межі", "nav.pricing": "Ціна",
+
+    "hero.eyebrow": "Адитивний синтез · замкнена форма",
+    "hero.h1": "<em>Cosine.</em> Одне рівняння на ноту — не вейвтейбл, не банк осциляторів.",
+    "hero.sub": "Осцилятор рахує перші <em>n</em> гармонік тону як один алгебраїчний вираз — суму косинусів у замкненій формі, точно смугово-обмежену, з <strong>однаковою вартістю для 3 гармонік і для 2000</strong>, і <strong>побітово однакову на будь-якому процесорі</strong>. Продається як готовий плагін VST3 / CLAP і як <code>no_std</code>-рушій на Rust під ним, що працює й на платі за $30, і в браузері.",
+    "hero.cta.pricing": "Ціна", "hero.cta.demo": "▶ Демо в браузері",
+
+    "panel.label": "Наживо · спектр, який задає цей патч",
+    "panel.bandlimited": "смугово-обмежено ✓",
+    "panel.brightness": "Яскравість", "panel.partials": "Гармоніки", "panel.formant": "Формант",
+    "panel.note": "Тягніть повзунки. Стовпці — це точні ваги гармонік, які дає замкнена форма: нахил (rᵏ) плюс один рухомий горб — і над стелею немає нічого, ніколи. У плагіні це малюється поверх живого аналізатора.",
+
+    "why.kick": "Чому це інакше",
+    "why.1.h": "Стала вартість за будь-якої яскравості",
+    "why.1.p": "Одна ручка веде від темного до яскравого, зважуючи гармоніку <em>k</em> на <code>rᵏ</code>. Вартість рендеру лишається <strong>сталою в межах 1&nbsp;% від 3 до 1200 гармонік</strong> — наївний адитивний банк угорі ~400× повільніший. <code>Θ(log n)</code>, ніколи не цикл по гармоніках.",
+    "why.2.h": "Побітово однаково всюди",
+    "why.2.p": "Без fused multiply-add, без <code>x87</code>, насичувані касти. Повний рендер хешується <strong>однаково на x86-64, ARM і wasm32</strong> — на 48 і 96&nbsp;кГц, за будь-якого розміру блоку. Фриз = реальний час = вчорашнє зведення, до біта. Виміряно, не заявлено.",
+    "why.3.h": "Математика — на екрані",
+    "why.3.p": "Редактор малює <strong>справжні гармоніки замкненої форми</strong> вашого патча поверх виміряного спектра — не FFT — і <strong>чесний індикатор аліасингу</strong>, який має сенс лише тому, що осцилятор доказово смугово-обмежений. Він каже точно, коли вмикати передискретизацію.",
+
+    "how.kick": "Як це працює",
+    "how.h": "Тотожність старша за звукозапис. Продукт — це інженерія навколо неї.",
+    "how.p1": "Тон із перших <em>n</em> косинусних гармонік і геометричним спадом має точну замкнену форму — усічений комплексний геометричний ряд, скінченна тригонометрична сума Лагранжа (~1830-ті), із родини формул сумування Мурера (1976):",
+    "how.p2": "Корекційні члени віднімають нескінченний хвіст <em>точно</em>, тож спектр строго нульовий вище гармоніки <em>n</em> — без антиаліасних таблиць, без фільтра передискретизації на чистому шляху. <em>n</em> обрізається до Найквіста за побудовою, тож <strong>осцилятор не може аліасити</strong>. Другий член у замкненій формі — різниця двох таких сум — додає один рухомий резонансний горб (<span class=\"mono\">Формант</span>). Пилка й трикутник — окремі, смугово-обмежені PolyBLEP / PolyBLAMP, плоскі аж до DC.",
+    "how.p3": "Єдина дорога величина, <code>rⁿ</code>, — це одне піднесення до степеня через квадрати (≤ 22 множення для <em>n</em> ≤ 2048), і воно кешується на утримуваній ноті — тому на практиці вартість стала. Повне виведення й усі виміряні числа: <a href=\"https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d\" target=\"_blank\" rel=\"noopener\">наукова монографія</a>.",
+
+    "feat.kick": "Що всередині",
+    "feat.h": "24-голосний інструмент, згрупований так, як ви будуєте патч.",
+    "feat.osc.h": "Осцилятор",
+    "feat.osc.p": "Геометричний адитив у замкненій формі · нахил Яскравості · дробова стеля Гармонік (1→2048, ніколи не аліасить, вартість та сама) · рухомий горб Форманта · смугово-обмежені Пилка / Трикутник · вільний хід або скидання фази.",
+    "feat.char.h": "Character — бруд, навмисне",
+    "feat.char.p": "Асиметричний драйв + зсув · рефлективний вейвфолдер · біт-крашер + даунсемпл. Побайтово чисто на нулі; грит у стилі PPG / DX7, коли додати.",
+    "feat.fm.h": "FM",
+    "feat.fm.p": "Оператор фазової модуляції синусом (відношення 0.5–12, глибина 0–4) плюс самозворотний зв'язок оператора: синус → пилка → шум.",
+    "feat.filt.h": "Фільтр і обвідні",
+    "feat.filt.p": "Фільтр зі змінними станами й нульовою затримкою зворотного зв'язку (LP/BP/HP/Notch, не самозбуджується) · окрема біполярна обвідна фільтра <em>і</em> незалежна амплітудна обвідна · чесні часи (реліз 1&nbsp;с завершується за ~1&nbsp;с).",
+    "feat.voice.h": "Голоси й унісон",
+    "feat.voice.p": "24 голоси · унісон 1–8 із розстройкою, стерео-розкидом і повільним дрейфом кожного голосу, від якого образ «дихає» · передискретизація HQ зі <strong>сталою, точною затримкою 16 семплів</strong>.",
+    "feat.tune.h": "Мікротюнінг, що в ладу сам із собою",
+    "feat.tune.p": "Чиста інтонація, історичні темперації, 19/24/31-EDO, Бален-Пірс і імпорт Scala <code>.scl</code> / <code>.kbm</code> (клавіатурні мапи з «мертвими» клавішами). Оскільки обертони стоять на <code>k·f0</code>, акорд у чистій інтонації перестає битися. 12-TET — побайтово ідентичний дефолт.",
+    "feat.expr.h": "Експресія",
+    "feat.expr.p": "Понотна яскравість від MPE-тембру, поліфонічного або канального тиску — натисніть одну ноту акорду, щоб додати обертонів лише в ній.",
+    "feat.mod.h": "Модуляція",
+    "feat.mod.p": "Понотний LFO (синус/трикутник/пилка, ретригер або вільний хід) у матрицю на 4 цілі: яскравість, вібрато, зріз, індекс FM.",
+    "feat.work.h": "Робочий процес",
+    "feat.work.p": "A/B-морф патчів, що пише справжні автоматизовані рухи · 6-символьний сід-код, який відтворює будь-який випадковий патч побітово на будь-якій машині · 22 стартові пресети.",
+    "feat.see.h": "Бачити те, що чуєш",
+    "feat.see.p": "Гребінка гармонік замкненої форми + аналітична крива фільтра поверх живого спектра, обидві стежать за модуляцією в реальному часі · наведіть на будь-яку ручку тону для кривих-привидів · індикатор аліасингу біля Найквіста.",
+
+    "eng.kick": "Розробникам",
+    "eng.h": "Той самий рушій, без плагіна.",
+    "eng.lead": "Під плагіном Cosine (<span class=\"mono\">harmonic_synth</span>) — <span class=\"mono\">harmonic_core</span>, <code>no_std</code>-крейт DSP на Rust без залежностей, із C ABI. Плагін — лише один його хост.",
+    "eng.li1": "<strong>Нуль залежностей, без <code>libm</code>, без алокатора.</strong> ~14&nbsp;КБ <code>no_std</code> cdylib. Лінкується у прошивку як є.",
+    "eng.li2": "<strong>Один <code>Voice</code> — це plain-old-data</strong> (624 байти, без вказівників) — пам'ять володіє викликач, крейт ніколи не алокує й ніколи не панікує на аудіо-шляху. Поліфонія — політика хоста.",
+    "eng.li3": "<strong>Чисто крос-компілюється</strong> під Cortex-M4F/M7 (Daisy Seed), Cortex-M0 (soft-float), RISC-V, AArch64 — і <code>wasm32</code>, де 8-голосне демо в браузері виконує той самий код із розподілом нот у ~40 рядках JavaScript.",
+    "eng.li4": "<strong>Регресійний тест аудіо через хеш.</strong> Контракт детермінізму означає, що рендер відтворюваний між машинами; спільний модуль <code>verify</code> робить два скриптовані проходи, і кожна ціль звіряє їх із тими самими 64-бітними значеннями в CI.",
+    "eng.li5": "<strong>Перевірено:</strong> 120 тестів ядра (11 — ворожий набір RT-safety: NaN / ±∞ / шторми параметрів), 34 тести плагіна + 9 тестів ліцензії, <code>pluginval --strictness 8</code>, <code>clap-validator 35/35</code>, побітова ідентичність на ARM + wasm під QEMU / Node — усе на кожен пуш.",
+    "eng.p": "Ліцензуйте рушій для апаратного продукту, плагіна чи гри — per-product, per-seat або роялті. Інтеграція й підпис детермінізму для вашого CI доступні як пакет за фіксовану ціну. <a href=\"#pricing\">Напишіть нижче.</a>",
+
+    "cmp.kick": "Де це стоїть",
+    "cmp.h": "Чесно про компроміс.",
+    "cmp.th1": "Підхід", "cmp.th2": "Компроміс проти цього",
+    "cmp.r1a": "Вейвтейбловий адитив (великі банки гармонік)",
+    "cmp.r1b": "Повний контроль кожної гармоніки, але <code>O(n)</code> і потрібні антиаліасні таблиці. Тут: один вираз, стала вартість, точне смугове обмеження — ціною лише плоских / геометричних / одногорбих спектрів.",
+    "cmp.r2a": "BLIT / DSF осцилятори (Stilson & Smith; Moorer)",
+    "cmp.r2b": "Та сама родина. Тут додано нахил яскравості як повноцінний контроль, дробову стелю гармонік, другий (формантний) член і гарантію детермінізму між архітектурами.",
+    "cmp.r3a": "Virtual-analog / PolyBLEP синти",
+    "cmp.r3b": "Чудові для класичних форм — і це <em>включає</em> PolyBLEP пилку/трикутник, плюс адитивне ядро для спектрів, недосяжних субтрактивному ланцюгу.",
+    "cmp.r4a": "«Квантово-натхненні» синти-новинки",
+    "cmp.r4b": "Це навмисна протилежність: кожне твердження виміряне, а межі опубліковані на цій сторінці.",
+
+    "lim.kick": "Чого воно не робить",
+    "lim.h": "Опубліковано, не сховано. На цьому ринку це і є маркетинг.",
+    "lim.1": "<strong>Не універсальний <code>O(1)</code> адитивний синт.</strong> Замкнена форма працює для спектрального <em>нахилу</em> плюс одного <em>горба</em>. Довільна обвідна по гармоніках — знову <code>Θ(n)</code>.",
+    "lim.2": "<strong>Осцилятор без аліасингу; ефекти — ні.</strong> Drive, Fold, Grit, FM, зворотний зв'язок і soft-clip навмисно дають контент вище Найквіста. HQ-режим чистить це за фіксовані 16 семплів затримки.",
+    "lim.3": "<strong>HQ-режим не зменшує CPU.</strong> Це режим якості проти аліасингу, приблизно нейтральний за навантаженням. Сказано прямо всюди.",
+    "lim.4": "<strong>Мікротюнінг ретюнить фундаментал, не гармоніки.</strong> Чиста / історичні / EDO / Scala шкали працюють; інгармонічність дзвонів і розтягнутий рояль потребують іншого ядра.",
+    "lim.5": "<strong>Монотембральний</strong>, один MIDI-канал. Стеля 2048 гармонік. Клацання при крадіжці голосу понад ліміт поліфонії.",
+    "lim.6": "<strong>Реальне вбудоване залізо ще не виміряне</strong> — крос-компілюється чисто й побітово точне під QEMU / у Node, але не на фізичній платі Cortex-M. Білди під macOS / Linux і формат AU — робота до релізу.",
+    "lim.foot": "Повний перелік, із причиною для кожного пункту: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md\" target=\"_blank\" rel=\"noopener\">docs/07_LIMITATIONS.md</a>.",
+
+    "spec.kick": "Виміряно",
+    "spec.h": "Кожне число тут — із тесту.",
+    "spec.k1": "реального часу, один голос @ 48 кГц",
+    "spec.k2": "вартість, 3 → 1200 гармонік",
+    "spec.k3": "хеш рендеру: x86-64 · ARM · wasm32",
+    "spec.k4": "підлога аліасингу HQ (ціль −75)",
+    "spec.k5": "семплів затримки — HQ вимк / увімк, точно",
+    "spec.k6": "тести ядра · плагіна · ліцензії, на кожен пуш",
+    "spec.k7": "clap-validator · pluginval s8",
+    "spec.k8": "no_std рушій · 0 залежностей",
+
+    "price.kick": "Ціна",
+    "price.h": "Справжній безкоштовний рівень. Разова оплата за решту.",
+    "price.core.amt": "Безкоштовно",
+    "price.core.was": "без вотермарки · без нагадувань · ваше",
+    "price.core.1": "Геометричний осцилятор · Яскравість · дробові Гармоніки",
+    "price.core.2": "Смугово-обмежені Пилка / Трикутник",
+    "price.core.3": "Амплітудна обвідна · повний мультимод-фільтр (LP/BP/HP/Notch)",
+    "price.core.4": "Унісон із дрейфом · пітч-бенд · 12-TET",
+    "price.core.5": "A/B-морф · сід-коди · банк пресетів",
+    "price.studio.amt": "$89 <small>разово</small>",
+    "price.studio.was": "на старті: $59 перші 6 тижнів",
+    "price.studio.1": "Формант · Character · FM + зворотний зв'язок",
+    "price.studio.2": "Окрема обвідна фільтра · повна матриця LFO · MPE-експресія",
+    "price.studio.3": "Мікротюнінг + Scala <code>.scl</code> / <code>.kbm</code>",
+    "price.studio.4": "HQ-режим",
+    "price.studio.5": "Спектр замкненої форми на екрані + індикатор аліасингу",
+    "price.studio.6": "Безкоштовні оновлення в межах v1",
+    "price.foot": "Один бінарник — Studio відмикається персональним вотермаркованим ключ-файлом, що перевіряється офлайн. Без донгла, без сервера активації, без нагадувань.",
+    "price.eng.h": "Ліцензувати рушій",
+    "price.eng.p": "Для апаратного синта, плагіна, гри чи вбудованого продукту — per-product, per-seat або роялті, плюс пакет інтеграції + підпису детермінізму. <code>harmonic_core</code> — <strong>AGPL-3.0 або комерційна ліцензія</strong>: безкоштовно для open-source і оцінки, платно — щоб постачати в закритому продукті. <strong>Розкажіть, що ви будуєте.</strong>",
+
+    "faq.kick": "FAQ",
+    "faq.h": "Питання, які скептик ставить першими.",
+    "faq.q1": "Це справді O(1)?",
+    "faq.a1": "Ні — і ми так не кажемо. Це <code>Θ(log n)</code> у найгіршому випадку (одне <code>rⁿ</code> через квадрати, ≤ 22 множення) і <code>Θ(1)</code> амортизовано, бо цей член кешується на утримуваній ноті. Виміряно: стала в межах 1&nbsp;% від 3 до 1200 гармонік. Проведення яскравості чи зміна висоти знову платять <code>log n</code>.",
+    "faq.q2": "Воно аліасить?",
+    "faq.a2": "Осцилятор — ні: кількість гармонік обрізана до Найквіста за побудовою, а замкнена форма — це точна скінченна сума, тож над гармонікою <em>n</em> немає нічого. Нелінійні стадії (Drive, Fold, Grit, FM, зворотний зв'язок) аліасять, коли їх додати — це навмисний характер. Вбудований індикатор каже коли, а HQ-режим — чистий шлях.",
+    "faq.q3": "Чому HQ-режим не економить CPU?",
+    "faq.a3": "Бо ніколи не було по-гармонічного дециматора, який можна прибрати — осцилятор і так смугово-обмежений. HQ передискретизовує весь ланцюг, щоб зупинити аліасинг <em>ефектів</em>; це коштує приблизно стільки ж, скільки економиться на злитті дециматорів. Це режим якості, не продуктивності, і додає рівно 16 семплів затримки. Ми кажемо це всюди.",
+    "faq.q4": "Що мені дає «побітова ідентичність»?",
+    "faq.a4": "Фриз звучить точно як реальний час. Зведення на ноутбуку збігається зі зведенням на студійному Mac. Рендер сьогодні збігається з рендером місяць тому. А якщо ви постачаєте рушій у залізі чи грі — той самий вхід дає той самий звук на кожному клієнті, і це можна регресійно тестувати хешем виходу.",
+    "faq.q5": "VST3 і CLAP — де AU / AAX?",
+    "faq.a5": "VST3 + CLAP на старті. AU (для Logic) потребує обгортки й запланований. AAX (Pro Tools) наразі не в планах — він вимагав би апаратного донгла, що суперечить обіцянці «без донгла».",
+    "faq.q6": "Звідки назва?",
+    "faq.a6": "Кожна нота — буквально скінченна сума косинусних гармонік у замкненій формі: <code>Σ rᵏ·cos(2πkp)</code>. Назва каже метод і не претендує ні на що. Домен ще реєструється перед першим публічним релізом; рушій і плагін уже реальні й перевірені.",
+
+    "final.h": "Почуйте це на релізі.",
+    "final.sub": "Безкоштовний рівень Core, платний Studio за стартовою ціною і 3-хвилинне демо, що і є весь пітч — одне проведення Яскравості, Drive до червоного індикатора, HQ, дивіться, як він падає.",
+    "final.notify": "Сповістити мене",
+    "final.hint": "До релізу — це зберігає вашу адресу лише в цьому браузері. Справжній список розсилки буде підключено перед стартом.",
+    "final.cta.demo": "▶ Демо в браузері", "final.cta.handbook": "Довідник можливостей",
+
+    "foot.product": "Продукт", "foot.handbook": "Довідник", "foot.demo": "Демо в браузері",
+    "foot.technical": "Технічне", "foot.monograph": "Наукова монографія", "foot.docs": "Повна документація",
+    "foot.source": "Вихідний код", "foot.status": "Статус",
+    "foot.s1": "VST3 + CLAP · перевірено",
+    "foot.s2": "Windows зібрано · mac / Linux в роботі",
+    "foot.s3": "Рушій: AGPL-3.0 або комерційна",
+    "foot.fine": "Cosine · Rust · <code>github.com/Gnomir/AudioSynth</code><br>Сторінка до релізу. Назва, ціна й модель ліцензії вирішені; домен, підписані білди macOS / Linux і справжній список розсилки — попереду."
+  };
+
+  var CANVAS_STR = {
+    en: {
+      axis: "harmonic weight  ·  rᵏ tilt + one movable hump",
+      ceiling: "ceiling — exactly zero past here",
+      hump: "hump ≈ partial ",
+      cost: function (n, tilt) {
+        return "Cost per sample: <b>3&nbsp;cos + 1&nbsp;pow</b> — identical whether this spectrum has <b>"
+          + n + "</b> partials or <b>2000</b>. Tilt ≈ <b>" + tilt + "&nbsp;dB / harmonic</b>.";
+      }
+    },
+    uk: {
+      axis: "вага гармоніки  ·  нахил rᵏ + один рухомий горб",
+      ceiling: "стеля — точний нуль далі",
+      hump: "горб ≈ гармоніка ",
+      cost: function (n, tilt) {
+        return "Вартість на семпл: <b>3&nbsp;cos + 1&nbsp;pow</b> — однакова, чи має цей спектр <b>"
+          + n + "</b> гармонік, чи <b>2000</b>. Нахил ≈ <b>" + tilt + "&nbsp;дБ / гармоніку</b>.";
+      }
+    }
+  };
+
+  var EN = { i18n: {}, html: {} };
+  document.querySelectorAll("[data-i18n]").forEach(function (el) { EN.i18n[el.dataset.i18n] = el.textContent; });
+  document.querySelectorAll("[data-i18n-html]").forEach(function (el) { EN.html[el.dataset.i18nHtml] = el.innerHTML; });
+
+  var lang = "en";
+  function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  function applyLang(next) {
+    lang = next === "uk" ? "uk" : "en";
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var k = el.dataset.i18n;
+      var v = lang === "uk" ? UK[k] : EN.i18n[k];
+      if (v != null) el.textContent = v;
+    });
+    document.querySelectorAll("[data-i18n-html]").forEach(function (el) {
+      var k = el.dataset.i18nHtml;
+      var v = lang === "uk" ? UK[k] : EN.html[k];
+      if (v != null) el.innerHTML = v;
+    });
+    document.querySelectorAll(".seg button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+    });
+    store("cosine_lang", lang);
+    if (typeof draw === "function") draw();
+  }
+
+  document.querySelectorAll(".seg button").forEach(function (b) {
+    b.addEventListener("click", function () { applyLang(b.dataset.lang); });
+  });
+
+  /* ================= theme toggle ================= */
+  var themeBtn = document.getElementById("theme");
+  function currentTheme() {
+    var t = document.documentElement.getAttribute("data-theme");
+    if (t) return t;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  if (themeBtn) themeBtn.addEventListener("click", function () {
+    var next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    store("cosine_theme", next);
+    if (typeof draw === "function") draw();
+  });
+  (function initTheme() {
+    var t = stored("cosine_theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  })();
+
+  /* ================= live spectrum ================= */
+  var cv = document.getElementById("cv"), ctx = cv && cv.getContext("2d");
+  var sB = document.getElementById("s-b"), sP = document.getElementById("s-p"), sF = document.getElementById("s-f");
+  var oB = document.getElementById("o-b"), oP = document.getElementById("o-p"), oF = document.getElementById("o-f");
+  var costEl = document.getElementById("cost");
+  var CW = 0, CH = 0, draw = null;
+
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  if (ctx) {
+    var fit = function () {
+      var w = cv.clientWidth || 440;
+      var h = w * 520 / 900;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      CW = w; CH = h;
+    };
+
+    var params = function () {
+      var b = +sB.value / 1000;
+      var r = 0.02 + (0.9995 - 0.02) * b * b;
+      var n = +sP.value;
+      var f = +sF.value / 1000;
+      var kc = 1.5 + 24 * f * f;
+      var a = Math.pow(2, -1 / kc);
+      var b2 = a * a;
+      return { r: r, n: n, f: f, kc: kc, a: a, b2: b2 };
+    };
+
+    var weights = function (P) {
+      var w = new Float64Array(P.n + 1), max = 0;
+      for (var k = 1; k <= P.n; k++) {
+        var wk = Math.pow(P.r, k) + P.f * (Math.pow(P.a, k) - Math.pow(P.b2, k));
+        if (wk < 0) wk = 0;
+        w[k] = wk; if (wk > max) max = wk;
+      }
+      return { w: w, max: max || 1 };
+    };
+
+    var FLOOR = -66;
+
+    draw = function () {
+      var P = params(), WT = weights(P);
+      var trace = css("--trace"), line = css("--line"), muted = css("--muted"),
+          surf2 = css("--surface-2"), hump = css("--hump"), gridc = css("--grid");
+      var S = CANVAS_STR[lang] || CANVAS_STR.en;
+
+      ctx.clearRect(0, 0, CW, CH);
+      ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+
+      var padX = 12, plotW = CW - 2 * padX;
+      var top = 30, bot = CH - 36, spH = bot - top;
+      var slots = Math.max(P.n + 4, 20);
+      var bw = plotW / slots;
+
+      // dB graticule
+      ctx.strokeStyle = gridc; ctx.lineWidth = 1;
+      for (var d = 0; d >= FLOOR; d -= 22) {
+        var gy = top + (-d / -FLOOR) * spH;
+        ctx.beginPath(); ctx.moveTo(padX, gy); ctx.lineTo(CW - padX, gy); ctx.stroke();
+      }
+      ctx.strokeStyle = line;
+      ctx.beginPath(); ctx.moveTo(padX, bot); ctx.lineTo(CW - padX, bot); ctx.stroke();
+
+      var humpLo = P.kc - 3, humpHi = P.kc + 4;
+      for (var k = 1; k <= slots; k++) {
+        var x = padX + (k - 1) * bw, w = Math.max(bw * 0.6, 1.6);
+        if (k <= P.n) {
+          var db = 20 * Math.log10((WT.w[k] / WT.max) + 1e-9);
+          if (db < FLOOR) db = FLOOR;
+          var hh = ((db - FLOOR) / -FLOOR) * spH;
+          var inHump = P.f >= 0.06 && k >= humpLo && k <= humpHi;
+          ctx.fillStyle = inHump ? hump : trace;
+          ctx.fillRect(x + (bw - w) / 2, bot - hh, w, Math.max(hh, 1.2));
+        } else {
+          ctx.fillStyle = surf2;
+          ctx.fillRect(x + (bw - w) / 2, bot - 2, w, 2);
+        }
+      }
+
+      var cx = padX + P.n * bw;
+      ctx.strokeStyle = muted; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, top - 4); ctx.lineTo(cx, bot); ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = muted;
+      ctx.fillText(S.axis, padX, top - 11);
+      ctx.textAlign = "right";
+      ctx.fillText(S.ceiling, CW - padX, bot + 16);
+      ctx.textAlign = "left";
+      if (P.f >= 0.02) { ctx.fillStyle = hump; ctx.fillText(S.hump + P.kc.toFixed(0), padX, bot + 16); }
+
+      oB.textContent = P.r.toFixed(3);
+      oP.textContent = P.n;
+      oF.textContent = P.f < 0.02 ? "off" : ("p≈" + P.kc.toFixed(0));
+
+      var tilt = (20 * Math.log10(P.r)).toFixed(2);
+      costEl.innerHTML = S.cost(P.n, tilt);
+    };
+
+    var rt;
+    window.addEventListener("resize", function () {
+      clearTimeout(rt); rt = setTimeout(function () { fit(); draw(); }, 120);
+    });
+    [sB, sP, sF].forEach(function (s) { s.addEventListener("input", draw); });
+
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    (mq.addEventListener ? mq.addEventListener.bind(mq, "change") : mq.addListener.bind(mq))(function () { draw(); });
+    new MutationObserver(function () { draw(); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    fit();
+  }
+
+  /* ================= init language ================= */
+  (function initLang() {
+    var s = stored("cosine_lang");
+    var nav = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    var initial = (s === "uk" || s === "en") ? s : (nav.indexOf("uk") === 0 ? "uk" : "en");
+    if (initial === "uk") applyLang("uk");
+    else if (draw) draw();
+  })();
+
+  /* ================= waitlist stub ================= */
+  var nf = document.getElementById("notify"), nh = document.getElementById("notify-hint");
+  if (nf) nf.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("notify-email");
+    try { localStorage.setItem("cosine_waitlist_email", (input && input.value) || ""); } catch (_) {}
+    var msg = lang === "uk"
+      ? "Дякуємо — збережено в цьому браузері. Ми напишемо на релізі."
+      : "Thanks — saved in this browser. We’ll be in touch when it ships.";
+    nf.innerHTML = '<p style="font-family:\'JetBrains Mono\',monospace;font-size:.78rem;color:var(--teal-ink);margin:0">' + msg + '</p>';
+    if (nh) nh.textContent = lang === "uk"
+      ? "Власнику: адресу збережено лише локально. Підключіть справжній список перед запуском."
+      : "Owner: stored locally only. Connect a real list before launch.";
+  });
+})();
+</script>
+</body>
+</html>

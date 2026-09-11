@@ -44,6 +44,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | `harmonic_synth/license/` | `harmonic_license` — watermarked Ed25519 key-file format, verified offline (no dongle, no activation server). Drives the enforced free-**Core** / paid-**Studio** split; `cargo xtask keygen` issues keys. |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
+| `site/` | The marketing landing page — a single static, dependency-free HTML file, bilingual (English / Українська), deployable as-is to any static host ([`site/README.md`](site/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
 
 ## Reading it
