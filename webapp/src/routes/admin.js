@@ -7,6 +7,7 @@ const { verifyPassword, DUMMY_HASH } = require('../lib/password');
 const { requireAdmin } = require('../middleware/auth');
 const { verifyCsrf } = require('../middleware/csrf');
 const { loginLimiter } = require('../middleware/rateLimit');
+const logger = require('../lib/logger');
 
 const router = express.Router();
 
@@ -35,7 +36,7 @@ router.post('/login', loginLimiter, verifyCsrf, (req, res) => {
   // target for fixation in this app, so this matters most exactly here.
   req.session.regenerate((err) => {
     if (err) {
-      console.error('[auth] admin session regenerate failed:', err);
+      logger.error('session regenerate failed', { reqId: req.id, route: 'admin-login', message: err.message });
       req.flash('error', 'Something went wrong logging you in — try again.');
       return res.redirect('/admin/login');
     }

@@ -578,7 +578,14 @@ Status as of the remediation pass below (commit history has the detail):
    fallout — inline `onclick`/`onsubmit` — fixed by moving to `data-*`
    attributes + `public/js/admin.js`)
 10. ✅ I-4 — health-check route (`GET /healthz`, ahead of session middleware).
-    I-3 (structured logging) — not started.
+11. ✅ I-3 — structured (JSON Lines) logging (`src/lib/logger.js`): a
+    request id + completion log for every request (`/healthz` excluded to
+    avoid drowning the stream in liveness-probe noise), and the global
+    error handler plus the three session-regenerate failure paths now log
+    structured fields (reqId, route, message/stack) instead of a bare
+    `console.error(err)`. External error-tracking (Sentry or similar) is
+    still not wired in — that needs an account/DSN the owner has to
+    provision, an operational decision rather than an engineering default.
 
 **Also fixed opportunistically while in the relevant files (not in the
 original "before deployment" list, but cheap and in-scope):**

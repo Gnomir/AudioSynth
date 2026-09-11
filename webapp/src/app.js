@@ -17,6 +17,7 @@ const { SqliteSessionStore } = require('./lib/sessionStore');
 const { loadUser } = require('./middleware/auth');
 const { flash } = require('./middleware/flash');
 const { issueCsrf } = require('./middleware/csrf');
+const logger = require('./lib/logger');
 
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
@@ -64,6 +65,30 @@ if (!isProd && secretLooksWeak && process.env.NODE_ENV !== 'test') {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
 app.set('trust proxy', 1);
+
+// AUDIT.md I-3: a request id (for correlating this request's log lines,
+// including any error it triggers) and a structured completion log. Placed
+// first so every request gets an id, even one that 404s or throws before
+// reaching a route. /healthz is excluded from the completion log — a
+// liveness probe polling every few seconds would otherwise drown out
+// everything else in the log stream.
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.id);
+  if (req.path === '/healthz') return next();
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    logger.info('request', {
+      reqId: req.id,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Math.round(durationMs * 100) / 100,
+    });
+  });
+  next();
+});
 
 // A random nonce per request, so the two small inline <script> blocks
 // index.ejs needs (the server-rendered window.__CMS_UK__ data, and nothing
@@ -125,8 +150,15 @@ app.use((req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).send('Internal error. Check the server console.');
+  // AUDIT.md I-3
+  logger.error('unhandled error', {
+    reqId: req.id,
+    method: req.method,
+    path: req.path,
+    message: err.message,
+    stack: err.stack,
+  });
+  res.status(500).send('Internal error. Check the server logs.');
 });
 
 module.exports = app;

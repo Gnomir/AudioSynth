@@ -7,6 +7,7 @@ const { hashPassword, verifyPassword, DUMMY_HASH } = require('../lib/password');
 const { requireLoggedIn } = require('../middleware/auth');
 const { verifyCsrf } = require('../middleware/csrf');
 const { loginLimiter } = require('../middleware/rateLimit');
+const logger = require('../lib/logger');
 
 const router = express.Router();
 
@@ -62,7 +63,7 @@ router.post('/login', loginLimiter, verifyCsrf, (req, res) => {
   const returnTo = req.session.returnTo;
   req.session.regenerate((err) => {
     if (err) {
-      console.error('[auth] session regenerate failed:', err);
+      logger.error('session regenerate failed', { reqId: req.id, route: 'login', message: err.message });
       req.flash('error', 'Something went wrong logging you in — try again.');
       return res.redirect('/login');
     }
@@ -95,7 +96,7 @@ router.post('/register', verifyCsrf, (req, res) => {
   // anonymous -> authenticated transition and deserves a fresh session ID.
   req.session.regenerate((err) => {
     if (err) {
-      console.error('[auth] session regenerate failed:', err);
+      logger.error('session regenerate failed', { reqId: req.id, route: 'register', message: err.message });
       req.flash('error', 'Account created — please log in.');
       return res.redirect('/login');
     }
