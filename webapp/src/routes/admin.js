@@ -3,9 +3,10 @@
 const express = require('express');
 const { db } = require('../db');
 const { loadForAdmin, getBoth, setValue } = require('../lib/content');
-const { hashPassword, verifyPassword } = require('../lib/password');
+const { verifyPassword, DUMMY_HASH } = require('../lib/password');
 const { requireAdmin } = require('../middleware/auth');
 const { verifyCsrf } = require('../middleware/csrf');
+const { loginLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -18,18 +19,32 @@ router.get('/login', (req, res) => {
   res.render('admin/login', { title: 'Admin login' });
 });
 
-router.post('/login', verifyCsrf, (req, res) => {
+router.post('/login', loginLimiter, verifyCsrf, (req, res) => {
   const { email, password } = req.body;
   const user = findByEmail.get(String(email || '').trim().toLowerCase());
-  if (!user || user.role !== 'admin' || !user.is_active || !verifyPassword(password || '', user.password_hash)) {
+  // AUDIT.md M-1: same timing-safe treatment as the customer login — always
+  // pay the scrypt cost so a nonexistent/non-admin email isn't distinguishable
+  // by response time from a real admin email with a wrong password.
+  const passwordOk = verifyPassword(password || '', user ? user.password_hash : DUMMY_HASH);
+  if (!user || user.role !== 'admin' || !user.is_active || !passwordOk) {
     req.flash('error', 'Wrong email or password.');
     return res.redirect('/admin/login');
   }
-  req.session.userId = user.id;
-  res.redirect('/admin');
+
+  // AUDIT.md H-1: regenerate on login — an admin session is the highest-value
+  // target for fixation in this app, so this matters most exactly here.
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('[auth] admin session regenerate failed:', err);
+      req.flash('error', 'Something went wrong logging you in — try again.');
+      return res.redirect('/admin/login');
+    }
+    req.session.userId = user.id;
+    res.redirect('/admin');
+  });
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', verifyCsrf, (req, res) => {
   req.session.destroy(() => res.redirect('/admin/login'));
 });
 
@@ -64,9 +79,13 @@ router.get('/content/:key', (req, res) => {
 router.post('/content/:key', verifyCsrf, (req, res) => {
   const key = req.params.key;
   const existing = getBoth(key);
+  // AUDIT.md L-5: the GET edit form already 404s on an unknown key; repeat
+  // the check here so a stale bookmark or a hand-typed URL can't silently
+  // create an orphan content_blocks row nothing ever reads.
+  if (!existing.section) return res.status(404).send('Unknown content key');
   const isHtml = req.body.is_html === 'on';
-  setValue(key, 'en', req.body.en || '', isHtml, existing.section || key.split('.')[0]);
-  setValue(key, 'uk', req.body.uk || '', isHtml, existing.section || key.split('.')[0]);
+  setValue(key, 'en', req.body.en || '', isHtml, existing.section);
+  setValue(key, 'uk', req.body.uk || '', isHtml, existing.section);
   req.flash('success', `Saved "${key}".`);
   res.redirect('/admin/content#' + encodeURIComponent(key));
 });

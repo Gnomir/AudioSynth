@@ -46,8 +46,12 @@ rot.
 
 1. **[C-1]** Refuse to boot in production with the default session secret — as written, this is a full authentication bypass (forge any session, including admin) the moment someone deploys without reading the README.
 2. **[H-1]** Regenerate the session on login (session fixation) — one line, closes a real account-takeover path.
-3. **[M-4]** Add CSRF checks to both logout routes — currently the only unprotected state-changing endpoints.
-4. **[M-3]/[M-2]** Rate-limit `/login` + `/admin/login`, and stop leaking a timing signal on nonexistent emails — the two of these together turn "unlikely" brute force into "plausible."
+3. **[M-3]** Add CSRF checks to both logout routes — currently the only unprotected state-changing endpoints.
+4. **[M-1]/[M-2]** Rate-limit `/login` + `/admin/login`, and stop leaking a timing signal on nonexistent emails — the two of these together turn "unlikely" brute force into "plausible."
+
+**Status: all four items above are fixed and verified** (live HTTP tests during
+remediation, plus regression coverage in `test/`) — see the roadmap
+checklist at the bottom of this document for the full, itemized status.
 
 Everything else is real but lower-severity or process/architecture work, detailed below.
 
@@ -542,27 +546,54 @@ after a second admin is added and a dispute happens.
 
 ## Prioritized remediation roadmap
 
+Status as of the remediation pass below (commit history has the detail):
+
 **Do before any real (non-localhost) deployment:**
-1. C-1 — production boot guard on `SESSION_SECRET`
-2. H-1 — session regeneration on login
-3. M-3 — CSRF on both logout routes
-4. M-1, M-2 — timing-safe login comparison + rate limiting
-5. M-4 — escape `</` in the injected JSON
+1. ✅ C-1 — production boot guard on `SESSION_SECRET` (`src/app.js`; refuses to
+   boot on a placeholder/short secret in prod, warns in dev)
+2. ✅ H-1 — session regeneration on login (`public.js`, `admin.js`, both login
+   *and* registration — fixation closes the anonymous→authenticated
+   transition wherever it happens, not just the named login route)
+3. ✅ M-3 — CSRF on both logout routes
+4. ✅ M-1, M-2 — timing-safe login comparison (`DUMMY_HASH`, always-run
+   `verifyPassword`) + rate limiting (`middleware/rateLimit.js`, keyed by
+   IP+email via `express-rate-limit`'s `ipKeyGenerator`)
+5. ✅ M-4 — escape `</` in the injected JSON
 
 **Do soon after, before treating this as a maintained product:**
-6. M-5 — a real test suite (`node:test`)
-7. M-6 — a `webapp` CI job
-8. L-1 — resolve the Node/`node:sqlite` version ambiguity
-9. L-2 — `helmet` (or equivalent headers)
-10. I-3, I-4 — basic logging + a health-check route
+6. ✅ M-5 — a real test suite (`node:test`): 28 tests across
+   `test/auth.test.js`, `test/admin-content.test.js`,
+   `test/registration.test.js` — login/logout/session-regen, CSRF
+   enforcement, access control (customer vs. admin vs. anonymous),
+   registration validation, content-edit round-trip, FAQ CRUD. `npm test`
+   green.
+7. ✅ M-6 — a `webapp` job in `.github/workflows/ci.yml`: `npm ci`, a
+   syntax-check sweep, `npm test`, and a production-mode smoke boot against
+   `/healthz`.
+8. ✅ L-1 — mitigated defensively (`--experimental-sqlite` kept on all npm
+   scripts even though unneeded on the Node version actually used here); the
+   underlying version-boundary claim in L-1's own text below was never
+   independently re-verified and stays flagged as such.
+9. ✅ L-2 — `helmet`, with a per-request CSP nonce (`script-src-attr: 'none'`
+   fallout — inline `onclick`/`onsubmit` — fixed by moving to `data-*`
+   attributes + `public/js/admin.js`)
+10. ✅ I-4 — health-check route (`GET /healthz`, ahead of session middleware).
+    I-3 (structured logging) — not started.
 
-**Do when the relevant feature actually gets built, not before:**
+**Also fixed opportunistically while in the relevant files (not in the
+original "before deployment" list, but cheap and in-scope):**
+- L-4 — `requireCustomer` renamed `requireLoggedIn` to match what it actually
+  checks (any logged-in user, not customer-vs-admin).
+- L-5 — `POST /admin/content/:key` 404s on an unknown key instead of
+  silently creating an orphan row (same check the GET route already had).
+
+**Do when the relevant feature actually gets built, not before — unchanged:**
 11. L-6 (email verification), L-7 (license-key validation) — once payment
     integration is real
 12. L-8, I-7 (admin hierarchy, audit trail) — once a second admin exists
 13. I-1 (FK constraints) — once a table actually needs one
 
-**Owner decision, not an engineering task:**
+**Owner decision, not an engineering task — unchanged:**
 14. I-2 — whether to keep syncing `site/` by hand, automate it, or retire it
 
 ---

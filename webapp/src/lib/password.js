@@ -22,4 +22,13 @@ function verifyPassword(plain, stored) {
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
-module.exports = { hashPassword, verifyPassword };
+// AUDIT.md M-1: a valid-format hash to verify against when no such user
+// exists, so a login attempt for an unknown email pays the same scrypt cost
+// as one for a real email with a wrong password — otherwise the two cases
+// are distinguishable by response time (short-circuiting `!user || ...`
+// skips scryptSync entirely for an unknown email), which lets an attacker
+// enumerate registered addresses. Computed once at startup; the "password"
+// and salt are arbitrary, never used for a real comparison.
+const DUMMY_HASH = hashPassword('not-a-real-account-timing-placeholder');
+
+module.exports = { hashPassword, verifyPassword, DUMMY_HASH };

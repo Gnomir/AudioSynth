@@ -3,9 +3,10 @@
 const express = require('express');
 const { db } = require('../db');
 const { loadAll } = require('../lib/content');
-const { hashPassword, verifyPassword } = require('../lib/password');
-const { requireCustomer } = require('../middleware/auth');
+const { hashPassword, verifyPassword, DUMMY_HASH } = require('../lib/password');
+const { requireLoggedIn } = require('../middleware/auth');
 const { verifyCsrf } = require('../middleware/csrf');
+const { loginLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -29,24 +30,45 @@ router.get('/', (req, res) => {
     ukMerged[`faq.a${i + 1}`] = f.answer_uk;
   });
 
-  res.render('site/index', { title: 'Cosine', cms, faqs, ukJson: JSON.stringify(ukMerged) });
+  // AUDIT.md M-4: JSON.stringify never escapes a literal "</script>" inside a
+  // string value — left raw, that would close the <script> tag early and let
+  // whatever follows in the value be parsed as markup. Escaping "<" to its
+  // unicode escape (valid inside a JS string, inert to the HTML parser) is
+  // the standard fix; harmless for every other character.
+  const ukJson = JSON.stringify(ukMerged).replace(/</g, '\\u003c');
+  res.render('site/index', { title: 'Cosine', cms, faqs, ukJson });
 });
 
 router.get('/login', (req, res) => {
   res.render('site/login', { title: 'Log in — Cosine' });
 });
 
-router.post('/login', verifyCsrf, (req, res) => {
+router.post('/login', loginLimiter, verifyCsrf, (req, res) => {
   const { email, password } = req.body;
   const user = findByEmail.get(String(email || '').trim().toLowerCase());
-  if (!user || !user.is_active || !verifyPassword(password || '', user.password_hash)) {
+  // AUDIT.md M-1: always run verifyPassword, even for an email that doesn't
+  // exist — against DUMMY_HASH when it doesn't — so both cases cost the same
+  // scrypt computation and aren't distinguishable by response time.
+  const passwordOk = verifyPassword(password || '', user ? user.password_hash : DUMMY_HASH);
+  if (!user || !user.is_active || !passwordOk) {
     req.flash('error', 'Wrong email or password.');
     return res.redirect('/login');
   }
-  req.session.userId = user.id;
-  const dest = req.session.returnTo || (user.role === 'admin' ? '/admin' : '/account');
-  delete req.session.returnTo;
-  res.redirect(dest);
+
+  // AUDIT.md H-1: regenerate the session on privilege change (anonymous ->
+  // authenticated) so a session ID an attacker fixated before login is
+  // worthless afterwards — express-session does not rotate the ID on its
+  // own just because session *data* changed.
+  const returnTo = req.session.returnTo;
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('[auth] session regenerate failed:', err);
+      req.flash('error', 'Something went wrong logging you in — try again.');
+      return res.redirect('/login');
+    }
+    req.session.userId = user.id;
+    res.redirect(returnTo || (user.role === 'admin' ? '/admin' : '/account'));
+  });
 });
 
 router.get('/register', (req, res) => {
@@ -67,16 +89,27 @@ router.post('/register', verifyCsrf, (req, res) => {
   }
 
   const info = insertUser.run(email, hashPassword(password), displayName || null, licenseKey || null);
-  req.session.userId = Number(info.lastInsertRowid);
-  req.flash('success', 'Welcome — your account is ready.');
-  res.redirect('/account');
+  const newUserId = Number(info.lastInsertRowid);
+
+  // Same reasoning as the /login fix (AUDIT.md H-1): registration is also an
+  // anonymous -> authenticated transition and deserves a fresh session ID.
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('[auth] session regenerate failed:', err);
+      req.flash('error', 'Account created — please log in.');
+      return res.redirect('/login');
+    }
+    req.session.userId = newUserId;
+    req.flash('success', 'Welcome — your account is ready.');
+    res.redirect('/account');
+  });
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', verifyCsrf, (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-router.get('/account', requireCustomer, (req, res) => {
+router.get('/account', requireLoggedIn, (req, res) => {
   res.render('site/account', { title: 'My account — Cosine' });
 });
 

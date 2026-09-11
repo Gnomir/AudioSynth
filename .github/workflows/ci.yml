@@ -124,6 +124,44 @@ jobs:
           path: harmonic_synth/target/bundled/
           if-no-files-found: error
 
+  webapp:
+    name: webapp · test + smoke boot
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: syntax-check every source file
+        run: |
+          find src test test-support -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: test (AUDIT.md M-5)
+        run: npm test
+
+      - name: smoke boot
+        env:
+          NODE_ENV: production
+          SESSION_SECRET: ${{ github.run_id }}-ci-smoke-boot-secret-not-for-real-use
+          PORT: 4000
+        run: |
+          npm start &
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:4000/healthz; then echo; exit 0; fi
+            sleep 0.5
+          done
+          echo "server never became healthy" >&2
+          exit 1
+
   cross-verify:
     name: harmonic_core · bit-exact on emulated ARM (QEMU)
     runs-on: ubuntu-latest

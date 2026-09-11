@@ -287,7 +287,7 @@
 </footer>
 
 
-<script>window.__CMS_UK__ = <%- ukJson %>;</script>
+<script nonce="<%= cspNonce %>">window.__CMS_UK__ = <%- ukJson %>;</script>
 <script src="/js/site.js"></script>
 </body>
 </html>

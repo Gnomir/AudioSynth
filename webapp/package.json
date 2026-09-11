@@ -5,9 +5,10 @@
   "private": true,
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "seed": "node src/db/seed.js"
+    "start": "node --experimental-sqlite src/server.js",
+    "dev": "node --experimental-sqlite --watch src/server.js",
+    "seed": "node --experimental-sqlite src/db/seed.js",
+    "test": "node --experimental-sqlite --test"
   },
   "engines": {
     "node": ">=22.5.0"
@@ -19,6 +20,8 @@
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
-    "express-session": "^1.19.0"
+    "express-rate-limit": "^8.7.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0"
   }
 }

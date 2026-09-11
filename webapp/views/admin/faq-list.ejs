@@ -16,7 +16,7 @@
             <td style="white-space:nowrap">
               <a class="btn" href="/admin/faq/<%= f.id %>/edit">Edit</a>
               <form method="post" action="/admin/faq/<%= f.id %>/delete" style="display:inline"
-                    onsubmit="return confirm('Delete this FAQ entry?')">
+                    data-confirm="Delete this FAQ entry?">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button class="btn" type="submit">Delete</button>
               </form>
