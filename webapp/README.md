@@ -65,28 +65,39 @@ a second interpreter installed on the machine.
 ```
 webapp/
   src/
-    server.js           entry point — express app, sessions, routes, error handler
+    app.js              express app: sessions, security headers, routes, error handler
+                          (exports the app, no .listen() — split from server.js for
+                          in-process testing, see test/)
+    server.js           entry point — requires app.js, calls app.listen()
     db/
       index.js            SQLite connection + migration runner
       migrations/*.sql     schema, applied once each, tracked in a `migrations` table
       seed.js              one-time import from site/index.html + first admin account
     lib/
       content.js           content_blocks read/write helpers
-      password.js           scrypt hash/verify
+      password.js           scrypt hash/verify + a DUMMY_HASH for timing-safe login
       sessionStore.js        express-session Store backed by the same SQLite file
+      logger.js              structured (JSON Lines) request/error logging
     middleware/
-      auth.js               req.user, requireCustomer, requireAdmin
+      auth.js               req.user, requireLoggedIn, requireAdmin
       flash.js               one-shot session flash messages
       csrf.js                 issue/verify a same-session form token
+      rateLimit.js            login rate limiting (IP + email)
     routes/
-      public.js              /, /login, /register, /logout, /account
+      public.js              /, /demo, /handbook, /monograph, /login, /register,
+                               /logout, /account
       admin.js                /admin/*  (content editor, FAQ CRUD, user list)
   views/
     partials/               <head> for site + admin, nav, flash
-    site/                    index (the landing page), login, register, account, 404
+    site/                    index (the landing page), demo, handbook, monograph
+                              (ported from Claude artifacts — see below), login,
+                              register, account, 404
     admin/                   login, dashboard, content list/edit, FAQ list/edit, users
   public/
     css/site.css              the landing page's own styles (ported verbatim)
+    js/admin.js                small delegated listener (CSP forbids inline onclick)
+  test/                    node:test suite (M-5) — auth, admin-content, registration
+  test-support/            shared test harness (ephemeral-port server, cookie client)
     css/admin.css              @imports site.css, adds admin-only components
     js/site.js                the landing page's i18n toggle + live spectrum canvas
   database/app.sqlite        the whole database — gitignored, back it up by copying it
@@ -136,12 +147,18 @@ benchmarks, news, and a full customer self-service area — on top of what
 shipped in this pass (landing page + FAQ content management + accounts). Built
 this way on purpose, so each is a natural extension instead of a rewrite:
 
-- **Docs / benchmarks as CMS pages.** `content_blocks` and the admin editor
-  pattern generalise directly to a `pages` table (slug, title, body per
-  language) rendered through one more EJS view + route — the same shape as
-  what FAQ already is. The repo's own `docs/*.md` and `product/CAPABILITIES.md`
-  are the obvious first import source (a `marked`-based Markdown-to-HTML step,
-  similar in spirit to `db/seed.js`'s HTML import).
+- **Docs / benchmarks as CMS pages.** `/demo`, `/handbook` and `/monograph`
+  (ported from three Claude artifacts that used to be the site's only links
+  for them — those only ever worked for whoever was signed into the account
+  that owned the artifact) are real pages on this domain now, but they're
+  each one static EJS view, not admin-editable content. `content_blocks` and
+  the admin editor pattern generalise directly to a `pages` table (slug,
+  title, body per language) rendered through one more EJS view + route — the
+  same shape as what FAQ already is — the natural next step if these need
+  in-admin editing rather than a code change. The repo's own `docs/*.md` and
+  `product/CAPABILITIES.md` are the obvious first import source (a
+  `marked`-based Markdown-to-HTML step, similar in spirit to `db/seed.js`'s
+  HTML import).
 - **News / changelog.** Same shape as `faqs` (a table with a publish flag and
   sort/date order) with its own small admin CRUD screen.
 - **A real support Q&A / ticket system**, if the public FAQ ever isn't

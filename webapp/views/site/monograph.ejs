@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%90%3C/text%3E%3C/svg%3E">
+<title>Замкнена форма адитивного синтезу — Cosine</title>
+<meta name="description" content="Наукова монографія: band-limited адитивний синтез на замкненій формі ядра Діріхле — детермінований no_std DSP-рушій harmonic_core та плагін harmonic_synth (Cosine).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Spectral+SC:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --paper:      #f6f5f0;
+    --surface:    #fffefb;
+    --surface-2:  #eeece3;
+    --ink:        #191712;
+    --ink-soft:   #423d33;
+    --muted:      #6d6656;
+    --line:       #d9d4c4;
+    --rule:       #c3bca8;
+    --accent:     #1d5b62;
+    --accent-ink: #164449;
+    --accent-bg:  #e4ecec;
+    --danger:     #8f3a2f;
+    --danger-ink: #7a3128;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #14130f;
+      --surface:    #1b1a15;
+      --surface-2:  #24221b;
+      --ink:        #e8e4d9;
+      --ink-soft:   #c1bbab;
+      --muted:      #8f887650;
+      --muted:      #928b78;
+      --line:       #2e2b22;
+      --rule:       #3d3930;
+      --accent:     #4fa8ae;
+      --accent-ink: #7ec9ce;
+      --accent-bg:  #1c2a2b;
+      --danger:     #cf6a5c;
+      --danger-ink: #d98577;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:      #14130f;
+    --surface:    #1b1a15;
+    --surface-2:  #24221b;
+    --ink:        #e8e4d9;
+    --ink-soft:   #c1bbab;
+    --muted:      #928b78;
+    --line:       #2e2b22;
+    --rule:       #3d3930;
+    --accent:     #4fa8ae;
+    --accent-ink: #7ec9ce;
+    --accent-bg:  #1c2a2b;
+    --danger:     #cf6a5c;
+    --danger-ink: #d98577;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Spectral", Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    line-height: 1.72;
+  }
+  ::selection { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+  .wrap { max-width: 43rem; margin: 0 auto; padding: 0 1.5rem 7rem; }
+
+  /* ---------- title block ---------- */
+  header.title {
+    padding: 4.5rem 0 2.6rem;
+    border-bottom: 2px solid var(--rule);
+    text-align: center;
+  }
+  .dtype {
+    font-family: "Spectral SC", "Spectral", serif;
+    font-weight: 600; font-size: .82rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 1.6rem;
+  }
+  h1.doctitle {
+    font-family: "Spectral", serif;
+    font-weight: 700; font-size: clamp(1.9rem, 5.4vw, 2.7rem);
+    line-height: 1.16; letter-spacing: -.012em; text-wrap: balance;
+    margin: 0 auto .9rem; max-width: 26rem;
+  }
+  .subtitle {
+    font-size: 1.12rem; font-style: italic; color: var(--ink-soft);
+    max-width: 30rem; margin: 0 auto 2.2rem; text-wrap: balance;
+  }
+  .byline {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .74rem; letter-spacing: .05em; color: var(--muted);
+    line-height: 2;
+  }
+  .byline b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---------- abstract ---------- */
+  .abstract {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 1.6rem 1.7rem;
+    margin: 3rem 0 0;
+    font-size: .96rem;
+    line-height: 1.66;
+  }
+  .abstract h2 {
+    font-family: "Spectral SC", serif; font-weight: 600;
+    font-size: .8rem; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 .8rem;
+  }
+  .abstract p { margin: 0 0 .8rem; color: var(--ink-soft); }
+  .abstract p:last-child { margin: 0; }
+  .abstract .kw {
+    margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line);
+    font-size: .82rem; color: var(--muted);
+  }
+  .abstract .kw b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- table of contents ---------- */
+  nav.toc {
+    margin: 2.4rem 0 0; padding: 1.3rem 1.5rem;
+    background: var(--surface-2); border-radius: 4px;
+    font-family: "JetBrains Mono", monospace; font-size: .8rem;
+    line-height: 1.9;
+  }
+  nav.toc p {
+    margin: 0 0 .5rem; letter-spacing: .14em; text-transform: uppercase;
+    font-size: .68rem; color: var(--muted);
+  }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin: .1rem 0; }
+  nav.toc li::before {
+    content: counter(toc) ".";
+    color: var(--accent-ink); margin-right: .7rem;
+    display: inline-block; min-width: 1.2rem;
+  }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent-ink); text-decoration: underline; }
+
+  /* ---------- sections ---------- */
+  section { padding: 3rem 0 1rem; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; }
+  h2.sec {
+    font-family: "Spectral", serif; font-weight: 700;
+    font-size: 1.5rem; line-height: 1.24; letter-spacing: -.01em;
+    text-wrap: balance; margin: 0 0 1.3rem;
+  }
+  h2.sec .num {
+    font-family: "JetBrains Mono", monospace; font-weight: 500;
+    font-size: 1rem; color: var(--accent); margin-right: .8rem;
+  }
+  h3 {
+    font-family: "Spectral", serif; font-weight: 600;
+    font-size: 1.12rem; letter-spacing: 0; color: var(--ink);
+    margin: 2rem 0 .6rem;
+  }
+  h3 .sn {
+    font-family: "JetBrains Mono", monospace; font-weight: 400;
+    font-size: .82rem; color: var(--muted); margin-right: .55rem;
+  }
+  p { margin: 0 0 1.1rem; }
+  p:last-child { margin-bottom: 0; }
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  .lead { font-size: 1.04rem; color: var(--ink-soft); }
+
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.4rem; }
+  li { margin: .45rem 0; }
+  li::marker { color: var(--muted); }
+
+  code, .mono {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: .82em;
+  }
+  code {
+    background: var(--surface-2); padding: .1em .38em; border-radius: 3px;
+  }
+  var { font-style: italic; font-family: "Spectral", serif; }
+
+  /* ---------- equations ---------- */
+  .eq {
+    margin: 1.3rem 0; padding: 1rem 1.2rem;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; overflow-x: auto;
+    font-family: "Spectral", serif; font-size: 1rem;
+    text-align: center; line-height: 2;
+  }
+  .eq .ref {
+    float: right; font-family: "JetBrains Mono", monospace;
+    font-size: .72rem; color: var(--muted); padding-top: .4rem;
+  }
+  .eq sub, .eq sup { font-size: .72em; }
+  .frac {
+    display: inline-flex; flex-direction: column; vertical-align: middle;
+    text-align: center; margin: 0 .3em;
+  }
+  .frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 .4em .1em; }
+  .frac > span:last-child { padding: .1em .4em 0; }
+
+  /* ---------- figures / diagrams ---------- */
+  figure { margin: 1.6rem 0; }
+  .diagram {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1.3rem 1.1rem;
+    font-family: "JetBrains Mono", monospace; font-size: .74rem;
+    line-height: 1.65; color: var(--ink-soft);
+    overflow-x: auto; white-space: pre;
+  }
+  figcaption {
+    font-size: .82rem; color: var(--muted); margin-top: .7rem;
+    padding-left: .2rem; line-height: 1.55;
+  }
+  figcaption b {
+    font-family: "Spectral SC", serif; font-weight: 600; color: var(--ink-soft);
+    letter-spacing: .04em; margin-right: .5rem;
+  }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin: 1.5rem 0; }
+  table {
+    border-collapse: collapse; width: 100%;
+    font-size: .86rem; font-family: "Spectral", serif;
+  }
+  caption {
+    caption-side: top; text-align: left; font-size: .82rem;
+    color: var(--muted); margin-bottom: .6rem; line-height: 1.5;
+  }
+  caption b {
+    font-family: "Spectral SC", serif; font-weight: 600; color: var(--ink-soft);
+    letter-spacing: .04em; margin-right: .5rem;
+  }
+  th, td {
+    text-align: left; padding: .5rem .7rem;
+    border-bottom: 1px solid var(--line); vertical-align: top;
+  }
+  thead th {
+    font-family: "Spectral SC", serif; font-weight: 600;
+    font-size: .78rem; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); border-bottom: 1.5px solid var(--rule);
+  }
+  tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+  td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .mono, td code { font-size: .92em; }
+
+  /* ---------- callouts ---------- */
+  .note {
+    margin: 1.4rem 0; padding: .9rem 1.1rem;
+    border-left: 3px solid var(--rule); background: var(--surface-2);
+    border-radius: 0 3px 3px 0; font-size: .92rem; color: var(--ink-soft);
+  }
+  .note.caveat { border-left-color: var(--danger); }
+  .note .lbl {
+    font-family: "Spectral SC", serif; font-weight: 600;
+    font-size: .74rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); display: block; margin-bottom: .3rem;
+  }
+  .note.caveat .lbl { color: var(--danger-ink); }
+
+  /* ---------- references ---------- */
+  .refs { counter-reset: ref; padding-left: 0; list-style: none; }
+  .refs li {
+    counter-increment: ref; position: relative;
+    padding-left: 2.4rem; margin: .7rem 0;
+    font-size: .88rem; line-height: 1.55; color: var(--ink-soft);
+  }
+  .refs li::before {
+    content: "[" counter(ref) "]";
+    position: absolute; left: 0; top: 0;
+    font-family: "JetBrains Mono", monospace; font-size: .78rem;
+    color: var(--accent-ink);
+  }
+  .refs cite { font-style: italic; }
+
+  sup.cite {
+    font-family: "JetBrains Mono", monospace; font-size: .68em;
+    color: var(--accent-ink); font-weight: 500;
+    padding: 0 .1em; line-height: 0;
+  }
+
+  hr.end {
+    border: 0; border-top: 1px solid var(--rule);
+    margin: 3.5rem 0 1.5rem;
+  }
+  .colophon {
+    font-family: "JetBrains Mono", monospace; font-size: .74rem;
+    color: var(--muted); line-height: 1.8;
+  }
+
+  @media (max-width: 33rem) {
+    body { font-size: 16.5px; }
+    .wrap { padding: 0 1.1rem 5rem; }
+    .row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div style="position:fixed;top:1rem;left:1rem;z-index:10">
+  <a href="/" style="font:600 .72rem/1 'JetBrains Mono',monospace;letter-spacing:.04em;color:var(--muted);text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.5rem .8rem;display:inline-block">&larr; Cosine</a>
+</div>
+<div class="wrap">
+
+  <header class="title">
+    <p class="dtype">Наукова монографія · дисертаційна форма</p>
+    <h1 class="doctitle">Замкнена форма band-limited адитивного синтезу</h1>
+    <p class="subtitle">Детермінований <code>no_std</code> DSP-рушій на узагальненому
+      ядрі Діріхле: математика двох замкнених ядер, чисельні методи, мікротюнінг,
+      архітектура та крос-платформна верифікація</p>
+    <div class="byline">
+      <div><b>Предмет</b> &nbsp; <code>harmonic_core</code> / <code>harmonic_synth</code> — плагін іменується <b>Cosine</b></div>
+      <div><b>Обсяг</b> &nbsp; DSP-ядро (Rust, <code>no_std</code>) + плагін VST3/CLAP + <code>wasm32</code></div>
+      <div><b>Редакція</b> &nbsp; відповідає стану системи на 2026-09-07 (HEAD <code>d9cc371</code>)</div>
+    </div>
+  </header>
+
+  <div class="abstract">
+    <h2>Анотація</h2>
+    <p>Адитивний синтез із довільною обгинаючою на гармоніку коштує <var>O(n)</var>
+      операцій на вихідний семпл для <var>n</var> парціалів. Ця робота показує, що
+      для двох музично важливих класів спектра — <em>плаского</em> та
+      <em>геометрично-спадного</em> — сума має скінченну замкнену форму, яка
+      обчислюється за фіксовану кількість тригонометричних викликів плюс одне
+      піднесення до степеня, тобто <var>Θ(log n)</var> у найгіршому випадку та
+      <var>Θ(1)</var> за фіксованої кількості парціалів. Замкнена форма
+      <em>тотожна</em> скінченній сумі побітово, тому синтезований тон точно
+      band-limited до <var>n</var>-ї гармоніки без фільтра оверсемплінгу.</p>
+    <p>Друге, ортогональне замкнене ядро — різниця двох геометричних сум
+      <var>S<sub>n</sub>(a) &minus; S<sub>n</sub>(b)</var> — дає керований
+      резонансний горб на довільному партіалі за ту саму ціну; разом дві осі
+      (нахил + горб) покривають більшість статичних спектральних обгинаючих
+      музичного інтересу. Оскільки спектр будується поаргументно, фундаментал
+      кожної ноти можна покласти на довільну регулярну шкалу (чиста інтонація,
+      історичні строї, <var>n</var>-EDO, імпорт Scala <code>.scl</code> /
+      <code>.kbm</code>) без розстроювання власних обертонів — те, чого хвильова
+      таблиця й субтрактив структурно не вміють.</p>
+    <p>Навколо ядер побудовано повний рушій: узагальнення на нелінійні
+      «характерні» стадії (drive / fold / crush / FM), ZDF-фільтр стану змінних,
+      подвійна ADSR, поголосний LFO, стерео-унісон, та опційний оверсемплінг
+      майстер-шини. Уся тригонометрія реалізована без <code>libm</code>
+      поліномами Горнера (Тейлор для несучої, мінімакс Ремеза для
+      <code>exp2</code> / <code>tan</code>); контракт детермінізму (без FMA,
+      без <code>x87</code>,
+      насичувані касти на рівні мови) робить вихідний сигнал <em>побітово
+      ідентичним</em> між x86-64, ARM та <code>wasm32</code> — на 48 <em>і</em>
+      96&nbsp;кГц, незалежно від розміру блоку рендеру — що виміряно, а не
+      постульовано. Рушій експортує C-ABI, збирається під bare-metal ARM /
+      RISC-V і працює у браузері з тим самим хешем рендеру.</p>
+    <p>Робота фіксує <em>чесні межі</em>: вартість — <var>Θ(log n)</var>, а не
+      <var>O(1)</var>; band-limiting гарантований лише для чистого осцилятора;
+      стеля 2048 гармонік; мікротюнінг ретюнить <em>фундаментал</em>, не окремі
+      обертони (інгармонічність дзвона потребує третього ядра); відсутність
+      зв'язку з «квантово-натхненими» обгинаючими, які були проаналізовані й
+      відхилені як вироджені.</p>
+    <p class="kw"><b>Ключові слова:</b> адитивний синтез, ядро Діріхле, формули
+      дискретного підсумовування, band-limiting, детермінована арифметика,
+      <code>no_std</code>, PolyBLEP, ZDF state-variable filter, мікротюнінг,
+      Scala, WebAssembly, VST3, CLAP.</p>
+  </div>
+
+  <nav class="toc">
+    <p>Зміст</p>
+    <ol>
+      <li><a href="#s1">Вступ і постановка задачі</a></li>
+      <li><a href="#s2">Математичні основи: два замкнені ядра та мікротюнінг</a></li>
+      <li><a href="#s3">Чисельні методи та контракт детермінізму</a></li>
+      <li><a href="#s4">Архітектура рушія та спектральний дисплей</a></li>
+      <li><a href="#s5">Класичні хвилі: PolyBLEP / PolyBLAMP</a></li>
+      <li><a href="#s6">Методологія та результати верифікації</a></li>
+      <li><a href="#s7">Обмеження та межі застосовності</a></li>
+      <li><a href="#s8">Висновки та подальша робота</a></li>
+      <li><a href="#refs">Джерела</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <h2 class="sec"><span class="num">1</span>Вступ і постановка задачі</h2>
+
+    <p class="lead">Класичний адитивний синтез будує тон як суму синусоїд:
+      кожна гармоніка <var>k</var> має власну амплітуду <var>a<sub>k</sub></var>
+      і фазу. Це найгнучкіший метод спектрального синтезу і водночас
+      найдорожчий — вартість зростає лінійно з кількістю парціалів.</p>
+
+    <h3><span class="sn">1.1</span>Проблема вартості</h3>
+    <p>Для яскравого басового тону на <var>f<sub>0</sub></var> = 55&nbsp;Гц при
+      частоті дискретизації 48&nbsp;кГц межа Найквіста допускає до
+      <var>⌊f<sub>s</sub> / 2f<sub>0</sub>⌋</var> ≈ 436 гармонік. Пряме
+      підсумовування — це 436 обчислень <code>sin</code> на кожен вихідний
+      семпл на кожен голос; при 24 голосах поліфонії й типовій буферизації це
+      десятки мільйонів трансцендентних викликів на секунду. Стандартні обхідні
+      шляхи — вейвтейбли (втрата спектральної гнучкості, артефакти інтерполяції)
+      або BLIT з витоком та інтегруванням<sup class="cite">[1]</sup> (рекурсивний
+      стан, дрейф) — жертвують або точністю, або гнучкістю.</p>
+
+    <h3><span class="sn">1.2</span>Спостереження</h3>
+    <p>Мурер<sup class="cite">[2]</sup> ще 1976&nbsp;р. показав, що
+      <em>деякі</em> нескінченні та скінченні спектральні суми мають замкнену
+      форму через формули дискретного підсумовування (DSF). Ключове
+      спостереження цієї роботи: два практично важливі випадки —
+      <strong>плаский спектр</strong> (усі <var>a<sub>k</sub></var> = 1) та
+      <strong>геометричний спад</strong> (<var>a<sub>k</sub></var> =
+      <var>r<sup>k</sup></var>, <var>r</var> ∈ (0,&nbsp;1)) — зводяться
+      відповідно до <em>ядра Діріхле</em> та скінченної геометричної суми
+      комплексних експонент, обидві з елементарною замкненою формою і, що
+      критично, обидві <em>точно скінченні</em>: замкнений вираз тотожний
+      усіченій сумі, а не її нескінченному продовженню.</p>
+
+    <h3><span class="sn">1.3</span>Внесок</h3>
+    <ul>
+      <li>Виведення й аналіз похибки замкненої форми для геометрично-зваженої
+        скінченної суми косинусів, з доказом точної скінченності
+        (§<a href="#s2">2.1</a>–<a href="#s2">2.5</a>).</li>
+      <li>Друге замкнене ядро — <em>різниця</em> двох геометричних сум — як
+        керований резонансний горб на довільному партіалі за ту саму
+        асимптотичну ціну (§<a href="#s2">2.6</a>).</li>
+      <li>Мікротюнінг як прямий наслідок поаргументної побудови спектра: ретюн
+        фундаменталів на довільну регулярну шкалу (Scala <code>.scl</code> /
+        <code>.kbm</code>) з побітово недоторканим дефолтним 12-TET шляхом
+        (§<a href="#s2">2.7</a>).</li>
+      <li>Реалізація всієї потрібної тригонометрії без <code>libm</code> з
+        доведеними межами ULP та формальний <em>контракт детермінізму</em>, що
+        робить синтез відтворюваним побітово між архітектурами, частотами
+        дискретизації та розмірами блоку (§<a href="#s3">3</a>).</li>
+      <li>Повний рушій навколо ядер: керована нелінійність, ZDF-фільтр, огинаючі,
+        унісон, оверсемплінг майстер-шини, редактор зі спектральним дисплеєм, що
+        малює саму замкнену форму — з C-ABI і плагіном VST3/CLAP
+        (§<a href="#s4">4</a>–<a href="#s5">5</a>).</li>
+      <li>Методологія верифікації: незалежний <var>Θ(n)</var>-еталон, спектральні
+        тести аліасингу, ворожий RT-safety набір, крос-платформна перевірка
+        побітової ідентичності під QEMU й у Node (<code>wasm32</code>),
+        безперервна інтеграція, галузеві валідатори плагінів
+        (§<a href="#s6">6</a>).</li>
+      <li>Явна фіксація меж — те, чого метод <em>не</em> дає
+        (§<a href="#s7">7</a>).</li>
+    </ul>
+
+    <div class="note caveat">
+      <span class="lbl">Що ця робота НЕ стверджує</span>
+      Метод не є універсальним <var>O(1)</var>-адитивним синтезом: довільна
+      обгинаюча на гармоніку лишається <var>O(n)</var>. Замкнена форма працює
+      саме тому, що плаский і геометричний спектри — це скінченні геометричні
+      ряди. Немає зв'язку з квантовою механікою, алгоритмом Гровера чи метрикою
+      диска Пуанкаре; функція <var>cos²(2εθ)</var> як спектральна обгинаюча
+      вироджена (≈ 1 для майже всіх <var>N</var>) і була відхилена після аналізу.
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2 class="sec"><span class="num">2</span>Математичні основи: два замкнені ядра та мікротюнінг</h2>
+
+    <h3><span class="sn">2.1</span>Ядро Діріхле</h3>
+    <p>Скінченна сума перших <var>n</var> косинусних гармонік фази
+      <var>p</var> (в обертах, <var>p</var> ∈ [0,&nbsp;1)) має класичну
+      замкнену форму:</p>
+    <div class="eq">
+      <span class="ref">(1)</span>
+      Σ<sub>k=1</sub><sup>n</sup> cos(2π<var>k</var><var>p</var>) =
+      <span class="frac"><span>sin(π(2<var>n</var>+1)<var>p</var>)</span><span>2&nbsp;sin(π<var>p</var>)</span></span>
+      &minus; <span class="frac"><span>1</span><span>2</span></span>
+    </div>
+    <p>Це band-limited імпульсний потік: плаский спектр рівно з <var>n</var>
+      гармонік, нульова енергія вище. Особливість при <var>p</var> → 0
+      усувна (границя дорівнює <var>n</var>) і обробляється розкладом поблизу
+      нуля.</p>
+
+    <h3><span class="sn">2.2</span>Геометричне узагальнення</h3>
+    <p>Зважуючи гармоніку <var>k</var> на <var>r<sup>k</sup></var> і працюючи
+      з комплексним рядом <var>z</var> = <var>r</var>·e<sup>i2π<var>p</var></sup>,
+      скінченна геометрична сума
+      Σ<sub>k=1</sub><sup>n</sup> <var>z<sup>k</sup></var> =
+      <var>z</var>(1&minus;<var>z<sup>n</sup></var>)/(1&minus;<var>z</var>)
+      після взяття дійсної частини й приведення дає:</p>
+    <div class="eq">
+      <span class="ref">(2)</span>
+      Σ<sub>k=1</sub><sup>n</sup> <var>r<sup>k</sup></var> cos(2π<var>k</var><var>p</var>) =
+      <span class="frac">
+        <span><var>r</var><var>c</var><sub>1</sub> &minus; <var>r</var><sup>2</sup>
+          &minus; <var>r</var><sup><var>n</var>+1</sup><var>c</var><sub><var>n</var>+1</sub>
+          + <var>r</var><sup><var>n</var>+2</sup><var>c</var><sub><var>n</var></sub></span>
+        <span>1 &minus; 2<var>r</var><var>c</var><sub>1</sub> + <var>r</var><sup>2</sup></span>
+      </span>
+    </div>
+    <p>де <var>c<sub>k</sub></var> = cos(2π<var>k</var><var>p</var>). Знаменник
+      1 &minus; 2<var>r</var>cos(2π<var>p</var>) + <var>r</var><sup>2</sup> =
+      |1 &minus; <var>z</var>|<sup>2</sup> ≥ (1&minus;<var>r</var>)<sup>2</sup>
+      &gt; 0 для <var>r</var> &lt; 1 — вираз добре зумовлений при <em>кожній</em>
+      фазі. Параметр <var>r</var> — це керування яскравістю: <var>r</var> → 0
+      дає чистий фундаментал, <var>r</var> → 1 — яскравий імпульс, що прямує до
+      (1).</p>
+
+    <h3><span class="sn">2.3</span>Точна скінченність</h3>
+    <p>Обидва вирази обчислюють <em>саме усічену</em> суму, не її нескінченне
+      продовження: члени корекції <var>r<sup>n+1</sup></var> та
+      <var>r<sup>n+2</sup></var> у (2) точно віднімають хвіст нескінченного
+      ряду. Отже спектр рівно нульовий вище гармоніки <var>n</var> — немає
+      аліасингу, доки виконується <em>кламп Найквіста</em>
+      <var>n</var> ≤ <var>⌊f<sub>s</sub> / 2f<sub>eff</sub>⌋</var>, який рушій
+      застосовує за кожен семпл до ефективної частоти
+      <var>f<sub>eff</sub></var> (після pitch-bend і вібрато). Користувацька
+      стеля <var>n<sub>max</sub></var> — <em>фракційна</em> — накладається
+      <em>після</em> цього клампу: ціла частина
+      <var>n</var> = min(<var>⌊n<sub>max</sub>⌋</var>,
+      <var>⌊f<sub>s</sub>/2f<sub>eff</sub>⌋</var>, 2048), дробова частина
+      <var>φ</var> неперервно підмішує наступну гармоніку —
+      <var>S<sub>n+φ</sub>(p)</var> = <var>S<sub>n</sub>(p)</var> +
+      <var>φ·r<sup>n+1</sup>cos(2π(n+1)p)</var>, рівно наступний член суми (2).
+      Зниження стелі лише прибирає реальні гармоніки — результат ніколи не
+      аліасить (<var>φ</var> скидається в нуль, коли зв'язує саме Найквіст),
+      і коштує стільки ж, плюс один <code>cos</code> (§2.4). Це друга,
+      ортогональна до <var>r</var>, вісь тембру: <var>r</var> нахиляє спектр,
+      <var>n<sub>max</sub></var> його обрізає, гладко.</p>
+
+    <h3><span class="sn">2.4</span>Вартість</h3>
+    <p>Обчислення (2) потребує: <code>cos(2πp)</code>, <code>cos(2π(n+1)p)</code>,
+      <code>cos(2πnp)</code> — фіксовану кількість тригонометричних викликів —
+      плюс <var>r<sup>n+1</sup></var> та <var>r<sup>n</sup></var> через
+      піднесення до степеня квадруванням. Останнє коштує
+      <var>⌊log₂(n+1)⌋ + popcount(n+1)</var> ≤ <var>2⌈log₂(n+1)⌉</var> множень
+      — для <var>n</var> ≤ 2048 це ≤ 22 множення.</p>
+    <div class="eq">
+      <span class="ref">(3)</span>
+      вартість(семпл) = <var>Θ(log n)</var> &nbsp;&nbsp;у найгіршому,&nbsp;&nbsp;
+      <var>Θ(1)</var> &nbsp;за фіксованого <var>n</var>
+    </div>
+    <p>Рушій кешує <var>r<sup>n+1</sup></var> та пікове значення за ключем
+      (<var>r</var>,&nbsp;<var>n</var>): на <em>сталій</em> ноті піднесення до
+      степеня не виконується взагалі, і вартість емпірично плоска (розкид &lt; 1&nbsp;%
+      на діапазоні <var>n</var> у 400×). Але це кеш, а не алгоритмічне
+      <var>O(1)</var>: свіп яскравості (<var>r</var> рухається) або вібрато
+      (<var>n</var> рухається) знову платить <var>Θ(log n)</var> щосемпла.</p>
+
+    <h3><span class="sn">2.5</span>Аналіз похибки</h3>
+    <p>Похибка (2) визначається трьома джерелами: (i) похибка ULP самих
+      <code>cos</code>-викликів (§<a href="#s3">3.1</a>), (ii) катастрофічне
+      скорочення в знаменнику при <var>r</var> → 1 і <var>p</var> → 0 —
+      обмежене знизу (1&minus;<var>r</var>)<sup>2</sup> ≥ 2.5·10⁻⁷ при
+      <var>r</var> ≤ 0.9995, (iii) накопичення в <var>r<sup>n</sup></var>.
+      Порівняння з незалежною <var>Θ(n)</var>-сумою на <var>n</var> до 2048 і
+      <var>r</var> до 0.999 дає відносну похибку &lt; 5·10⁻⁸·<var>n</var> +
+      10⁻⁶ — під шумом 24-бітного аудіо.</p>
+
+    <figure>
+      <figcaption><b>Виведення (2).</b> Замкнена форма отримана взяттям
+        Re(<span class="mono">z(1&minus;z<sup>n</sup>)/(1&minus;z)</span>) з
+        <span class="mono">z = r·exp(i2πp)</span>, домноженням чисельника й
+        знаменника на спряжене (1&minus;<span class="mono">z̄</span>) і збором
+        дійсних частин. Повне покрокове виведення — у документі
+        <span class="mono">01_MATHEMATICS.md</span>.</figcaption>
+    </figure>
+
+    <h3><span class="sn">2.6</span>Друге замкнене ядро: резонансний горб</h3>
+    <p>Один параметр нахилу <var>r</var> дає лише монотонний спад у дБ/гармоніку.
+      Ширший клас статичних обгинаючих — з <em>горбом</em> на певному партіалі
+      (формантна, «голосна» забарвленість) — досяжний без відмови від замкненої
+      форми: береться <em>різниця</em> двох геометричних сум (2) з різними
+      основами <var>a</var> &gt; <var>b</var>:</p>
+    <div class="eq">
+      <span class="ref">(2′)</span>
+      <var>H<sub>n</sub>(p)</var> = Σ<sub>k=1</sub><sup>n</sup>
+      (<var>a<sup>k</sup></var> &minus; <var>b<sup>k</sup></var>)
+      cos(2π<var>k</var><var>p</var>) = <var>S<sub>n</sub>(a; p)</var> &minus;
+      <var>S<sub>n</sub>(b; p)</var>
+    </div>
+    <p>Вага гармоніки <var>k</var> дорівнює <var>a<sup>k</sup> &minus; b<sup>k</sup></var>
+      — нуль при <var>k</var> = 0, спадає до нуля при <var>k</var> → ∞, а між
+      ними має єдиний максимум. Рушій параметризує це однією ручкою:
+      <var>b</var> = <var>a</var><sup>2</sup>, <var>a</var> = 2<sup>&minus;1/k<sub>c</sub></sup>,
+      так що вага <var>a<sup>k</sup></var>(1 &minus; <var>a<sup>k</sup></var>)
+      пікує рівно на партіалі
+      <var>k<sub>c</sub></var> ≈ 1.5 + 24·<var>formant</var><sup>2</sup>
+      (діапазон ≈ 2…26). Горб <em>підмішується</em> до основного тону з вагою
+      <var>h</var>, тож повна вага партіала —
+      <var>r<sup>k</sup></var> + <var>h</var>(<var>a<sup>k</sup></var> &minus; <var>b<sup>k</sup></var>);
+      при <var>h</var> = 0 вираз <em>побітово</em> дорівнює самому (2). Ціна —
+      ще дві геометричні суми: та сама асимптотика <var>Θ(log n)</var>,
+      фіксований додатковий доданок за фіксованого <var>n</var>. Дві осі —
+      нахил (<var>r</var>) і горб (<var>k<sub>c</sub></var>, <var>h</var>) —
+      ортогональні й разом покривають більшість музично важливих статичних
+      обгинаючих; те, чого вони <em>не</em> дають, — у §<a href="#s7">7</a>.</p>
+
+    <h3><span class="sn">2.7</span>Мікротюнінг: ретюн фундаменталів</h3>
+    <p>Субтрактивний осцилятор грає готову хвилю з <em>фіксованими</em>
+      обертонами, тож мікротюнінг там завжди компроміс. Тут спектр будується
+      поаргументно на <var>k·f<sub>0</sub></var> ретюненого фундаменталу, тому
+      будь-яка регулярна шкала в сенсі Scala вкладається природно: період у
+      центах, список зсувів ступенів у центах, якір (MIDI-нота, частота), і —
+      опційно — явна <em>клавіатурна мапа</em> <var>keymap[j]</var> = ступінь
+      для <var>j</var>-ї клавіші патерну (Scala <code>.kbm</code>), де від'ємне
+      значення позначає «мертву» клавішу, що не звучить. Частота ноти:</p>
+    <div class="eq">
+      <span class="ref">(5)</span>
+      <var>f</var>(<var>note</var>) = <var>f<sub>ref</sub></var> · 2<sup>(<var>C</var>(<var>note</var>) &minus; <var>C</var>(<var>note<sub>ref</sub></var>)) / 1200</sup>,
+      &nbsp;
+      <var>C</var>(<var>note</var>) = <var>formal</var> · ⌊<var>rel</var>/<var>M</var>⌋ + <var>degrees</var>[<var>keymap</var>[<var>rel</var> mod <var>M</var>]]
+    </div>
+    <p>де <var>rel</var> = <var>note</var> &minus; <var>mid</var>,
+      <var>M</var> — розмір мапи, <var>formal</var> — «формальна октава» в
+      центах. На дефолтному шляху (12-TET, <var>A</var><sub>4</sub> = 440&nbsp;Гц,
+      тотожня мапа) <var>C</var>(<var>note<sub>ref</sub></var>) — <em>рівно</em>
+      0.0, і (5) згортається до <var>f<sub>ref</sub></var>·2<sup><var>C</var>/1200</sup>,
+      побітово тотожного прямому <code>midi_to_hz</code>; це зафіксовано тестом
+      на всіх 128 нотах, тож увесь наявний крос-платформний хеш і всі тести
+      лишаються чинними. Це ретюн <em>фундаментала</em>: обертони й далі точні
+      цілі кратні — акорд у чистій інтонації перестає битися, — але окремий
+      обертон із гармонічної сітки не зсунути (§<a href="#s7">7</a>, п.&nbsp;5).</p>
+  </section>
+
+  <section id="s3">
+    <h2 class="sec"><span class="num">3</span>Чисельні методи та контракт детермінізму</h2>
+
+    <p class="lead">Рушій компілюється як <code>#![no_std]</code>: немає
+      стандартної бібліотеки, немає <code>libm</code>, немає алокатора. Уся
+      трансцендентна математика реалізована власноруч, і кожен вибір
+      підпорядкований одній меті — <em>відтворюваність побітово</em>.</p>
+
+    <h3><span class="sn">3.1</span>Тригонометрія без libm</h3>
+    <p>Аргументи виражені в <em>обертах</em>, не радіанах: діапазонна редукція
+      стає відніманням цілої частини (точний <code>floor</code> через
+      маніпуляцію бітами IEEE-754), без множення на приблизне
+      <var>2π</var>. На звуженому інтервалі — поліноми:</p>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 1.</b> Ядра апроксимації та виміряні межі похибки
+          (проти <code>f64</code>-математики <code>std</code> на щільних
+          розгортках, rustc&nbsp;1.97).</caption>
+        <thead>
+          <tr><th>Ядро</th><th>Метод</th><th class="num">Похибка</th><th>Застосування</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>cos / sin_turns</code></td><td>Тейлор через <var>φ</var><sup>16</sup>/<var>φ</var><sup>17</sup> на чверті періоду + симетрії, схема Горнера</td><td class="num">&lt; 2·10⁻¹¹ абс.<br>(≈ &minus;213&nbsp;дБ)</td><td>несуча осцилятора</td></tr>
+          <tr><td><code>exp2</code></td><td>Ремез, степінь&nbsp;7</td><td class="num">&lt; 2.2·10⁻⁸ відн.</td><td><code>midi_to_hz</code>, детюн, вібрато, ADSR</td></tr>
+          <tr><td><code>tan_turns_fast</code></td><td>раціональний [3/2] мінімакс на [0,&nbsp;0.23]</td><td class="num">&lt; 10⁻⁷ відн.</td><td>прогин ZDF-фільтра</td></tr>
+          <tr><td><code>cos / sin_turns_fast</code></td><td>4-членний поліном</td><td class="num">&lt; 5·10⁻⁶</td><td>LFO, панорама (модулятори)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3><span class="sn">3.2</span>Контракт детермінізму</h3>
+    <p>Синтез відтворюваний побітово між будь-якими платформами, що
+      відповідають IEEE-754, за таких умов:</p>
+    <ul>
+      <li><strong>Немає <code>mul_add</code> / FMA.</strong> Rust за
+        замовчуванням не контрактить <code>a*b + c</code> у злите
+        множення-додавання; жодна гаряча функція не викликає <code>mul_add</code>
+        явно.</li>
+      <li><strong>Немає <code>x87</code>.</strong> На x86-64 обчислення йдуть
+        через SSE2 — без 80-бітної розширеної точності проміжних значень.</li>
+      <li><strong>Насичувані касти на рівні мови.</strong> <code>x as i64</code>
+        у Rust визначено насичувати, не залежить від апаратної інструкції
+        конверсії чи прапорів округлення <code>MXCSR</code>.</li>
+      <li><strong>Лише <code>+ &minus; × ÷</code></strong> над <code>f64</code>
+        / <code>f32</code> — усі коректно округлені за IEEE-754, однаково на
+        SSE2 та VFP/NEON.</li>
+    </ul>
+    <p>Наслідок: результат <em>мусить</em> збігтися. Це перевірено (§<a href="#s6">6.3</a>),
+      а не залишено гіпотезою.</p>
+
+    <h3><span class="sn">3.3</span>Дрейф фазового акумулятора</h3>
+    <p>Фаза накопичується як <var>p</var> ← <var>p</var> + <var>step</var> з
+      wrap <var>p</var> ← <var>p</var> &minus; 1 щоперіоду. Систематичний bias
+      округлення ≈ 0.1&nbsp;ULP/семпл змушує <em>відхилення фази</em> рости
+      лінійно з числом семплів <var>N</var>. Прямий прогін 10⁹ семплів
+      (5.79&nbsp;год аудіо @ 48&nbsp;кГц) проти Kahan-компенсованого точно-
+      wrapped еталона:</p>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 2.</b> Числовий дрейф за 5.79&nbsp;год безперервного рендеру.</caption>
+        <thead>
+          <tr><th>Акумулятор</th><th class="num">Відхилення фази</th><th class="num">Еквів. похибка частоти</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>несуча</td><td class="num">2.28·10⁻⁸ обертів</td><td class="num">5.0·10⁻⁹ ppm</td></tr>
+          <tr><td>FM (<code>fm_phase</code>)</td><td class="num">1.74·10⁻⁸ обертів</td><td class="num">1.3·10⁻⁹ ppm</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Хоч відхилення <em>фази</em> й росте лінійно, похибка <em>частоти</em>
+      від тривалості не залежить: ~10⁻¹² Гц на 220 Гц — на дев'ять порядків
+      нижче за один цент. Wrap щоперіоду тримає <var>O(N·ε)</var> обмеженим
+      на практиці.</p>
+  </section>
+
+  <section id="s4">
+    <h2 class="sec"><span class="num">4</span>Архітектура рушія та спектральний дисплей</h2>
+
+    <p class="lead">Ядро — <code>no_std</code>, нуль залежностей. Межа
+      бібліотеки — <em>один голос</em>; поліфонічна політика (виділення,
+      крадіжка, унісон) — окрема обгортка. Плагін — тонкий хостовий клей над
+      цим; <code>wasm32</code>-збірка викликає той самий C-ABI із JavaScript.</p>
+
+    <figure>
+      <div class="diagram">MIDI ─▶ PolySynth&lt;24&gt;
+         ├─ мікротюнінг (Tuning): note → f0 на довільній шкалі; .kbm мертві клавіші ігноруються
+         ├─ note-on: стек 1–8 унісон-голосів (детюн + панорама + декореляція фаз + дрейф)
+         ├─ виділення / крадіжка голосу (вільний → найстаріший у release → найстаріший)
+         ├─ pitch bend + CC#64 sustain + тиск каналу → усі звучні голоси
+         ├─ MPE-тембр / поліафтертач → понотна яскравість (r) на голос
+         └─ на голос (Voice, 624 б, POD):
+              LFO (sine/tri/saw) ──▶ яскравість / вібрато / cutoff / FM
+              FM: синус-модулятор + самофідбек оператора
+              осцилятор  Σ [rᵏ + h(aᵏ−bᵏ)] cos(2πk(p+pm))   (нахил + формант-горб; або PolyBLEP/PolyBLAMP)
+              character  drive/bias → рефлективний фолд → bit-crush → S&H
+              ZDF SVF    LP/BP/HP/notch + резонанс (cutoff/res згладжено посемплово)
+              equal-power панорама → [L, R]
+         + амплітудна ADSR + незалежна фільтрова ADSR
+         Σ → майстер-гейн → soft-clip → (HQ: шина 2× + 65-тапна децимація) → стерео</div>
+      <figcaption><b>Рис.&nbsp;1.</b> Сигнальний тракт. Кожен блок — тотожність,
+        коли вимкнений: <code>CharParams::CLEAN</code>, <code>Filter::Off</code>,
+        <code>formant = 0</code>, тотожня мапа строю, нульові цілі LFO дають
+        побітово чистий осцилятор.</figcaption>
+    </figure>
+
+    <h3><span class="sn">4.1</span>Керована нелінійність</h3>
+    <p>Стадія <code>character</code> — це навмисний «бруд» під ручкою:
+      асиметричне насичення (Паде-апроксимація <code>tanh</code>, кламп на
+      ±3 з <var>C²</var>-стиком), одно-полюсний DC-blocker, рефлективний
+      вейвфолдер (точне трикутне відображення в <var>O(1)</var>), bit-crush,
+      пониження частоти дискретизації. При <code>CLEAN</code> уся стадія —
+      побітова тотожність. Ці стадії <em>навмисно аліасять</em> при сильних
+      значеннях (характер PPG / DX7); для чистого результату — HQ-режим
+      (§<a href="#s4">4.4</a>).</p>
+
+    <h3><span class="sn">4.2</span>ZDF state-variable фільтр</h3>
+    <p>Фільтр — трапецієдально-інтегрований SVF (Cytomic / Сімпер<sup class="cite">[3]</sup>)
+      з нульовою зворотною затримкою. Прогин
+      <var>g</var> = tan(π<var>f<sub>c</sub></var>/<var>f<sub>s</sub></var>),
+      коефіцієнти <var>a</var><sub>1</sub> = 1/(1 + <var>g</var>(<var>g</var>+<var>k</var>)),
+      <var>a</var><sub>2</sub> = <var>g</var>·<var>a</var><sub>1</sub>,
+      <var>a</var><sub>3</sub> = <var>g</var>·<var>a</var><sub>2</sub>, де
+      <var>k</var> = 1/<var>Q</var>. Формулювання безумовно стійке:
+      <var>g</var> ≥ 0, <var>k</var> ≥ 1/32 → знаменник ≥ 1. Резонанс
+      <var>Q</var> = 0.5·2<sup>6·res</sup> клампиться в [0.5,&nbsp;32] — фільтр
+      <em>не самозбуджується</em>. Cutoff і резонанс згладжуються
+      <em>посемплово</em> всередині <code>process</code> (одно-полюс ~1&nbsp;мс),
+      коефіцієнти перебудовуються лише поки ціль рухається — у сталому режимі
+      вартість нульова.</p>
+
+    <h3><span class="sn">4.3</span>Огинаючі</h3>
+    <p>Одна реалізація ADSR обслуговує і амплітуду, і <em>окрему</em> фільтрову
+      обгинаючу (біполярна, ±6 октав до cutoff). Коефіцієнти decay/release
+      беруться з <code>exp2</code>, щоб стадія тривалістю <var>t</var> секунд
+      <em>завершувалась</em> за ≈ <var>t</var>, а не за ~5<var>t</var>:</p>
+    <div class="eq">
+      <span class="ref">(4)</span>
+      <var>c<sub>d</sub></var> = 1 &minus; 2<sup>&minus;7.64/(<var>d</var>·<var>f<sub>s</sub></var>)</sup>,
+      &nbsp;&nbsp;
+      <var>c<sub>r</sub></var> = 1 &minus; 2<sup>&minus;13.3/(<var>r</var>·<var>f<sub>s</sub></var>)</sup>
+    </div>
+    <p><code>sustain = 0</code> робить голос перкусійним і <em>звільняє</em>
+      його — важлива політика для поліфонії.</p>
+
+    <h3><span class="sn">4.4</span>Unified HQ Bus</h3>
+    <p>У режимі HQ увесь тракт голосу (осцилятор → character → SVF) рахується
+      на <var>2f<sub>s</sub></var>, усі голоси сумуються на <var>2f<sub>s</sub></var>,
+      майстер-сатуратор працює на <var>2f<sub>s</sub></var>, і <em>одна</em>
+      децимація 65-тапним лінійно-фазовим half-band FIR (17 унікальних
+      коефіцієнтів, Kaiser-вікно) повертає сигнал на <var>f<sub>s</sub></var>.
+      Груповий затрим — рівно 16 семплів на <var>1×</var> (повідомляється
+      хосту через PDC константно).</p>
+    <div class="note">
+      <span class="lbl">Виміряний результат</span>
+      Аліас-підлога майстра при перевантаженні +6&nbsp;дБ у <code>soft_clip</code>:
+      <strong>&minus;94.6&nbsp;дБ</strong> (ціль &minus;75). CPU при цьому
+      <em>не зменшується</em> — статистичний нуль на 12/16/24 голосах:
+      по-голосний дециматор ніколи не був вузьким місцем, а <var>2×</var>-прохід
+      усього тракту дорожчий за виграш від об'єднання дециматорів. Архітектурна
+      мета (один дециматор замість каскаду) і аліас-ціль досягнуті; заявлений
+      колись CPU-виграш 40–50&nbsp;% — ні.
+    </div>
+    <p>Доведена смуга осцилятора дає й побічну діагностику: у чистому патчі
+      енергія біля Найквіста тотожно нульова, тож будь-яка енергія там — це
+      продукт нелінійних стадій, що завернувся. Редактор вимірює її вузьким
+      band-pass на <var>0.44f<sub>s</sub></var> і показує в dBFS — прямий
+      індикатор «зараз аліасить, увімкни HQ», можливий лише тому, що «чистий»
+      стан справді чистий за побудовою.</p>
+
+    <h3><span class="sn">4.5</span>Контракт RT-safety та FFI</h3>
+    <p>Усередині гарячого шляху немає: алокацій купи, блокувань, I/O, шляхів
+      до паніки (<code>grep</code> не знаходить <code>unwrap</code>/<code>expect</code>/
+      <code>panic!</code> поза тестами). <code>panic = "abort"</code> задано в
+      <em>обох</em> крейтах окремо — Cargo застосовує профіль лише з кореня
+      workspace, а <code>extern "C"</code>-точки входу nih-plug не мають
+      <code>catch_unwind</code>, тож паніка інакше розкручувалась би крізь
+      C-межу (UB). <code>Voice</code> — plain-old-data (624&nbsp;б, align&nbsp;8,
+      без вказівників); C-ABI не має <code>create</code>/<code>destroy</code>,
+      викликач сам розміщує пам'ять.</p>
+    <p>Статичної гарантії замало: ворожий набір (§<a href="#s6">6.1</a>) подає
+      <code>NaN</code>&nbsp;/&nbsp;<code>±∞</code> у кожен публічний сеттер і
+      штормить параметри та ноти на швидкості семплу. Він виявив і закрив
+      шість місць, де ворожий вхід давав non-finite вихід або застряглий голос
+      (нескінченний час обгинаючої&nbsp;→&nbsp;коефіцієнт стадії&nbsp;0;
+      NaN-поле повз чистий fast-path у вейвшейпер; <code>10³⁰⁰</code> у фазу
+      осцилятора; <code>+∞</code>-гейн&nbsp;→&nbsp;<code>mix·∞=NaN</code>). Усі
+      виправлення лишають чистий шлях побайтово незмінним — крос-платформний
+      хеш (§<a href="#s6">6.3</a>) не зрушив.</p>
+
+    <h3><span class="sn">4.6</span>Спектральний дисплей: замкнена форма як діагностика</h3>
+    <p>Оскільки вага партіала <var>k</var> — це елементарний вираз
+      <var>r<sup>k</sup></var> + <var>h</var>(<var>a<sup>k</sup></var> &minus; <var>b<sup>k</sup></var>)
+      (§<a href="#s2">2.6</a>), редактор малює <em>саму</em> цю обгинаючу поверх
+      дешевого (не-FFT) вимірювального банку з 30 смуг: вертикалі на
+      <var>k·f<sub>0</sub></var> найнижчого звучного голосу, висота = вага,
+      нормовано до піку, обрізано на стелі «Partials». Це не апроксимація
+      спектроаналізатора — це та математика, що звучить. Нахил
+      <em>живий</em>: якщо LFO маршрутизований у яскравість, гребінка дихає
+      разом зі звуком (редактор читає ефективний <var>r</var> з рушія атоміком,
+      не з ручки). З увімкненим унісоном кожен партіал розмивається в смугу
+      сталої ширини в log-<var>f</var> (стек ±detune центів) — видно, чому унісон
+      «товщає».</p>
+    <p>На тих самих осях — аналітична АЧХ ZDF-фільтра (§<a href="#s4">4.2</a>):
+      та сама предспотворена формула <var>|H(f)|</var>, вертикаль на
+      <em>живому</em> зрізі (фільтрова обгинаюча й LFO→cutoff ведуть її в
+      реальному часі), тьмяна позначка на спокійному положенні ручки. Наведення
+      на будь-яку з ручок Brightness / Partials / Formant / Cutoff / Resonance
+      домальовує кілька блідих кривих розгортки — «ось що ця ручка робить зі
+      спектром» до того, як її торкнутись. Праворуч — вузький band-pass на
+      <var>0.44f<sub>s</sub></var> як метр аліасингу (§<a href="#s4">4.4</a>).
+      Уся панель — читання стану, поза шляхом рендеру: хеш не зачеплено, і вона
+      рахується лише поки редактор відкритий.</p>
+  </section>
+
+  <section id="s5">
+    <h2 class="sec"><span class="num">5</span>Класичні хвилі: PolyBLEP / PolyBLAMP</h2>
+
+    <p>Пила <var>Σ sin(kx)/k</var> не має елементарної замкненої форми (функція
+      Клаузена). Тому <code>Waveform::Saw</code> / <code>Triangle</code>
+      реалізовані як <strong>PolyBLEP / PolyBLAMP</strong> (Валімякі &amp;
+      Хуовілайнен<sup class="cite">[4]</sup>): наївна хвиля плюс поліноміальна
+      корекція в точках розриву. Без стану, без рекурсії, без тригонометрії —
+      <code>reset()</code> їх не чіпає.</p>
+
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 3.</b> Виміряні характеристики (реліз, скаляр,
+          <var>f<sub>0</sub></var> ∈ [27.5,&nbsp;6000]&nbsp;Гц).</caption>
+        <thead>
+          <tr><th>Хвиля</th><th class="num">Пропускна</th><th class="num">Фундаментал vs ідеал</th><th class="num">Alias-floor (<var>f<sub>0</sub></var> ≤ 1&nbsp;кГц)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Пила (PolyBLEP)</td><td class="num">~90&nbsp;M&nbsp;семпл/с</td><td class="num">±0.02&nbsp;дБ до 27.5&nbsp;Гц</td><td class="num">&lt; &minus;90&nbsp;дБ</td></tr>
+          <tr><td>Трикутник (PolyBLAMP)</td><td class="num">~77&nbsp;M&nbsp;семпл/с</td><td class="num">±0.00&nbsp;дБ до 27.5&nbsp;Гц</td><td class="num">&lt; &minus;95&nbsp;дБ</td></tr>
+          <tr><td>Геометрична несуча (для порівняння)</td><td class="num">~26&nbsp;M&nbsp;семпл/с</td><td>—</td><td>точно band-limited</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Компроміс: PolyBLEP <em>не</em> точно band-limited (поліном апроксимує
+      ідеальне BLEP-ядро) — на <var>f<sub>0</sub></var> &gt; 3&nbsp;кГц
+      фундаментал і верхні гармоніки трохи спадають (&minus;0.11&nbsp;дБ на
+      3&nbsp;кГц, &minus;0.45&nbsp;дБ на 6&nbsp;кГц; нечутно). Геометричний
+      осцилятор band-limited <em>точно</em> — це його перевага для чистих
+      тонів. Відгук обох плаский до DC (жодного HPF).</p>
+
+    <h3><span class="sn">5.1</span>Унісон при detune&nbsp;=&nbsp;0</h3>
+    <p>Кожен унісон-голос отримує рівномірно рознесену стартову фазу
+      <var>i/n</var> обертів (декореляція стеку). При <var>detune</var> = 0
+      це <var>n</var> рівноамплітудних копій тієї самої хвилі з фазами
+      2π<var>i/n</var> — сума фазорів гармоніки <var>k</var> дорівнює
+      <var>n</var>, якщо <var>k</var> ≡ 0 (mod <var>n</var>), і <em>нулю</em>
+      інакше (корені з одиниці). Тобто унісон при <var>detune</var> = 0 — це
+      ідеальний гребінчастий фільтр із кроком <var>n</var>, а не «когерентне
+      <var>n×</var> перевантаження», якого можна було б наївно очікувати.
+      Виміряний пік проти одного голосу: 0.000× (майже чистий синус) …
+      0.270× (яскраво). Це вироджений режим (унісон призначений для
+      ненульового detune), задокументований, не баг.</p>
+  </section>
+
+  <section id="s6">
+    <h2 class="sec"><span class="num">6</span>Методологія та результати верифікації</h2>
+
+    <p class="lead"><strong>114 тестів ядра</strong> (96 юніт + 18 інтеграційних,
+      з них 11 — ворожий RT-safety набір, §<a href="#s6">6.1</a>) + <strong>34
+      у плагіні</strong> + <strong>9 у крейті ліцензування</strong>
+      (<code>harmonic_license</code>) + 1 довготривалий (<code>#[ignore]</code>).
+      Кожне число нижче — виміряне або виведене з коду; жодна цифра не з
+      докстрінга. Уся матриця проганяється в CI на кожен push
+      (§<a href="#s6">6.5</a>).</p>
+
+    <h3><span class="sn">6.1</span>Таксономія перевірок</h3>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 4.</b> Класи перевірок і методи.</caption>
+        <thead><tr><th>Клас</th><th>Метод</th></tr></thead>
+        <tbody>
+          <tr><td>Коректність замкненої форми</td><td>порівняння з незалежною прямою <var>Θ(n)</var>-сумою — окремий еталон, не використовує основний конвеєр</td></tr>
+          <tr><td>Точність тригонометрії</td><td>проти <code>std</code>-математики на щільних розгортках; межі ULP</td></tr>
+          <tr><td>АЧХ фільтра</td><td>одно-біновий DFT / Goertzel відгуку на синусоїду — смуги пропускання / загородження</td></tr>
+          <tr><td>Стійкість</td><td>свіп-розгортки на 10⁵–10⁶ семплів → відсутність NaN / вибуху</td></tr>
+          <tr><td>Аліасинг</td><td>DFT рендереного голосу: енергія на кожній гармоніці до <var>n</var>, &lt; &minus;80&nbsp;дБ вище клампу та в дзеркальних цілях</td></tr>
+          <tr><td>Вартість</td><td>час(1200 гарм.) / час(3 гарм.); <var>Θ(n)</var> дав би ~400×</td></tr>
+          <tr><td>Мікротюнінг</td><td>тотожня <code>.kbm</code>-мапа над 12-EDO → <code>hz(n).to_bits()</code> <em>точно</em> = <code>equal(12,…)</code> на всіх 128 клавішах; реальні <code>.scl</code> (Пифагор із відношень) відтворюють відомі центи; мертві клавіші <code>.kbm</code> → <code>is_mapped == false</code>; ворожий вхід (ступені поза шкалою, <code>NaN</code> період) → скінченна додатна частота</td></tr>
+          <tr><td>RT-safety (статично)</td><td><code>grep</code> не-тестового коду на <code>unwrap</code>/<code>expect</code>/<code>panic!</code>/алокації; <code>panic = "abort"</code></td></tr>
+          <tr><td>RT-safety (ворожий набір)</td><td><code>NaN</code>/<code>±∞</code>/<code>±10³⁰⁰</code> у <em>кожен</em> публічний сеттер; шторми параметрів і нот на швидкості семплу; крайні частоти дискретизації; прогін на 2 M семплів — вихід лишається скінченним, обмеженим, пул голосів відновлюється. Знайшов і виправив 6 місць</td></tr>
+          <tr><td>Незалежність від розміру блоку</td><td>той самий скриптований рендер через <code>render_block</code> порціями 7 / 64 / 256 / 512 / увесь блок vs посемпловий цикл — <code>to_bits()</code> збігається («freeze == realtime»)</td></tr>
+          <tr><td>Латентність</td><td><code>HQ_LATENCY == 16</code> у compile-time; HQ-off побітово тотожний незалежно від тумблення; крос-кореляція 2048 сталих семплів → argmax лагу HQ-on рівно 16</td></tr>
+          <tr><td>Платформна ідентичність</td><td>хеш рендеру всього тракту звіряється побітово з x86-64 референсом під QEMU (ARM) <em>і</em> в Node (<code>wasm32</code>), на 48 та 96&nbsp;кГц</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3><span class="sn">6.2</span>Пропускна здатність</h3>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 5.</b> Реліз, скаляр, споживчий x86-64.</caption>
+        <thead><tr><th>Сценарій</th><th class="num">Пропускна</th><th class="num">× realtime @48&nbsp;кГц</th></tr></thead>
+        <tbody>
+          <tr><td>Один чистий голос (3…1200 гарм.)</td><td class="num">~26&nbsp;M&nbsp;семпл/с</td><td class="num">~550×</td></tr>
+          <tr><td>Акорд на 64 голоси (багато низьких нот)</td><td class="num">~0.45&nbsp;M&nbsp;фрейм/с</td><td class="num">~9.4× (≈ 590 голосів у запасі)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Вартість одного голосу <em>повністю плоска</em> по кількості гармонік
+      (розкид &lt; 1&nbsp;% на діапазоні 400×) завдяки кешу
+      <var>r<sup>n</sup></var> на сталій ноті.</p>
+
+    <h3><span class="sn">6.3</span>Крос-платформна побітова ідентичність</h3>
+    <p>Спільний модуль <code>harmonic_core::verify</code> рендерить скриптований
+      прохід через увесь тракт (унісон 4 + дрейф + FM + фідбек + 4 маршрути LFO +
+      резонансний SVF + усі стадії character) зі скриптованими note-on/off та
+      pitch-bend; біти кожного семпла згортаються у FNV-1a хеш. Розбіжність у
+      1&nbsp;ULP будь-де змінює хеш. Той самий модуль викликають інтеграційний
+      тест, ARM-крос-перевірка й <code>wasm32</code>-перевірка — усі рендерять
+      ті самі байти. Референсні хеші зафіксовано для 48&nbsp;кГц
+      (<code>0xc7f7&thinsp;86d4&thinsp;0586&thinsp;da75</code>) і 96&nbsp;кГц.</p>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 6.</b> Прогін під QEMU (Docker,
+          <code>rust:1.97-slim</code>) та в Node&nbsp;24. Той самий хеш рендеру
+          на 48 і 96&nbsp;кГц.</caption>
+        <thead><tr><th>Таргет</th><th><code>f64</code>-FPU</th><th class="num">Результат</th></tr></thead>
+        <tbody>
+          <tr><td><code>x86_64-pc-windows-msvc</code></td><td>SSE2</td><td class="num">референс</td></tr>
+          <tr><td><code>aarch64-unknown-linux-gnu</code></td><td>AdvSIMD/FP</td><td class="num">весь набір (114/114), хеш ідентичний, Δ = 0.0</td></tr>
+          <tr><td><code>armv7-unknown-linux-gnueabihf</code></td><td>VFPv3 — тотожний Cortex-M4F</td><td class="num">весь набір (114/114), хеш ідентичний, Δ = 0.0</td></tr>
+          <tr><td><code>wasm32-unknown-unknown</code></td><td>WebAssembly f64</td><td class="num">хеш рендеру ідентичний (само-хеш + незалежний JS-фолд байтів), Δ = 0.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Ядро також крос-компілюється чисто під <code>thumbv7em-none-eabihf</code>
+      (Cortex-M4F/M7, Daisy Seed), <code>thumbv6m-none-eabi</code> (soft-float
+      M0), <code>aarch64-unknown-none</code>,
+      <code>riscv32imac-unknown-none-elf</code> — усі <code>--no-default-features
+      --release</code>. <code>wasm32</code>-збірка ~45&nbsp;КБ, працює у
+      браузері 8-голосною демкою (полiфонія й гейт — у ~40 рядках JS, як на
+      MCU). <em>Ще не</em> проганялось на реальному залізі Cortex-M / RISC-V.</p>
+
+    <h3><span class="sn">6.4</span>Валідація плагіна</h3>
+    <div class="tablewrap">
+      <table>
+        <caption><b>Таблиця 7.</b> Галузеві валідатори (<code>cargo xtask validate</code>).</caption>
+        <thead><tr><th>Формат</th><th>Утиліта</th><th class="num">Результат</th></tr></thead>
+        <tbody>
+          <tr><td>VST3</td><td>Tracktion <code>pluginval --strictness-level&nbsp;8</code></td><td class="num">повний прохід (з GUI-тестами)</td></tr>
+          <tr><td>CLAP</td><td><code>clap-validator</code></td><td class="num">35 / 35, 0 failed, 0 warnings</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Обидва покривають: state recall, зміну блоку / SR на льоту, перевірку
+      алокацій у <code>process</code>, автоматизацію, потокобезпеку, fuzzing.
+      CLAP 35/35 потребує локального патча на два баги <code>ext_state_load</code>
+      обгортки nih-plug (відсутній <code>rescan</code> після завантаження стану;
+      <code>Vec::with_capacity</code> на невалідованій довжині → alloc-abort);
+      патч документований і готовий до upstream.</p>
+
+    <h3><span class="sn">6.5</span>Безперервна інтеграція</h3>
+    <p>GitHub Actions на кожен push / PR у <code>main</code>: (i) <em>core</em> —
+      <code>cargo test</code> + <code>clippy</code> у двох конфігураціях
+      (<code>std</code> та <code>--no-default-features --release</code>) з
+      <code>-D warnings</code> + <code>no_std</code>-збірка + збірка
+      <code>wasm32</code> і прогін <code>verify-wasm.mjs</code> у Node +
+      compile-check bare-metal ×4; (ii) <em>core-simd</em> — nightly
+      <code>portable-simd</code> clippy + build; (iii) <em>plugin</em> —
+      тест + clippy + <code>cargo xtask bundle</code> (артефакт Linux VST3/CLAP);
+      (iv) <em>cross-verify</em> — QEMU binfmt + весь скрипт ARM-крос-перевірки
+      окремою джобою. <code>cargo fmt --check</code> навмисно немає (стиль
+      репозиторію передує суворішим дефолтам rustfmt&nbsp;1.9);
+      <code>xtask validate</code> (pluginval / clap-validator — зовнішні
+      завантаження) лишається локальним.</p>
+
+    <div class="note">
+      <span class="lbl">Що НЕ покрито</span>
+      Жива DAW-валідація (Ableton / Bitwig / Logic; перший прогін у REAPER
+      зроблено — звук, редактор, спектр, пресети, рандомайзер, знайдено й
+      виправлено баг верстки редактора). Реальне залізо Cortex-M / RISC-V та
+      firmware-скелет під Daisy. Частоти дискретизації поза
+      [8000,&nbsp;768000]&nbsp;Гц — клампляться зі статус-кодом, але сам
+      кламп-шлях у живому хості не тестований. Property-based фазер
+      (<code>proptest</code>): ворожий набір детермінований і скриптований,
+      не рандомізований пошук — CI тепер знімає блокер «немає де ганяти довго».
+      Клієнт MTS-ESP (live master-tuning від хоста).
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2 class="sec"><span class="num">7</span>Обмеження та межі застосовності</h2>
+
+    <p class="lead">Цей розділ існує, щоб ніхто не перевідкривав межі важким
+      шляхом. Кожен пункт прямо впливає на застосування або застерігає від
+      пастки.</p>
+
+    <ol>
+      <li><strong>Вартість — <var>Θ(log n)</var>, не <var>O(1)</var>.</strong>
+        Амортизовано <var>Θ(1)</var> за майже сталих параметрів; свіп яскравості
+        чи вібрато платить <var>Θ(log n)</var> щосемпла. Заявляти <var>O(1)</var>
+        у загальному випадку некоректно.</li>
+      <li><strong>Band-limiting гарантований лише для чистого осцилятора.</strong>
+        Стадії drive / fold / crush / FM / feedback та майстер-<code>soft_clip</code>
+        генерують енергію вище Найквіста і аліасять — навмисно (характер), але
+        не можна продавати як «alias-free» без застережень. HQ-режим прибирає це
+        коштом 16 семплів латентності.</li>
+      <li><strong>Стеля 2048 гармонік.</strong> При
+        <var>f<sub>0</sub></var> &lt; <var>f<sub>s</sub></var>/4096 ≈ 11.7&nbsp;Гц
+        дуже низькі тони втрачають найвищий спектр.</li>
+      <li><strong>Обгинаюча — два параметри, не довільна.</strong> Нахил
+        (<var>r<sup>k</sup></var>) плюс один керований горб
+        (<var>a<sup>k</sup></var> &minus; <var>b<sup>k</sup></var>,
+        §<a href="#s2">2.6</a>) покривають більшість статичних спектрів, але
+        <em>довільна</em> обгинаюча на гармоніку лишається <var>O(n)</var> —
+        замкненої форми для неї немає. Кілька формант, різкий вибірковий провал,
+        динамічне морфування спектра — це вже фільтр або окреме ядро, не ця
+        ручка.</li>
+      <li><strong>Мікротюнінг ретюнить фундаментал, не обертони.</strong>
+        Осцилятор підсумовує строго на <var>k·f<sub>0</sub></var>, тож будь-яка
+        регулярна шкала для <em>основного тону</em> працює (чиста інтонація,
+        історичні строї, <var>n</var>-EDO, Scala <code>.scl</code> /
+        <code>.kbm</code> з мертвими клавішами) — і additive тут навіть чистіший
+        за субтрактив, бо гармоніки завжди точні кратні. Але інгармонічність
+        дзвона, розтягнутий фортепіанний стрій, «кожен обертон у своєму ступені
+        шкали» — <em>не</em> досяжні: це сума з не-єдиним відношенням між
+        парціалами (DSF Мурера з <var>m</var> ≠ <var>c</var>), окреме ядро
+        (§<a href="#s8">8.1</a>). Клієнта MTS-ESP (live-строй від хоста) ще
+        немає — тягне зовнішню бібліотеку.</li>
+      <li><strong>Один MIDI-канал.</strong> <code>PolySynth</code>
+        монотембральний; CC#64 (сустейн), pitch-bend і тиск каналу
+        застосовуються глобально. Виняток — понотна яскравість (MPE-тембр /
+        поліафтертач), яка адресується по клавіші й модулює <var>r</var>
+        окремо на голос. Багатоканальний MIDI у один інстанс — пастка.</li>
+      <li><strong>Клацання при крадіжці активного голосу.</strong> De-click
+        робить лише fade-<em>in</em>; вкрадений голос не встигає fade-out —
+        короткий транзиєнт при пасажах понад ліміт поліфонії. Плата за
+        компактний POD-<code>Voice</code>.</li>
+      <li><strong>Це не «квантовий» синтез.</strong> Жодного зв'язку з
+        <var>cos²(2εθ)</var>, алгоритмом Гровера чи метрикою Пуанкаре. Спектр
+        тут <em>спроєктований</em>, не запозичений із непов'язаної тотожності.</li>
+    </ol>
+  </section>
+
+  <section id="s8">
+    <h2 class="sec"><span class="num">8</span>Висновки та подальша робота</h2>
+
+    <p>Плаский та геометрично-спадний спектри мають скінченну замкнену форму,
+      яка обчислюється за <var>Θ(log n)</var> у найгіршому випадку й
+      <var>Θ(1)</var> за фіксованого <var>n</var>, і яка <em>точно</em>
+      band-limited без фільтра оверсемплінгу. Друге ядро — різниця двох таких
+      сум — додає керований резонансний горб за ту саму ціну, а поаргументна
+      побудова робить мікротюнінг фундаменталів природним. Навколо цих ядер
+      побудовано детермінований <code>no_std</code> рушій із контрактом
+      відтворюваності побітово — виміряним між x86-64, ARM та <code>wasm32</code>,
+      на 48 і 96&nbsp;кГц, незалежно від розміру блоку, — C-ABI, безперервною
+      інтеграцією, редактором, що показує саму замкнену форму, і плагіном
+      VST3/CLAP, що проходить галузеві валідатори. Метод — практична,
+      точно-скінченна, embedded-придатна реалізація сімейства формул дискретного
+      підсумовування Мурера<sup class="cite">[2]</sup> із сучасним стеком
+      верифікації.</p>
+
+    <h3><span class="sn">8.1</span>Подальші напрямки</h3>
+    <ul>
+      <li><strong>Третє, інгармонічне ядро</strong> — сума з <em>не-єдиним</em>
+        відношенням між парціалами (DSF Мурера, <var>Σ r<sup>k</sup>cos(2π(c + k·m)p)</var>
+        з <var>m</var> ≠ <var>c</var>) для дзвонів, розтягнутих спектрів і
+        по-ступеневого ретюну обертонів — єдина частина «гармонічного замка до
+        строю», якої немає в мікротюнінгу фундаменталів. Робити — коли з'явиться
+        конкретна потреба, якої не покриває нахил + горб + фільтр.</li>
+      <li><strong>SoA-SIMD</strong> — паралельний рендер кількох голосів; наразі
+        відкладено (немає CPU-тиску; критерій «біт-ідентично скаляру» конфліктує
+        з реасоціацією, яку SIMD передбачає).</li>
+      <li><strong>Розширення C-ABI до поліфонії</strong> — <code>harmonic_poly_*</code>
+        над <code>PolySynth</code>, коли з'явиться реальний embedded-запит
+        (наразі полiфонічна політика — приклад на ~40 рядках JS у браузерній
+        демці й у скелеті firmware).</li>
+      <li><strong>Клієнт MTS-ESP</strong> — live master-tuning від Surge /
+        Oddsound; суто плагінний рівень, але тягне зовнішню бібліотеку → окреме
+        рішення про залежність.</li>
+      <li><strong>Фізична верифікація на залізі</strong> — Cortex-M (у т.ч.
+        soft-float M0), RISC-V, firmware-скелет під Daisy Seed; наразі
+        крос-компіляція + QEMU + <code>wasm32</code> у Node.</li>
+      <li><strong>Жива DAW-валідація</strong> — решта ручного протоколу по
+        Ableton / Bitwig / Logic (перший прогін у REAPER зроблено); property-based
+        фазер на <code>proptest</code>.</li>
+    </ul>
+  </section>
+
+  <section id="refs">
+    <h2 class="sec"><span class="num">9</span>Джерела</h2>
+    <ol class="refs">
+      <li>Stilson, T. &amp; Smith, J. O. (1996). <cite>Alias-Free Digital Synthesis
+        of Classic Analog Waveforms.</cite> Proc. Int. Computer Music Conf. (ICMC),
+        Hong Kong, pp.&nbsp;332–335.</li>
+      <li>Moorer, J. A. (1976). <cite>The Synthesis of Complex Audio Spectra by
+        Means of Discrete Summation Formulas.</cite> J. Audio Eng. Soc. 24(9),
+        pp.&nbsp;717–727.</li>
+      <li>Simper, A. (2013). <cite>Solving the Continuous SVF Equations Using
+        Trapezoidal Integration and Equivalent Currents.</cite> Cytomic, technical
+        paper.</li>
+      <li>Välimäki, V. &amp; Huovilainen, A. (2007). <cite>Antialiasing
+        Oscillators in Subtractive Synthesis.</cite> IEEE Signal Processing
+        Magazine 24(2), pp.&nbsp;116–125.</li>
+      <li>Chowning, J. M. (1973). <cite>The Synthesis of Complex Audio Spectra by
+        Means of Frequency Modulation.</cite> J. Audio Eng. Soc. 21(7),
+        pp.&nbsp;526–534.</li>
+      <li>Zölzer, U. (ed.) (2011). <cite>DAFX: Digital Audio Effects</cite>,
+        2nd&nbsp;ed. Wiley.</li>
+      <li>Smith, J. O. (2010). <cite>Physical Audio Signal Processing.</cite>
+        W3K Publishing / CCRMA, Stanford (online edition).</li>
+      <li>Goldberg, D. (1991). <cite>What Every Computer Scientist Should Know
+        About Floating-Point Arithmetic.</cite> ACM Computing Surveys 23(1),
+        pp.&nbsp;5–48.</li>
+      <li>IEEE (2019). <cite>IEEE Standard for Floating-Point Arithmetic</cite>,
+        IEEE Std&nbsp;754-2019.</li>
+      <li>Zygmund, A. (2002). <cite>Trigonometric Series</cite>, 3rd&nbsp;ed.
+        Cambridge University Press (ядро Діріхле, §II.5).</li>
+      <li>Chamberlin, H. (1985). <cite>Musical Applications of Microprocessors</cite>,
+        2nd&nbsp;ed. Hayden. (цифрова форма фільтра стану змінних)</li>
+      <li>Sethares, W. A. (2005). <cite>Tuning, Timbre, Spectrum, Scale</cite>,
+        2nd&nbsp;ed. Springer. (звʼязок гармонічного спектра й консонансу шкали —
+        обґрунтування §<a href="#s2">2.7</a>)</li>
+      <li>Op de Coul, M. <cite>Scala Scale File Format</cite> (<code>.scl</code>)
+        &amp; <cite>Keyboard Mapping Format</cite> (<code>.kbm</code>).
+        huygens-fokker.org/scala. (формат імпорту строю)</li>
+    </ol>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    Супровідна технічна документація: <code>docs/01_MATHEMATICS.md</code> …
+    <code>docs/12_USER_GUIDE.md</code>; довідник можливостей для інтеграторів і
+    музикантів — окремий артефакт.<br>
+    Код: <code>github.com/Gnomir/AudioSynth</code> · Rust 1.97 ·
+    ядро під ліцензією AGPL-3.0 або комерційною.<br>
+    Плагін іменується <b>Cosine</b> і ділиться на безкоштовний Core та платний
+    Studio тір (водяний Ed25519-keyfile, офлайн-верифікація) — це продуктове,
+    а не наукове рішення; ядро не гейтоване.<br>
+    Редакція документа відповідає стану системи на 2026-09-07 (HEAD
+    <code>d9cc371</code>): 114 тестів ядра / 34 плагінних / 9
+    <code>harmonic_license</code>, два замкнені ядра, мікротюнінг
+    <code>.scl</code> + <code>.kbm</code>, <code>wasm32</code> біт-у-біт, CI.
+  </p>
+
+</div>
+
+</body>
+</html>

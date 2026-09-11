@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%98%3C/text%3E%3C/svg%3E">
+<title>Cosine Handbook — Cosine</title>
+<meta name="description" content="The client-facing reference for Cosine (harmonic_core / harmonic_synth): every capability with worked examples, patch recipes, the full MIDI map, editor shortcuts, tuning workflows and deployment targets.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper:      #f6f4ec;
+    --surface:    #fffdf7;
+    --surface-2:  #ece7d8;
+    --ink:        #1a1712;
+    --ink-soft:   #40392e;
+    --muted:      #736a56;
+    --line:       #ddd5c1;
+    --rule:       #c7bda2;
+    --teal:       #1c6b67;
+    --teal-ink:   #14524f;
+    --teal-bg:    #dfeceb;
+    --amber:      #b26a1c;
+    --amber-ink:  #925514;
+    --amber-bg:   #f3e7d4;
+    --good:       #2f7c4f;
+    --warn:       #a9701a;
+    --bad:        #a5382b;
+  }
+  :root[data-theme="dark"] {
+    --paper:      #12110d;
+    --surface:    #191712;
+    --surface-2:  #221f18;
+    --ink:        #ece7da;
+    --ink-soft:   #c3bba8;
+    --muted:      #8f8570;
+    --line:       #2c281f;
+    --rule:       #3b352a;
+    --teal:       #4bb0aa;
+    --teal-ink:   #6fc9c3;
+    --teal-bg:    #16302e;
+    --amber:      #d68f43;
+    --amber-ink:  #e6a765;
+    --amber-bg:   #2b2013;
+    --good:       #57b078;
+    --warn:       #d09242;
+    --bad:        #d0685a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #12110d;
+      --surface:    #191712;
+      --surface-2:  #221f18;
+      --ink:        #ece7da;
+      --ink-soft:   #c3bba8;
+      --muted:      #8f8570;
+      --line:       #2c281f;
+      --rule:       #3b352a;
+      --teal:       #4bb0aa;
+      --teal-ink:   #6fc9c3;
+      --teal-bg:    #16302e;
+      --amber:      #d68f43;
+      --amber-ink:  #e6a765;
+      --amber-bg:   #2b2013;
+      --good:       #57b078;
+      --warn:       #d09242;
+      --bad:        #d0685a;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Spectral", Georgia, serif;
+    font-size: 17.5px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: color-mix(in srgb, var(--teal) 26%, transparent); }
+  .wrap { max-width: 45rem; margin: 0 auto; padding: 0 1.4rem 7rem; }
+
+  /* masthead */
+  header.top { padding: 4.5rem 0 2.2rem; border-bottom: 2px solid var(--rule); }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: .72rem;
+    letter-spacing: .2em; text-transform: uppercase; color: var(--teal-ink);
+    margin: 0 0 1.2rem;
+  }
+  h1 {
+    font-family: "Fraunces", Georgia, serif; font-weight: 600;
+    font-size: clamp(2rem, 6vw, 3rem); line-height: 1.08;
+    letter-spacing: -.015em; text-wrap: balance; margin: 0 0 1rem;
+  }
+  .standfirst {
+    font-size: 1.14rem; color: var(--ink-soft); max-width: 34rem;
+    margin: 0 0 2rem; text-wrap: pretty;
+  }
+  .standfirst b { color: var(--ink); font-weight: 600; }
+
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 5px; overflow: hidden; margin: 0 0 .4rem;
+  }
+  .fact { background: var(--surface); padding: .7rem .85rem; }
+  .fact .k {
+    font-family: "JetBrains Mono", monospace; font-size: .6rem;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 .2rem;
+  }
+  .fact .v { font-family: "Fraunces", serif; font-weight: 600; font-size: 1.02rem; }
+
+  /* toc */
+  nav.toc {
+    margin: 2.2rem 0 0; padding: 1.2rem 1.4rem;
+    background: var(--surface-2); border-radius: 5px;
+    font-family: "JetBrains Mono", monospace; font-size: .78rem; line-height: 1.95;
+  }
+  nav.toc p {
+    margin: 0 0 .5rem; letter-spacing: .14em; text-transform: uppercase;
+    font-size: .64rem; color: var(--muted);
+  }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: t; columns: 2; column-gap: 1.6rem; }
+  nav.toc li { counter-increment: t; margin: .06rem 0; break-inside: avoid; }
+  nav.toc li::before { content: counter(t) ". "; color: var(--teal-ink); }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; }
+  nav.toc a:hover { color: var(--teal-ink); text-decoration: underline; }
+  @media (max-width: 34rem) { nav.toc ol { columns: 1; } }
+
+  section { padding: 2.8rem 0 .6rem; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; }
+  h2 {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 1.62rem;
+    line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; margin: 0 0 1rem;
+    scroll-margin-top: 1rem;
+  }
+  h2 .n {
+    font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: .92rem;
+    color: var(--teal); margin-right: .7rem;
+  }
+  h3 {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 1.14rem;
+    margin: 1.9rem 0 .5rem; color: var(--ink);
+  }
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+  a { color: var(--teal-ink); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  .lead { font-size: 1.05rem; color: var(--ink-soft); }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin: .4rem 0; }
+  li::marker { color: var(--muted); }
+
+  code, kbd {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: .84em;
+  }
+  code { background: var(--surface-2); padding: .08em .38em; border-radius: 4px; }
+  kbd {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-bottom-width: 2px; border-radius: 4px; padding: .1em .45em;
+    font-size: .78em; white-space: nowrap; color: var(--ink);
+  }
+
+  .tablewrap { overflow-x: auto; margin: 1.3rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; font-family: "Spectral", serif; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: .64rem;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1.5px solid var(--rule); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+  td.p { font-family: "JetBrains Mono", monospace; font-size: .82rem; white-space: nowrap; color: var(--teal-ink); }
+  td.r { font-family: "JetBrains Mono", monospace; font-size: .8rem; white-space: nowrap; color: var(--muted); }
+  caption { caption-side: top; text-align: left; font-size: .82rem; color: var(--muted); margin-bottom: .5rem; }
+
+  /* recipe cards */
+  .recipe {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--teal); border-radius: 0 6px 6px 0;
+    padding: 1.1rem 1.3rem; margin: 1.2rem 0;
+  }
+  .recipe h4 {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 1.06rem;
+    margin: 0 0 .3rem; color: var(--ink);
+  }
+  .recipe .goal { font-size: .92rem; color: var(--muted); margin: 0 0 .7rem; font-style: italic; }
+  .recipe ol { margin: 0; font-size: .92rem; }
+  .recipe .set {
+    font-family: "JetBrains Mono", monospace; font-size: .8rem;
+    background: var(--surface-2); padding: .06em .35em; border-radius: 3px;
+    color: var(--teal-ink);
+  }
+
+  .callout {
+    margin: 1.3rem 0; padding: .9rem 1.15rem; border-radius: 0 4px 4px 0;
+    border-left: 3px solid var(--rule); background: var(--surface-2);
+    font-size: .93rem; color: var(--ink-soft);
+  }
+  .callout.teal { border-left-color: var(--teal); }
+  .callout.amber { border-left-color: var(--amber); background: var(--amber-bg); }
+  .callout .lbl {
+    font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: .66rem;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--muted);
+    display: block; margin-bottom: .3rem;
+  }
+  .callout.teal .lbl { color: var(--teal-ink); }
+  .callout.amber .lbl { color: var(--amber-ink); }
+
+  .swatch { display: inline-block; width: .7em; height: .7em; border-radius: 2px; vertical-align: baseline; margin-right: .3em; }
+  .s-good { background: var(--good); }
+  .s-warn { background: var(--warn); }
+  .s-bad  { background: var(--bad); }
+
+  .cando { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; margin: 1.3rem 0; }
+  .cando > div { background: var(--surface); padding: 1rem 1.1rem; }
+  .cando h4 { margin: 0 0 .5rem; font-family: "JetBrains Mono", monospace; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+  .cando .yes h4 { color: var(--good); }
+  .cando .no h4 { color: var(--bad); }
+  .cando ul { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
+  @media (max-width: 34rem) { .cando { grid-template-columns: 1fr; } }
+
+  .diagram {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 5px;
+    padding: 1.1rem 1rem; font-family: "JetBrains Mono", monospace; font-size: .72rem;
+    line-height: 1.6; color: var(--ink-soft); overflow-x: auto; white-space: pre; margin: 1.3rem 0;
+  }
+
+  hr.end { border: 0; border-top: 1px solid var(--rule); margin: 3.5rem 0 1.4rem; }
+  .colophon { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: var(--muted); line-height: 1.85; }
+
+  @media (max-width: 34rem) { body { font-size: 16.5px; } }
+</style>
+</head>
+<body>
+<div style="position:fixed;top:1rem;left:1rem;z-index:10">
+  <a href="/" style="font:600 .72rem/1 'JetBrains Mono',monospace;letter-spacing:.04em;color:var(--muted);text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.5rem .8rem;display:inline-block">&larr; Cosine</a>
+</div>
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Capabilities &amp; Usage Handbook</p>
+    <h1>Cosine, end to end</h1>
+    <p class="standfirst">Every knob, what it does, and what to reach for it to
+      get a sound. <b>One closed-form equation per note</b> instead of a wavetable
+      or a bank of oscillators — a clean, exactly band-limited additive tone, plus
+      everything you'd dirty it with afterwards. This page is the reference:
+      parameters, worked recipes, the full MIDI map, editor shortcuts, tuning
+      workflows, and where the same DSP runs beyond a DAW.</p>
+
+    <div class="facts">
+      <div class="fact"><p class="k">Formats</p><p class="v">VST3 · CLAP</p></div>
+      <div class="fact"><p class="k">Voices</p><p class="v">24 · stereo</p></div>
+      <div class="fact"><p class="k">Parameters</p><p class="v">39</p></div>
+      <div class="fact"><p class="k">Presets</p><p class="v">22</p></div>
+      <div class="fact"><p class="k">Latency</p><p class="v">0 · 16 in HQ</p></div>
+      <div class="fact"><p class="k">Also runs on</p><p class="v">ARM · MCU · wasm</p></div>
+    </div>
+
+    <div class="callout teal">
+      <span class="lbl">Core &amp; Studio — one binary</span>
+      Cosine ships as a free <b>Core</b> tier and a paid <b>Studio</b> tier in the
+      same download. <b>Core</b>: the Geometric oscillator, Brightness, Partials,
+      Saw / Triangle, the amp envelope, the full multimode filter, unison, pitch
+      bend, 12-TET, plus A/B morph, seed codes and the preset bank.
+      <b>Studio</b> adds Formant, Character, FM + feedback, the filter envelope,
+      the LFO matrix, MPE / per-note expression, HQ mode, and any tuning beyond
+      12-TET (microtuning + Scala import). Studio unlocks with a personal
+      watermarked key file, verified offline — no dongle, no server. Studio-only
+      controls are marked <b>(Studio)</b> below; in Core they're greyed and a
+      Studio preset simply sounds like its Core version.
+    </div>
+  </header>
+
+  <nav class="toc">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#start">Install &amp; first sound</a></li>
+      <li><a href="#osc">The oscillator: Brightness, Partials, Formant</a></li>
+      <li><a href="#dirt">Making it dirty: Character, FM, Feedback</a></li>
+      <li><a href="#filter">Filter &amp; the two envelopes</a></li>
+      <li><a href="#voice">Voices, unison &amp; HQ mode</a></li>
+      <li><a href="#tuning">Microtuning &amp; Scala files</a></li>
+      <li><a href="#mod">Modulation &amp; per-note expression</a></li>
+      <li><a href="#work">Workflows: A/B morph, seed codes, presets</a></li>
+      <li><a href="#display">Reading the spectrum display</a></li>
+      <li><a href="#keys">Editor shortcuts</a></li>
+      <li><a href="#midi">MIDI reference</a></li>
+      <li><a href="#recipes">Patch recipes</a></li>
+      <li><a href="#deploy">Beyond the DAW: engine &amp; browser</a></li>
+      <li><a href="#wont">What it won't do</a></li>
+      <li><a href="#specs">Specs &amp; verification</a></li>
+      <li><a href="#next">Where to go next</a></li>
+    </ol>
+  </nav>
+
+  <section id="start">
+    <h2><span class="n">1</span>Install &amp; first sound</h2>
+    <p class="lead">Copy the bundle into your plugin folder, rescan, add it to an
+      instrument track. No installer, no activation server, no internet check.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>OS</th><th>VST3</th><th>CLAP</th></tr></thead>
+        <tbody>
+          <tr><td>Windows</td><td class="r">C:\Program Files\Common Files\VST3\</td><td class="r">C:\Program Files\Common Files\CLAP\</td></tr>
+          <tr><td>macOS</td><td class="r">~/Library/Audio/Plug-Ins/VST3/</td><td class="r">~/Library/Audio/Plug-Ins/CLAP/</td></tr>
+          <tr><td>Linux</td><td class="r">~/.vst3/</td><td class="r">~/.clap/</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>VST3 is a folder, CLAP is a single file; they sound identical — pick
+      whichever your DAW prefers. Then:</p>
+    <ol>
+      <li><b>Arm / input-monitor the track</b> or a MIDI keyboard never reaches
+        the plugin. In REAPER that's the <kbd>R</kbd> button on the track.</li>
+      <li>Play. It opens clean: <span class="set">Drive/Fold/Grit/FM/Feedback = 0</span>,
+        <span class="set">Filter = Off</span>, <span class="set">Brightness = 35%</span> —
+        a near-sine with a gentle rolloff.</li>
+      <li>Turn <b>Brightness</b> up for more harmonics; step the preset arrows
+        <span class="set">◀ name ▶</span> at the top to hear the 22 starter patches.</li>
+    </ol>
+    <div class="callout amber">
+      <span class="lbl">Loads but silent</span>
+      Almost always the track isn't monitoring. After that: default <b>Gain</b> is
+      −12&nbsp;dB and <b>Brightness</b> 35&nbsp;% — raise both; make sure
+      <b>Filter</b> is Off or its cutoff is high.
+    </div>
+    <div class="callout teal">
+      <span class="lbl">Registering Studio</span>
+      When you buy a licence you get a small text key file with your name on it.
+      Drop it at <span class="set">%APPDATA%\Cosine\license.key</span> (Windows),
+      <span class="set">~/Library/Application&nbsp;Support/Cosine/license.key</span> (macOS)
+      or <span class="set">~/.config/Cosine/license.key</span> (Linux) and reopen
+      the plugin — the title bar then shows your name and the Studio controls
+      light up. It's checked once, offline; nothing is sent anywhere, and the
+      same file works on all your machines.
+    </div>
+  </section>
+
+  <section id="osc">
+    <h2><span class="n">2</span>The oscillator: Brightness, Partials, Formant</h2>
+    <p class="lead">Pick the <b>Oscillator</b> first. <em>Geometric</em> is the
+      closed-form additive core and the only one that responds to Brightness,
+      Partials, Formant, Expr and HQ. <em>Saw</em> and <em>Triangle</em> are
+      band-limited PolyBLEP / PolyBLAMP with a fixed <code>1/k</code> /
+      <code>1/k²</code> spectrum — flat all the way down to DC, and they ignore
+      Brightness and HQ.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Oscillator</td><td class="r">Geometric / Saw / Triangle</td><td>Geometric = the additive core. Saw / Triangle = classic band-limited waves, fixed spectrum.</td></tr>
+          <tr><td class="p">Brightness</td><td class="r">0–100 %</td><td>Spectral <em>tilt</em>. The knob is <code>r</code>; harmonic <em>k</em> is scaled by <code>rᵏ</code>. 0 % ≈ pure sine, 100 % ≈ bright impulse. Geometric only.</td></tr>
+          <tr><td class="p">Partials</td><td class="r">1–2048</td><td>A hard <em>ceiling</em> on the harmonic count — a smooth sweep from sine (1) to full impulse (2048), fractional values fade the next harmonic in. <b>Costs the same at every value and never aliases.</b> Geometric only.</td></tr>
+          <tr><td class="p">Formant <b>(Studio)</b></td><td class="r">0–100 %</td><td>A movable resonant bump in the mid overtones (a vowel-ish colour). Low values put the bump low (≈ 2nd harmonic), high values high (≈ 26th) and deepen it. A <em>second</em> closed-form term — free. <code>0 %</code> = off. Geometric only.</td></tr>
+          <tr><td class="p">Expr → Bright <b>(Studio)</b></td><td class="r">−100…+100 %</td><td>Per-note brightness from MPE / aftertouch — see <a href="#mod">§7</a>. Default <code>+35 %</code>.</td></tr>
+          <tr><td class="p">Gain</td><td class="r">−60…0 dB</td><td>Master level, before the soft clipper.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Brightness vs Partials — two different tools</h3>
+    <p><b>Brightness</b> tilts: every harmonic stays present, the highs just get
+      quieter. <b>Partials</b> cuts: harmonics above the ceiling are simply gone.
+      Use Brightness for tone colour, Partials for a filter-like sweep that costs
+      nothing and can't alias — automate it, put an LFO nowhere near it and it
+      still holds. They stack: a bright tilt with a low ceiling is a resonant-ish
+      pluck. Both are in <b>Core</b>.</p>
+
+    <div class="callout teal">
+      <span class="lbl">Why "free"</span>
+      The whole tone is one algebraic expression — a truncated complex geometric
+      series (Lagrange's identity, ~1830s). Rendering 2000 harmonics costs the
+      same as rendering 3: about <b>Θ(log n)</b> per sample, and <b>flat within
+      1 %</b> from 3 to 1200 harmonics because the one expensive term is cached on
+      a held note. There is no per-partial oscillator loop.
+    </div>
+  </section>
+
+  <section id="dirt">
+    <h2><span class="n">3</span>Making it dirty: Character, FM, Feedback <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--amber-ink)">(Studio)</span></h2>
+    <p class="lead">The clean core is the right foundation because you can always
+      dirty a clean signal and never clean a dirty one. Everything here is
+      deliberate grit under a knob — <b>at zero it is bit-clean</b>. This whole
+      section is <b>Studio</b>; in Core the chain stays clean.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Drive</td><td class="r">0–100 %</td><td>Asymmetric saturation (bias moves with it). Fattening, even harmonics.</td></tr>
+          <tr><td class="p">Fold</td><td class="r">0–100 %</td><td>Reflective wavefolder. Dense, evolving upper spectrum.</td></tr>
+          <tr><td class="p">Grit</td><td class="r">0–100 %</td><td>Bit-crush + sample-rate reduction together. Early-digital character.</td></tr>
+          <tr><td class="p">FM Amount</td><td class="r">0–4</td><td>Phase-modulation depth (sine operator).</td></tr>
+          <tr><td class="p">FM Ratio</td><td class="r">0.5–12</td><td>Modulator ratio. Integers = harmonic, fractional = clangorous.</td></tr>
+          <tr><td class="p">Feedback</td><td class="r">0–0.9</td><td>Operator self-feedback. Sine → saw → noise as you push it.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Measured brightening (high/low-mid energy ratio, from the engine's own
+      demo): clean <code>0.01</code> → Fold <code>0.10</code> → Feedback
+      <code>0.31</code> → FM <code>0.78</code>.</p>
+
+    <div class="callout amber">
+      <span class="lbl">These stages alias on purpose</span>
+      Drive / Fold / Grit / FM / Feedback and the master soft-clip push content
+      past Nyquist and <em>will</em> fold it back down when pushed hard — that's
+      the PPG / DX7 character. For a clean result turn on <b>HQ Mode</b>
+      (<a href="#voice">§5</a>) and watch the aliasing meter
+      (<a href="#display">§9</a>) tell you whether you need it.
+    </div>
+  </section>
+
+  <section id="filter">
+    <h2><span class="n">4</span>Filter &amp; the two envelopes</h2>
+    <p class="lead">A zero-delay-feedback state-variable filter (Cytomic), after
+      the character stage. It cannot self-oscillate. Cutoff and resonance are
+      smoothed per sample — no zipper on automation. The filter itself is in
+      <b>Core</b>; the dedicated filter envelope is <b>Studio</b>.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Filter</td><td class="r">Off / LP / BP / HP / Notch</td><td>Mode. <em>Off</em> is a true bypass.</td></tr>
+          <tr><td class="p">Cutoff</td><td class="r">20 Hz – 20 kHz</td><td>Corner frequency, per-sample smoothed.</td></tr>
+          <tr><td class="p">Resonance</td><td class="r">0–100 %</td><td>Q sweeps <code>0.5 → 32</code>. Capped — won't ring out of control.</td></tr>
+          <tr><td class="p">Filter Env <b>(Studio)</b></td><td class="r">−6…+6 octaves</td><td>A <em>dedicated</em> envelope routed to cutoff, bipolar. Negative = the filter closes on attack.</td></tr>
+          <tr><td class="p">F.Env A / D / S / R <b>(Studio)</b></td><td class="r">—</td><td>That envelope's own ADSR, fully independent of the amp envelope.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The amp envelope is AR, the filter envelope is full ADSR</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Attack</td><td class="r">0.5 ms – 2 s</td><td>Linear fade-in.</td></tr>
+          <tr><td class="p">Release</td><td class="r">5 ms – 5 s</td><td>Exponential fade-out. Sustain is fixed at full — this is an AR envelope.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Envelope times are honest: a <code>t</code>-second decay/release stage
+      actually <em>finishes</em> in about <code>t</code>, not <code>5t</code>. On
+      the filter envelope, <code>Sustain = 0</code> gives a percussive sweep that
+      closes down while the note holds underneath — a plucked-string trick.</p>
+  </section>
+
+  <section id="voice">
+    <h2><span class="n">5</span>Voices, unison &amp; HQ mode</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Free-Run Phase</td><td class="r">on / off</td><td>Analogue style — the oscillator phase is <em>not</em> reset on note-on, so repeated notes differ slightly.</td></tr>
+          <tr><td class="p">HQ Mode <b>(Studio)</b></td><td class="r">on / off</td><td>2× oversample the whole chain so Drive / Fold / Grit / FM don't alias. <b>+16 samples latency</b> (reported to the host; PDC compensates, and it stays constant whether HQ is on or off). CPU barely moves — but it doesn't drop either.</td></tr>
+          <tr><td class="p">Unison</td><td class="r">1–8</td><td>Stack of detuned, stereo-spread, phase-decorrelated voices per note (<code>1/√n</code> make-up gain). Eats into the 24-voice pool.</td></tr>
+          <tr><td class="p">Uni Detune</td><td class="r">0–50 ¢</td><td>Spread of the stack in cents.</td></tr>
+          <tr><td class="p">Uni Spread</td><td class="r">0–100 %</td><td>Stereo width of the stack.</td></tr>
+          <tr><td class="p">Uni Drift</td><td class="r">0–100 %</td><td>A slow, independent per-voice phase drift that makes the stereo image <em>breathe</em>. This is the "analogue" in the analogue stack.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout teal">
+      <span class="lbl">HQ workflow (Studio)</span>
+      Don't leave HQ on by reflex. Dial the sound, look at the aliasing meter on
+      the right of the spectrum: <span class="swatch s-good"></span>green — HQ
+      would only add latency, leave it off. <span class="swatch s-warn"></span>amber
+      — borderline. <span class="swatch s-bad"></span>red — the nonlinear stages
+      are folding audible aliasing; turn HQ on and the bar drops.
+    </div>
+    <div class="callout amber">
+      <span class="lbl">One known trade-off</span>
+      Stealing an <em>actively sounding</em> voice past the 24-voice limit clicks
+      — the de-click only fades in, not out. Fast passages beyond polyphony, or
+      heavy unison, will tick. Use fewer unison voices or shorter releases.
+    </div>
+  </section>
+
+  <section id="tuning">
+    <h2><span class="n">6</span>Microtuning &amp; Scala files <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--amber-ink)">(Studio)</span></h2>
+    <p class="lead">Because the oscillator builds its overtones <em>on</em>
+      <code>k·f0</code> of a retuned fundamental, a chord in just intonation is
+      perfectly in tune with itself — the beating stops. The wavetable and
+      subtractive worlds can't do that structurally; their oscillator ships with
+      fixed overtones. Anything beyond 12-TET / A = 440 is <b>Studio</b>; Core
+      plays standard 12-TET.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Tuning</td><td class="r">Equal / Just / Pythagorean / ¼-comma Meantone / 19-EDO / 24-EDO / 31-EDO / Bohlen-Pierce</td><td>Note→frequency map. <em>Equal</em> is the default and is bit-for-bit ordinary 12-TET. The rest retune the <b>fundamental</b>. Takes effect on the next note.</td></tr>
+          <tr><td class="p">Tune Root</td><td class="r">C … B</td><td>Tonic of the 12-note historical scales (Just / Pythagorean / Meantone). Ignored by Equal and the EDOs.</td></tr>
+          <tr><td class="p">Tune Ref</td><td class="r">415–467 Hz</td><td>Reference pitch (A4). <code>440</code> standard; <code>432</code> etc. scale the whole tuning.</td></tr>
+          <tr><td class="p">Scala</td><td class="r">.scl path or pasted text</td><td>Load any Scala scale — ratios (<code>3/2</code>) or cents (<code>701.955</code>), up to 64 notes. Overrides the Tuning dropdown while set. <code>✕</code> clears it.</td></tr>
+          <tr><td class="p">Keymap</td><td class="r">.kbm path or pasted text</td><td>A Scala keyboard map: which physical key plays which scale degree, with dead keys (<code>x</code>) that sound nothing. Maps onto the loaded <code>.scl</code> (or a 12-EDO chromatic if none). While loaded it carries its own reference pitch, so <b>Tune Root / Tune Ref are ignored</b>. <code>✕</code> clears it.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Workflow: a 7-note scale on the white keys only</h3>
+    <ol>
+      <li>Paste a 7-note scale into <b>Scala</b> — e.g. a 5-limit major:
+        <span class="set">major<br>7<br>9/8<br>5/4<br>4/3<br>3/2<br>5/3<br>15/8<br>2/1</span>
+        (first line is a name, second the note count, then the degrees, last the period).</li>
+      <li>Paste a <b>Keymap</b> that maps the 7 white keys of each octave to
+        degrees 0–6 and marks the 5 black keys dead. A 12-key <code>.kbm</code>
+        pattern: middle note, reference note + frequency, then
+        <span class="set">0  x  1  x  2  3  x  4  x  5  x  6</span>.</li>
+      <li>Black keys now make no sound; each octave of white keys walks the scale
+        and repeats. The <code>.kbm</code>'s own reference pitch anchors it.</li>
+    </ol>
+    <p>Both files save with the project. Everything is parsed without allocating
+      on the audio thread, so changing tuning mid-session never glitches.</p>
+
+    <div class="cando">
+      <div class="yes"><h4>Microtuning does</h4><ul>
+        <li>Just intonation, Pythagorean, meantone, any <em>n</em>-EDO, Bohlen-Pierce</li>
+        <li>Arbitrary Scala <code>.scl</code> scales (ratios or cents, ≤ 64 notes)</li>
+        <li><code>.kbm</code> keyboard maps with dead keys and a per-file anchor</li>
+        <li>Any A4 reference (415–467 Hz)</li>
+      </ul></div>
+      <div class="no"><h4>It does not</h4><ul>
+        <li>Move an individual overtone off <code>k·f0</code> — bell inharmonicity, stretched-piano tuning</li>
+        <li>Take a host MTS-ESP feed (not implemented yet)</li>
+        <li>Retune notes already sounding — the scale applies to the next note-on</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="mod">
+    <h2><span class="n">7</span>Modulation &amp; per-note expression</h2>
+    <p class="lead">Bend Range is in <b>Core</b>; the whole LFO matrix and per-note
+      expression are <b>Studio</b>.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Range</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Bend Range</td><td class="r">1–24 semitones</td><td>Pitch-wheel range.</td></tr>
+          <tr><td class="p">LFO Rate <b>(Studio)</b></td><td class="r">0.02–30 Hz</td><td>Per-voice LFO speed.</td></tr>
+          <tr><td class="p">LFO Shape <b>(Studio)</b></td><td class="r">sine / tri / saw</td><td>—</td></tr>
+          <tr><td class="p">LFO Sync <b>(Studio)</b></td><td class="r">Retrigger / Free-Run</td><td>Retrigger resets phase on note-on; Free-Run runs through notes.</td></tr>
+          <tr><td class="p">LFO → Bright <b>(Studio)</b></td><td class="r">±100 %</td><td>To the spectral tilt. Shows on the spectrum comb in real time.</td></tr>
+          <tr><td class="p">LFO → Vibrato <b>(Studio)</b></td><td class="r">0–100 ¢</td><td>To pitch.</td></tr>
+          <tr><td class="p">LFO → Cutoff <b>(Studio)</b></td><td class="r">±4 octaves</td><td>To the filter cutoff.</td></tr>
+          <tr><td class="p">LFO → FM <b>(Studio)</b></td><td class="r">±4</td><td>To the FM index.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Any target at <code>0</code> is skipped; if <em>all</em> targets are zero
+      the LFO isn't computed at all (and the patch is bit-clean).</p>
+
+    <h3>Per-note brightness (MPE / aftertouch) <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--amber-ink)">(Studio)</span></h3>
+    <p><b>Expr → Bright</b> (<code>−100…+100 %</code>, default <code>+35 %</code>)
+      routes three expression sources to the spectral tilt <em>per key</em>: MPE
+      timbre (CC 74), poly aftertouch, and channel pressure. Press harder on one
+      note of a chord and only <em>that</em> note gets more overtones — the
+      expressiveness a wavetable fakes with a filter. Negative inverts it (harder
+      → darker). <code>0 %</code> disables it and is bit-identical to no
+      expression. Geometric oscillator only. Enable MPE mode in your DAW /
+      controller; the plugin is monotimbral but addresses brightness per key.</p>
+  </section>
+
+  <section id="work">
+    <h2><span class="n">8</span>Workflows: A/B morph, seed codes, presets</h2>
+
+    <h3>A/B morph</h3>
+    <ol>
+      <li>Dial a sound → <b>SET A</b> (snapshots every parameter into slot A).</li>
+      <li>Change anything → <b>SET B</b>.</li>
+      <li>Drag the slider: <code>0</code> = exactly A, <code>1</code> = exactly B,
+        between = a clean blend of <em>every</em> parameter.</li>
+    </ol>
+    <p>The slider writes interpolated values into the real knobs, so the sound
+      matches the GUI and your DAW records the move as ordinary automation.
+      Discrete switches (Oscillator, Filter type, LFO shape, HQ, Free-Run) snap at
+      the halfway point — keep them the same in A and B for a pure timbral morph.
+      Slots and position save with the project. Works in Core (it just won't move
+      the Studio-only knobs).</p>
+
+    <h3>Seed randomiser</h3>
+    <p><b>RANDOM</b> rolls a new patch (press until you like one). The box shows a
+      <b>6-character code</b>; send it to anyone and they get the exact same
+      sound, on any OS or DAW — the seed→patch mapping is integer arithmetic, like
+      the rest of the engine's determinism. Type a code + <kbd>Enter</kbd> to load
+      it. RANDOM only touches sound parameters (not HQ / Bend Range / Free-Run)
+      and stays in musical ranges, so usable patches come up often.</p>
+    <div class="callout amber">
+      <span class="lbl">Codes are version-tied</span>
+      A code drifts from the sound the moment you touch a knob, and it's coupled
+      to the plugin version. For <em>archiving</em> a patch, save the project
+      state or an A/B slot — not the code.
+    </div>
+
+    <h3>Preset bank</h3>
+    <p>22 starter patches, each verified to render bounded, non-silent audio that
+      actually releases. Step them with the <span class="set">◀ name ▶</span>
+      arrows. They're a starting point, not the product — the point of the synth
+      is that few, transparent parameters make your <em>own</em> sound reachable.
+      In Core, presets that lean on Studio features simply sound like their Core
+      version.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Category</th><th>Presets</th></tr></thead>
+        <tbody>
+          <tr><td>Bass</td><td>Deep Sub · Reese · FM Bass · Formant Growl</td></tr>
+          <tr><td>Lead</td><td>Bright Saw Lead · Hollow Fifth · Screamer · Vintage FM Lead</td></tr>
+          <tr><td>Pad</td><td>Glass Pad · Warm Analog Pad · Choir-ish · Evolving Drone</td></tr>
+          <tr><td>Keys / plucked</td><td>Dulcimer Pluck · Electric Piano · Music Box · Clav</td></tr>
+          <tr><td>Bell / metallic</td><td>DX Bell · Metallic Drop</td></tr>
+          <tr><td>Texture</td><td>Digital Grit · Wavefolder Sweep · Noise Wash</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="display">
+    <h2><span class="n">9</span>Reading the spectrum display <span style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--amber-ink)">(Studio)</span></h2>
+    <p class="lead">Not an FFT — it draws the actual maths and a cheap
+      measurement side by side. The closed-form overlay and the aliasing meter
+      are Studio; Core shows the plain 30-band spectrum.</p>
+    <ul>
+      <li><b>Green bars</b> — a cheap 30-band picture of what's coming out.</li>
+      <li><b>Amber comb</b> — the closed-form partials the current patch defines
+        for the note you're playing: <code>rᵏ</code> from Brightness plus the
+        Formant hump, cut at the Partials ceiling (the vertical amber line). The
+        tilt is <b>live</b> — LFO → Bright breathes it. With unison on, each
+        partial widens into a band of the same pixel width — that's why unison
+        thickens the tone.</li>
+      <li><b>Teal curve</b> — the filter response for the current Cutoff /
+        Resonance, with a mark at the cutoff, drawn whenever Filter isn't Off. It
+        follows the <b>live</b> cutoff, so you watch the filter envelope and
+        LFO → Cutoff sweep it; a faint tick shows where the knob rests.</li>
+      <li><b>Hover</b> Brightness, Partials, Formant, Cutoff or Resonance — the
+        display adds faint "ghost" curves for a few settings of that control, a
+        look at what the knob does before you touch it.</li>
+      <li><b>Coloured bar, right edge</b> — the honest aliasing meter, energy just
+        below Nyquist. <span class="swatch s-good"></span>&lt; −45 dBFS clean ·
+        <span class="swatch s-warn"></span>borderline ·
+        <span class="swatch s-bad"></span>&gt; −30 dBFS the nonlinear stages are
+        folding audible aliasing → turn on HQ.</li>
+    </ul>
+    <p>The clean oscillator puts nothing up near Nyquist, so when the meter lights
+      it is the character / FM / feedback stages — unless Brightness is very high,
+      which puts real high harmonics in that band (if every nonlinear knob is at
+      zero, it isn't aliasing and HQ won't help).</p>
+  </section>
+
+  <section id="keys">
+    <h2><span class="n">10</span>Editor shortcuts</h2>
+    <p class="lead">The editor is a <b>468 × 760</b> scrolling panel with eight
+      grouped sections: TONE, AMP ENVELOPE, CHARACTER, FM, FILTER, VOICE, TUNING,
+      MODULATION. Studio-only rows are greyed in Core. Every slider takes the same
+      modifiers:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Gesture</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>Alt</kbd> + click</td><td>Type an exact value.</td></tr>
+          <tr><td><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + click &nbsp;·&nbsp; double-click &nbsp;·&nbsp; right-click</td><td>Reset the parameter to its default.</td></tr>
+          <tr><td><kbd>Shift</kbd> + drag</td><td>Fine adjustment (10× slower).</td></tr>
+          <tr><td>Drag</td><td>Normal adjustment.</td></tr>
+          <tr><td>Scroll wheel</td><td>Deliberately disabled on the sliders — so scrolling the panel never nudges a value.</td></tr>
+          <tr><td>Hover a Tone / Filter slider</td><td>Ghost curves in the spectrum (<a href="#display">§9</a>).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Everything else — bypass, undo, A/B plugin-level compare, parameter
+      automation lanes — is your host's, and works because every move the editor
+      makes goes through the host as an ordinary automatable parameter change.</p>
+  </section>
+
+  <section id="midi">
+    <h2><span class="n">11</span>MIDI reference</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Event</th><th>Handling</th></tr></thead>
+        <tbody>
+          <tr><td class="p">Note On / Off</td><td>Voice allocation, unison stacking. 24 voices (unison shares the pool). Under a <code>.kbm</code> map, dead keys are ignored.</td></tr>
+          <tr><td class="p">Choke</td><td>Instant mute — ignores the sustain pedal.</td></tr>
+          <tr><td class="p">Pitch Bend</td><td>All sounding voices, smoothed. Range = <b>Bend Range</b>.</td></tr>
+          <tr><td class="p">CC 64 — sustain pedal</td><td>While held (<code>value ≥ 0.5</code>) note-offs are deferred; on release all held notes let go.</td></tr>
+          <tr><td class="p">CC 123 — all notes off</td><td>Frees every voice, resets the pedal.</td></tr>
+          <tr><td class="p">Poly Aftertouch</td><td>Per-note brightness for that key (Studio). Depth = <b>Expr → Bright</b>.</td></tr>
+          <tr><td class="p">MPE timbre — CC 74</td><td>Per-note brightness, the MPE Y-axis (Studio). Depth = <b>Expr → Bright</b>.</td></tr>
+          <tr><td class="p">Channel Pressure</td><td>Brightness shared across all sounding notes (Studio). Depth = <b>Expr → Bright</b>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The plugin declares <code>MidiConfig::MidiCCs</code>, so pitch bend, the
+      sustain pedal and CC 123 need your DAW to pass raw MIDI CC through — some
+      hosts have a per-track "pass MIDI CC" switch. It's monotimbral (no split by
+      MIDI channel), <b>but per-note brightness is addressed per key</b>, so MPE
+      expression works.</p>
+  </section>
+
+  <section id="recipes">
+    <h2><span class="n">12</span>Patch recipes</h2>
+    <p class="lead">Starting points, in real parameter values. Load
+      <em>Init</em> first. Most of these use Studio controls — the labels say which.</p>
+
+    <div class="recipe">
+      <h4>Pad that's actually in tune <span style="color:var(--amber-ink);font-size:.8rem">· Studio (tuning)</span></h4>
+      <p class="goal">Just-intonation chord, no beating, breathing stereo.</p>
+      <ol>
+        <li><span class="set">Tuning = Just Intonation</span>, <span class="set">Tune Root</span> to your song's key.</li>
+        <li><span class="set">Brightness 55 %</span>, <span class="set">Partials ≈ 700</span>, <span class="set">Attack 400 ms</span>, <span class="set">Release 1.5 s</span>.</li>
+        <li><span class="set">Unison 4</span>, <span class="set">Uni Detune 8 ¢</span>, <span class="set">Uni Spread 60 %</span>, <span class="set">Uni Drift 45 %</span>.</li>
+        <li>Optional <span class="set">Filter LP</span>, cutoff ~4 kHz, <span class="set">LFO → Cutoff ±0.5 oct</span> at <span class="set">0.15 Hz</span>.</li>
+      </ol>
+    </div>
+
+    <div class="recipe">
+      <h4>Formant vowel lead <span style="color:var(--amber-ink);font-size:.8rem">· Studio</span></h4>
+      <p class="goal">A talking, resonant mono line.</p>
+      <ol>
+        <li><span class="set">Oscillator Geometric</span>, <span class="set">Brightness 40 %</span>, <span class="set">Formant 45 %</span>.</li>
+        <li><span class="set">LFO Shape sine</span>, <span class="set">Rate 5 Hz</span>, <span class="set">LFO → Bright 25 %</span> — the hump slides.</li>
+        <li>Short <span class="set">Attack</span>, moderate <span class="set">Release</span>; <span class="set">Filter BP</span> around the formant for extra focus.</li>
+        <li>Play with <b>Expr → Bright</b> on an MPE controller — press for the vowel to open.</li>
+      </ol>
+    </div>
+
+    <div class="recipe">
+      <h4>DX-style bell <span style="color:var(--amber-ink);font-size:.8rem">· Studio</span></h4>
+      <p class="goal">Inharmonic attack, long shimmering tail.</p>
+      <ol>
+        <li><span class="set">FM Amount 2.5</span>, <span class="set">FM Ratio 3.5</span> (or <span class="set">7</span> for a cleaner bell), <span class="set">Feedback 0.15</span>.</li>
+        <li><span class="set">Brightness 30 %</span> — let FM do the highs.</li>
+        <li><span class="set">Filter Env −3 oct</span>, <span class="set">F.Env Decay 300 ms</span>, <span class="set">Sustain 0</span> — the attack is bright, the tail darkens.</li>
+        <li><span class="set">Release 3 s</span>. Add tiny <span class="set">Uni Detune 3 ¢</span> for width.</li>
+      </ol>
+    </div>
+
+    <div class="recipe">
+      <h4>PPG-grit bass <span style="color:var(--amber-ink);font-size:.8rem">· Studio</span></h4>
+      <p class="goal">Dirty digital low end — and knowing when to spend the latency.</p>
+      <ol>
+        <li>Low note. <span class="set">Brightness 45 %</span>, <span class="set">Drive 55 %</span>, <span class="set">Fold 35 %</span>, <span class="set">Grit 40 %</span>.</li>
+        <li>Look at the aliasing meter. If it's <span class="swatch s-bad"></span>red and you want it clean, <span class="set">HQ Mode on</span> — the bar drops, you pay 16 samples.</li>
+        <li>If it's <span class="swatch s-warn"></span>amber and the part is busy, leave HQ off — you won't hear it.</li>
+        <li><span class="set">Filter LP</span> ~2 kHz with a little resonance to tame the top.</li>
+      </ol>
+    </div>
+
+    <div class="recipe">
+      <h4>Breathing analogue stack <span style="color:var(--muted);font-size:.8rem">· Core-friendly</span></h4>
+      <p class="goal">Wide, alive, never quite static.</p>
+      <ol>
+        <li><span class="set">Free-Run Phase on</span> — every note starts differently.</li>
+        <li><span class="set">Unison 6</span>, <span class="set">Uni Detune 14 ¢</span>, <span class="set">Uni Spread 70 %</span>, <span class="set">Uni Drift 60 %</span>.</li>
+        <li><span class="set">Oscillator Saw</span> for the classic base, or Geometric at <span class="set">Brightness 65 %</span>.</li>
+        <li>Slow <span class="set">LFO → Vibrato 4 ¢</span> at <span class="set">0.2 Hz</span>, Free-Run sync (Studio) — or skip the LFO and let Uni Drift do the movement in Core.</li>
+      </ol>
+    </div>
+
+    <div class="recipe">
+      <h4>Costless filter sweep <span style="color:var(--muted);font-size:.8rem">· Core</span></h4>
+      <p class="goal">A resonant-sounding sweep with zero aliasing and flat CPU.</p>
+      <ol>
+        <li><span class="set">Oscillator Geometric</span>, <span class="set">Brightness 80 %</span>.</li>
+        <li>Automate <span class="set">Partials</span> from <span class="set">2048</span> down to <span class="set">~8</span> over the bar — harmonics vanish from the top, smoothly, fractionally.</li>
+        <li>No filter needed; add <span class="set">Formant 30 %</span> (Studio) for a peak that rides the sweep.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="deploy">
+    <h2><span class="n">13</span>Beyond the DAW: engine &amp; browser</h2>
+    <p class="lead">The plugin is one host for the DSP core. The same code —
+      byte-for-byte the same render — runs three other ways.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Target</th><th>How</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Plugin</td><td>VST3 / CLAP bundle</td><td>What this handbook covers.</td></tr>
+          <tr><td>Native app / engine</td><td>C ABI (<code>harmonic_core.dll</code> / <code>.so</code> / <code>.dylib</code> + <code>include/harmonic_core.h</code>)</td><td><code>Voice</code> is plain-old-data (624 B, no pointers); the caller owns the memory, the crate never allocates and never panics. One voice; polyphony is the host's policy.</td></tr>
+          <tr><td>Embedded / Eurorack</td><td><code>no_std</code> static lib, cross-compiled to Cortex-M (incl. soft-float M0), RISC-V</td><td>~14 KB. No allocator, no <code>libm</code>. Same math as the plugin, verified bit-identical.</td></tr>
+          <tr><td>Browser</td><td><code>wasm32</code> (~45 KB) in an AudioWorklet</td><td>An 8-voice demo with note allocation and gating in ~40 lines of JavaScript — the same job a firmware does. <a href="/demo">Play it here.</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The determinism contract — no fused multiply-add, no <code>libm</code>,
+      saturating casts — means a render is IEEE-754 identical across x86-64, ARM
+      and <code>wasm32</code>, at 48 <em>and</em> 96 kHz, regardless of the host's
+      block size. Freeze equals real-time equals yesterday's bounce, to the bit.
+      Integration details: <a href="https://github.com/Gnomir/AudioSynth">the
+      repo</a>, <code>docs/08_EMBEDDED_INTEGRATION.md</code>. The engine itself is
+      not tier-gated — the Core/Studio split is a plugin feature.</p>
+  </section>
+
+  <section id="wont">
+    <h2><span class="n">14</span>What it won't do</h2>
+    <p class="lead">Stated plainly so you don't rediscover it under deadline.</p>
+    <ul>
+      <li><b>It's not a general O(1) additive synth.</b> The closed form works for
+        a spectral <em>tilt</em> plus one <em>hump</em>. An arbitrary
+        per-harmonic envelope, several formants, a sharp selective notch — that's
+        a filter or a different engine, not this oscillator.</li>
+      <li><b>The oscillator is alias-free; the effects are not.</b> Drive, Fold,
+        Grit, FM, Feedback and the soft-clip generate content above Nyquist by
+        design. HQ Mode cleans it at the cost of 16 samples.</li>
+      <li><b>Microtuning retunes the fundamental, not the partials.</b> Just
+        intonation, historical temperaments, EDOs and Scala files all work —
+        bell inharmonicity and stretched-piano tuning don't.</li>
+      <li><b>2048-harmonic ceiling.</b> Below ~12 Hz the very top of the spectrum
+        is lost; in practice Nyquist caps it lower anyway.</li>
+      <li><b>Monotimbral.</b> One MIDI channel. Sustain, pitch bend and channel
+        pressure are global; per-note brightness is the exception (addressed per
+        key, so MPE works).</li>
+      <li><b>Voice-steal click</b> past the polyphony limit (see <a href="#voice">§5</a>).</li>
+      <li><b>No MTS-ESP client yet</b> — you can't drive it live from a host
+        master-tuning source.</li>
+      <li>Live-DAW testing is partial: a full pass in REAPER is done; Ableton /
+        Bitwig / Logic passes are pending.</li>
+      <li><b>The free Core tier holds ~17 controls at neutral</b> (see the box at
+        the top). It's a licensing choice, not an engine limit.</li>
+    </ul>
+  </section>
+
+  <section id="specs">
+    <h2><span class="n">15</span>Specs &amp; verification</h2>
+    <div class="tablewrap">
+      <table>
+        <tbody>
+          <tr><td>Voices / channels</td><td>24, stereo out; unison 1–8 shares the pool</td></tr>
+          <tr><td>Parameters</td><td>39 automatable</td></tr>
+          <tr><td>Latency</td><td>0 samples; exactly 16 in HQ (constant, PDC-reported)</td></tr>
+          <tr><td>One clean voice</td><td>~26 M samples/s ≈ 550× realtime @ 48 kHz, flat within 1 % from 3 to 1200 harmonics</td></tr>
+          <tr><td>64-voice chord</td><td>~9.4× realtime @ 48 kHz</td></tr>
+          <tr><td>HQ alias floor</td><td>−94.6 dBFS at +6 dB overdrive (target −75); CPU ~neutral</td></tr>
+          <tr><td>Determinism</td><td>bit-identical render on x86-64 / ARM / wasm32, at 48 + 96 kHz, any block size (measured, Δ = 0.0)</td></tr>
+          <tr><td>Tests</td><td>114 core (11 an adversarial RT-safety suite: NaN / ±∞ / parameter storms) + 34 plugin + 9 licence; run on every push by CI</td></tr>
+          <tr><td>Validators</td><td>pluginval <code>--strictness-level 8</code> (VST3, GUI tests) · clap-validator 35 / 35</td></tr>
+          <tr><td>RT-safety</td><td>audio thread never allocates, never panics (<code>panic = "abort"</code>); tested against hostile input</td></tr>
+          <tr><td>Copy protection</td><td>personal watermarked Ed25519 key file, verified offline · no dongle, no activation server</td></tr>
+          <tr><td>Source license</td><td>AGPL-3.0 or a commercial licence</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="next">
+    <h2><span class="n">16</span>Where to go next</h2>
+    <ul>
+      <li><b>The bundled manual</b> — <code>harmonic_synth/MANUAL.md</code>:
+        install, quick start, parameter reference, troubleshooting.</li>
+      <li><b>Build it / DAW setup</b> — <code>docs/12_USER_GUIDE.md</code>.</li>
+      <li><b>The maths</b> — the
+        <a href="/monograph">scientific monograph</a>,
+        then <code>docs/01_MATHEMATICS.md</code> and <code>docs/06_VERIFICATION.md</code>.</li>
+      <li><b>Integrate the engine</b> — <code>docs/03_ARCHITECTURE.md</code>,
+        <code>docs/05_API_REFERENCE.md</code>, <code>docs/08_EMBEDDED_INTEGRATION.md</code>.</li>
+      <li><b>Licensing detail</b> — <code>harmonic_synth/license/README.md</code>.</li>
+      <li><b>Every honest limit, in detail</b> — <code>docs/07_LIMITATIONS.md</code>.</li>
+      <li><b>Try the browser build</b> —
+        <a href="/demo">the playable demo</a>.</li>
+      <li><b>Code</b> — <a href="https://github.com/Gnomir/AudioSynth">github.com/Gnomir/AudioSynth</a>.</li>
+    </ul>
+  </section>
+
+  <hr class="end">
+  <p class="colophon">
+    Cosine Handbook · matches the system at 2026-09-07 (HEAD
+    <code>d9cc371</code>).<br>
+    Vendor name, domain and the open-source-license decision are still to be
+    made. Rust 1.97 · engine AGPL-3.0 or commercial · <code>github.com/Gnomir/AudioSynth</code>.
+  </p>
+
+</div>
+
+
+</body>
+</html>

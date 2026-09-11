@@ -104,13 +104,21 @@ app.use((req, res, next) => {
 // frame-ancestors, etc). Google Fonts is the only third-party origin this
 // app loads, so the default CSP is widened just enough for that and nothing
 // else; tighten further if a stricter policy is ever needed.
+//
+// 'wasm-unsafe-eval' on script-src: the /demo page calls
+// WebAssembly.instantiate() to run harmonic_core's wasm32 build. Chrome
+// treats wasm compilation as covered by script-src's eval restriction and
+// blocks it under a strict CSP unless this keyword (or the much broader
+// 'unsafe-eval', which this app does NOT want — it would also re-allow
+// plain JS eval()/Function()) is present. Firefox/Safari don't gate wasm
+// this way, but the keyword is harmless there.
 app.use((req, res, next) => helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       'font-src': ["'self'", 'https://fonts.gstatic.com'],
-      'script-src': ["'self'", `'nonce-${res.locals.cspNonce}'`],
+      'script-src': ["'self'", `'nonce-${res.locals.cspNonce}'`, "'wasm-unsafe-eval'"],
     },
   },
 })(req, res, next));

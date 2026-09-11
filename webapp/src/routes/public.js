@@ -40,6 +40,27 @@ router.get('/', (req, res) => {
   res.render('site/index', { title: 'Cosine', cms, faqs, ukJson });
 });
 
+// Ported from the "harmonic_core · live" Claude artifact (was
+// https://claude.ai/code/artifact/ad41ef31-...) so it's a real page on this
+// site instead of a privately-owned artifact link the footer/hero CTAs
+// pointed at — those links only ever worked for whoever was signed into the
+// account that owned the artifact.
+router.get('/demo', (req, res) => {
+  res.render('site/demo');
+});
+
+// Ported from the "Cosine Handbook" artifact (was
+// https://claude.ai/code/artifact/a734ea1b-...) for the same reason as /demo.
+router.get('/handbook', (req, res) => {
+  res.render('site/handbook');
+});
+
+// Ported from the "Замкнена форма адитивного синтезу" artifact (was
+// https://claude.ai/code/artifact/c4b2806f-...) for the same reason as /demo.
+router.get('/monograph', (req, res) => {
+  res.render('site/monograph');
+});
+
 router.get('/login', (req, res) => {
   res.render('site/login', { title: 'Log in — Cosine' });
 });
