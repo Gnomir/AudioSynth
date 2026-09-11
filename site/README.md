@@ -1,5 +1,13 @@
 # site/
 
+> **Superseded by [`../webapp/`](../webapp/README.md).** This static file was
+> step one (out of Claude's artifact hosting into the repo); step two turned
+> it into a real, content-managed portal — same design and copy, now editable
+> through a web admin panel instead of a text editor, plus a public FAQ and
+> customer accounts. Kept here as a dependency-free fallback (e.g. a plain
+> static mirror, or if you want the page without running a Node server) — but
+> **edit content in the admin panel, not this file**, or the two will drift.
+
 The marketing landing page — moved out of Claude's artifact hosting into the
 repo, so it's a real file you own and can deploy anywhere. Bilingual
 (English / Українська, auto-detected + a toggle), light/dark theme, no build

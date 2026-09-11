@@ -1,0 +1,31 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="admin-shell">
+  <%- include('../partials/admin-nav') %>
+  <main class="admin-main">
+    <h1>FAQ</h1>
+    <%- include('../partials/flash') %>
+    <p class="actions" style="margin-top:0"><a class="btn primary" href="/admin/faq/new">+ New entry</a></p>
+    <table class="admin-table">
+      <thead><tr><th>#</th><th>Question (EN)</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <% faqs.forEach(function (f) { %>
+          <tr>
+            <td><%= f.sort_order %></td>
+            <td><%= f.question_en %></td>
+            <td><span class="pill <%= f.published ? 'on' : 'off' %>"><%= f.published ? 'published' : 'hidden' %></span></td>
+            <td style="white-space:nowrap">
+              <a class="btn" href="/admin/faq/<%= f.id %>/edit">Edit</a>
+              <form method="post" action="/admin/faq/<%= f.id %>/delete" style="display:inline"
+                    onsubmit="return confirm('Delete this FAQ entry?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </main>
+</div>
+</body>
+</html>

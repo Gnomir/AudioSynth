@@ -1,0 +1,67 @@
+/* Reuses every token, font pairing and base element style from the public
+   site — same palette, same "instrument readout" voice — so the admin looks
+   like part of the same product, not a bolted-on backend. */
+@import url("site.css");
+
+body { font-size: 16px; }
+
+.admin-shell { display: flex; min-height: 100vh; }
+
+.admin-nav {
+  width: 14rem; flex: none; background: var(--surface); border-right: 1px solid var(--line);
+  padding: 1.2rem 1rem; display: flex; flex-direction: column; gap: .2rem;
+}
+.admin-nav .brand { display: block; margin-bottom: 1rem; text-decoration: none; }
+.admin-nav a {
+  display: block; padding: .5rem .6rem; border-radius: 6px; text-decoration: none;
+  color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: .82rem;
+}
+.admin-nav a:hover { background: var(--surface-2); color: var(--ink); }
+.admin-nav a.active { background: var(--teal-bg); color: var(--teal-ink); }
+.admin-nav form { margin-top: auto; }
+.admin-nav .who { font-size: .72rem; color: var(--muted); padding: 0 .6rem .6rem; word-break: break-all; }
+
+.admin-main { flex: 1; padding: 2rem 2.4rem; max-width: 62rem; }
+.admin-main h1 { margin: 0 0 1.4rem; }
+
+.admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; margin-bottom: 2rem; }
+.admin-cards > div { background: var(--surface); padding: 1rem 1.1rem; }
+.admin-cards .v { font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 1.4rem; }
+.admin-cards .k { font-family: "JetBrains Mono", monospace; font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: .2rem; }
+
+table.admin-table { border-collapse: collapse; width: 100%; font-size: .88rem; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+table.admin-table th, table.admin-table td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.admin-table thead th { font-family: "JetBrains Mono", monospace; font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--surface-2); }
+table.admin-table tbody tr:last-child td { border-bottom: none; }
+table.admin-table tbody tr:hover { background: var(--surface-2); }
+
+.pill { display: inline-block; padding: .12rem .55rem; border-radius: 99px; font-family: "JetBrains Mono", monospace; font-size: .68rem; }
+.pill.on { background: var(--teal-bg); color: var(--teal-ink); }
+.pill.off { background: var(--amber-bg); color: var(--amber-ink); }
+
+.field { display: grid; gap: .35rem; margin-bottom: 1.1rem; }
+.field label { font-family: "JetBrains Mono", monospace; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.field input[type=text], .field input[type=email], .field input[type=password], .field input[type=number], .field textarea, .field select {
+  font: inherit; font-size: .95rem; padding: .55rem .7rem; border-radius: 6px; border: 1px solid var(--rule);
+  background: var(--surface); color: var(--ink); width: 100%; box-sizing: border-box;
+}
+.field textarea { min-height: 6rem; font-family: "JetBrains Mono", monospace; font-size: .85rem; resize: vertical; }
+.field .hint { font-size: .78rem; color: var(--muted); }
+.checkline { display: flex; align-items: center; gap: .5rem; font-size: .88rem; margin-bottom: 1.1rem; }
+
+.actions { display: flex; gap: .6rem; margin-top: 1.4rem; }
+
+.flash { padding: .7rem 1rem; border-radius: 7px; margin-bottom: 1.2rem; font-size: .9rem; }
+.flash.success { background: var(--teal-bg); color: var(--teal-ink); }
+.flash.error { background: var(--amber-bg); color: var(--amber-ink); }
+
+.content-group { margin-bottom: 2rem; }
+.content-group h2 { font-size: 1rem; font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: .5rem; margin-bottom: .8rem; }
+.content-row { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.content-row:last-child { border-bottom: none; }
+.content-row .k { font-family: "JetBrains Mono", monospace; font-size: .78rem; color: var(--ink-soft); }
+.content-row .preview { font-size: .82rem; color: var(--muted); max-width: 30rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.login-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.login-box { width: 100%; max-width: 22rem; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 2rem; box-shadow: var(--shadow); }
+.login-box h1 { font-size: 1.3rem; margin-bottom: 1.4rem; }

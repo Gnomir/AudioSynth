@@ -1,0 +1,41 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="admin-shell">
+  <%- include('../partials/admin-nav') %>
+  <main class="admin-main">
+    <h1><%= item ? 'Edit FAQ entry' : 'New FAQ entry' %></h1>
+    <%- include('../partials/flash') %>
+    <form method="post" action="<%= item ? '/admin/faq/' + item.id + '/edit' : '/admin/faq/new' %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="question_en">Question — English</label>
+        <input id="question_en" type="text" name="question_en" required value="<%= item ? item.question_en : '' %>">
+      </div>
+      <div class="field">
+        <label for="answer_en">Answer — English (HTML allowed: &lt;em&gt;, &lt;code&gt;, &lt;strong&gt; …)</label>
+        <textarea id="answer_en" name="answer_en" rows="4" required><%= item ? item.answer_en : '' %></textarea>
+      </div>
+      <div class="field">
+        <label for="question_uk">Question — Українська</label>
+        <input id="question_uk" type="text" name="question_uk" required value="<%= item ? item.question_uk : '' %>">
+      </div>
+      <div class="field">
+        <label for="answer_uk">Answer — Українська</label>
+        <textarea id="answer_uk" name="answer_uk" rows="4" required><%= item ? item.answer_uk : '' %></textarea>
+      </div>
+      <div class="field" style="max-width:8rem">
+        <label for="sort_order">Sort order</label>
+        <input id="sort_order" type="number" name="sort_order" value="<%= item ? item.sort_order : 0 %>">
+      </div>
+      <div class="checkline">
+        <input type="checkbox" id="published" name="published" <%= (!item || item.published) ? 'checked' : '' %>>
+        <label for="published" style="text-transform:none;letter-spacing:0;font-size:.88rem">Published (visible on the site)</label>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Save</button>
+        <a class="btn" href="/admin/faq">Cancel</a>
+      </div>
+    </form>
+  </main>
+</div>
+</body>
+</html>

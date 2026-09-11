@@ -1,0 +1,31 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="admin-shell">
+  <%- include('../partials/admin-nav') %>
+  <main class="admin-main">
+    <h1><code><%= item.key %></code></h1>
+    <%- include('../partials/flash') %>
+    <form method="post" action="/admin/content/<%= encodeURIComponent(item.key) %>">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="en">English</label>
+        <textarea id="en" name="en" rows="4"><%= item.en %></textarea>
+      </div>
+      <div class="field">
+        <label for="uk">Українська</label>
+        <textarea id="uk" name="uk" rows="4"><%= item.uk %></textarea>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" id="is_html" name="is_html" <%= item.is_html ? 'checked' : '' %>>
+        <label for="is_html" style="text-transform:none;letter-spacing:0;font-size:.88rem">Contains HTML markup
+          (<code>&lt;em&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;strong&gt;</code>, links …) — rendered as-is,
+          not escaped. Leave unchecked for plain text.</label>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Save</button>
+        <a class="btn" href="/admin/content#<%= encodeURIComponent(item.key) %>">Cancel</a>
+      </div>
+    </form>
+  </main>
+</div>
+</body>
+</html>

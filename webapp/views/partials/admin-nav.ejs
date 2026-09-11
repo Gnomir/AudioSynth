@@ -1,0 +1,13 @@
+<nav class="admin-nav">
+  <a class="brand" href="/admin">Cosine <span style="color:var(--muted);font-size:.7rem">admin</span></a>
+  <a href="/admin" class="<%= path === '/admin' ? 'active' : '' %>">Dashboard</a>
+  <a href="/admin/content" class="<%= path.startsWith('/admin/content') ? 'active' : '' %>">Site content</a>
+  <a href="/admin/faq" class="<%= path.startsWith('/admin/faq') ? 'active' : '' %>">FAQ</a>
+  <a href="/admin/users" class="<%= path.startsWith('/admin/users') ? 'active' : '' %>">Users</a>
+  <a href="/" target="_blank" rel="noopener">↗ View site</a>
+  <div class="who"><%= user.email %></div>
+  <form method="post" action="/admin/logout">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit" style="width:100%">Log out</button>
+  </form>
+</nav>

@@ -1,0 +1,23 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="admin-shell">
+  <%- include('../partials/admin-nav') %>
+  <main class="admin-main">
+    <h1>Dashboard</h1>
+    <%- include('../partials/flash') %>
+    <div class="admin-cards">
+      <div><div class="v"><%= stats.customers %></div><div class="k">Customer accounts</div></div>
+      <div><div class="v"><%= stats.admins %></div><div class="k">Admin accounts</div></div>
+      <div><div class="v"><%= stats.faqsPublished %> / <%= stats.faqs %></div><div class="k">FAQ entries published</div></div>
+      <div><div class="v"><%= stats.contentKeys %></div><div class="k">Editable text blocks</div></div>
+    </div>
+    <p>Welcome to the Cosine content portal. From here you can:</p>
+    <ul>
+      <li><a href="/admin/content">Edit the landing page's text</a> — every heading, paragraph and label, in English and Ukrainian.</li>
+      <li><a href="/admin/faq">Manage the public FAQ</a> — add, edit, reorder or unpublish questions.</li>
+      <li><a href="/admin/users">See registered customers</a>.</li>
+    </ul>
+    <p class="formhint">SQLite database file: one file, no server — back it up by copying <code>database/app.sqlite</code>.</p>
+  </main>
+</div>
+</body>
+</html>

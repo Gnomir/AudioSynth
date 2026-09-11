@@ -1,0 +1,392 @@
+<div class="bar">
+  <div class="wrap">
+    <span class="brand">Cosine <span class="prov" data-i18n="brand.prov">closed-form additive</span></span>
+    <nav>
+      <a href="#how" data-i18n="nav.how">How it works</a>
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#engine" data-i18n="nav.engine">For developers</a>
+      <a href="#limits" data-i18n="nav.limits">Limits</a>
+      <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+    </nav>
+    <div class="seg" role="group" aria-label="Language / Мова">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="uk" aria-pressed="false">УКР</button>
+    </div>
+    <button type="button" class="icon-btn" id="theme" aria-label="Toggle theme" title="Theme">◐</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap grid">
+    <div>
+      <p class="eyebrow" data-i18n="hero.eyebrow">Additive synthesis · closed form</p>
+      <h1 data-i18n-html="hero.h1"><em>Cosine.</em> One equation per note — not a wavetable, not an oscillator bank.</h1>
+      <p class="sub" data-i18n-html="hero.sub">The oscillator renders the first <em>n</em> harmonics of a
+        tone as a single algebraic expression — a sum of cosines in closed form,
+        exactly band-limited, the
+        <strong>same cost for 3 harmonics or 2000</strong>, and
+        <strong>bit-identical on every CPU</strong>. Sold as a finished VST3 /
+        CLAP plugin, and as the <code>no_std</code> Rust engine underneath it
+        that also runs on a $30 board and in a browser.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#pricing" data-i18n="hero.cta.pricing">See pricing</a>
+        <a class="btn" href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="hero.cta.demo">▶ Browser demo</a>
+        <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+
+    <div class="panel" id="demo">
+      <p class="label"><span data-i18n="panel.label">Live · the spectrum this patch defines</span><span class="ok" id="bl" data-i18n="panel.bandlimited">band-limited ✓</span></p>
+      <div class="screen">
+        <canvas id="cv" width="900" height="520" aria-label="Live harmonic spectrum of the closed-form oscillator"></canvas>
+      </div>
+      <div class="sliders">
+        <div class="sld">
+          <label for="s-b" data-i18n="panel.brightness">Brightness</label>
+          <input id="s-b" type="range" min="0" max="1000" value="770" aria-label="Brightness">
+          <output id="o-b">0.60</output>
+        </div>
+        <div class="sld">
+          <label for="s-p" data-i18n="panel.partials">Partials</label>
+          <input id="s-p" type="range" min="4" max="96" value="30" aria-label="Partials">
+          <output id="o-p">30</output>
+        </div>
+        <div class="sld">
+          <label for="s-f" data-i18n="panel.formant">Formant</label>
+          <input id="s-f" type="range" min="0" max="1000" value="440" aria-label="Formant">
+          <output id="o-f">off</output>
+        </div>
+      </div>
+      <div class="cost" id="cost"></div>
+      <p class="note" data-i18n="panel.note">Drag the sliders. The bars are the exact partial weights the
+        closed form produces — a tilt (rᵏ) plus one movable hump — and there is
+        nothing above the ceiling, ever. In the plugin this is drawn over a live
+        analyser.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="why">
+  <div class="wrap">
+    <p class="kick" data-i18n="why.kick">Why it's different</p>
+    <div class="three">
+      <div class="card">
+        <h3 data-i18n="why.1.h">Flat cost, any brightness</h3>
+        <p data-i18n-html="why.1.p">One knob sweeps dark→bright by weighting harmonic <em>k</em> by
+          <code>rᵏ</code>. Render cost stays <strong>flat within 1&nbsp;% from 3
+          to 1200 harmonics</strong> — a naïve additive bank is ~400× slower at
+          the top. <code>Θ(log n)</code>, never a per-partial loop.</p>
+      </div>
+      <div class="card">
+        <h3 data-i18n="why.2.h">Bit-identical everywhere</h3>
+        <p data-i18n-html="why.2.p">No fused multiply-add, no <code>x87</code>, saturating casts. The full
+          render hashes <strong>identically on x86-64, ARM and wasm32</strong> —
+          at 48 and 96&nbsp;kHz, any block size. Freeze equals real-time equals
+          yesterday's bounce, to the bit. Measured, not claimed.</p>
+      </div>
+      <div class="card">
+        <h3 data-i18n="why.3.h">The maths is on screen</h3>
+        <p data-i18n-html="why.3.p">The editor draws the <strong>actual closed-form partials</strong> of
+          your patch over the measured spectrum — not an FFT — and an
+          <strong>honest aliasing meter</strong> that only means something
+          because the oscillator is provably band-limited. It tells you exactly
+          when to turn on oversampling.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="how.kick">How it works</p>
+    <h2 data-i18n="how.h">The identity is older than recording. The engineering around it is the product.</h2>
+    <p data-i18n-html="how.p1">A tone made of the first <em>n</em> cosine harmonics with a geometric
+      rolloff has an exact closed form — a truncated complex geometric series,
+      Lagrange's finite trigonometric sum (~1830s), in the family of Moorer's
+      discrete summation formulae (1976):</p>
+    <div class="formula" aria-label="Closed form of the sum of r to the k times cosine of two pi k p">
+      <b>Σ</b><sub>k=1..n</sub> <b>rᵏ·cos(2πkp)</b>
+      &nbsp;=&nbsp;
+      ( r·c₁ − r² − r<sup>n+1</sup>·c<sub>n+1</sub> + r<sup>n+2</sup>·c<sub>n</sub> ) / ( 1 − 2r·c₁ + r² )
+      &nbsp;&nbsp;<span style="color:var(--muted)">c<sub>k</sub> = cos(2πkp)</span>
+    </div>
+    <p data-i18n-html="how.p2">The correction terms subtract the infinite tail <em>exactly</em>, so the
+      spectrum is precisely zero above harmonic <em>n</em> — no anti-aliased
+      tables, no oversampling filter on the clean path. <em>n</em> is clamped to
+      Nyquist by construction, so <strong>the oscillator cannot alias</strong>.
+      A second closed-form term — the difference of two such sums — adds one
+      movable resonant hump (<span class="mono">Formant</span>). Saw and triangle
+      are separate, band-limited PolyBLEP / PolyBLAMP, flat all the way to DC.</p>
+    <p data-i18n-html="how.p3">The one expensive quantity, <code>rⁿ</code>, is a single
+      exponentiation-by-squaring (≤ 22 multiplies for <em>n</em> ≤ 2048) and is
+      cached on a held note — which is why the cost is flat in practice. Full
+      derivation and every measured number:
+      <a href="https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d" target="_blank" rel="noopener">the scientific monograph</a>.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kick" data-i18n="feat.kick">What's in it</p>
+    <h2 data-i18n="feat.h">A 24-voice instrument, grouped the way you'd build a patch.</h2>
+    <div class="feat">
+      <div><h4 data-i18n="feat.osc.h">Oscillator</h4><p data-i18n-html="feat.osc.p">Geometric closed-form additive · Brightness tilt · fractional Partials ceiling (1→2048, never aliases, costs the same) · movable Formant hump · band-limited Saw / Triangle · free-run or phase-reset.</p></div>
+      <div><h4 data-i18n="feat.char.h">Character — the dirt, on purpose</h4><p data-i18n="feat.char.p">Asymmetric drive + bias · reflective wavefolder · bit-crush + downsample. Byte-clean at zero; PPG / DX7 grit when pushed.</p></div>
+      <div><h4 data-i18n="feat.fm.h">FM</h4><p data-i18n="feat.fm.p">Sine phase-modulation operator (ratio 0.5–12, amount 0–4) plus operator self-feedback: sine → saw → noise.</p></div>
+      <div><h4 data-i18n="feat.filt.h">Filter & envelopes</h4><p data-i18n-html="feat.filt.p">Zero-delay-feedback state-variable filter (LP/BP/HP/Notch, can't self-oscillate) · a dedicated bipolar filter envelope <em>and</em> an independent amp envelope · honest times (a 1&nbsp;s release finishes in ~1&nbsp;s).</p></div>
+      <div><h4 data-i18n="feat.voice.h">Voices & unison</h4><p data-i18n-html="feat.voice.p">24 voices · unison 1–8 with detune, stereo spread and a slow per-voice drift that makes the image breathe · HQ oversampling with a <strong>constant, exact 16-sample</strong> latency.</p></div>
+      <div><h4 data-i18n="feat.tune.h">Microtuning that's in tune with itself</h4><p data-i18n-html="feat.tune.p">Just intonation, historical temperaments, 19/24/31-EDO, Bohlen-Pierce, and Scala <code>.scl</code> / <code>.kbm</code> import (keyboard maps with dead keys). Because overtones sit on <code>k·f0</code>, a JI chord stops beating. 12-TET is the byte-identical default.</p></div>
+      <div><h4 data-i18n="feat.expr.h">Expression</h4><p data-i18n="feat.expr.p">Per-note brightness from MPE timbre, poly aftertouch or channel pressure — press one note of a chord for more overtones in that note only.</p></div>
+      <div><h4 data-i18n="feat.mod.h">Modulation</h4><p data-i18n="feat.mod.p">Per-voice LFO (sine/tri/saw, retrigger or free-run) into a 4-target matrix: brightness, vibrato, cutoff, FM index.</p></div>
+      <div><h4 data-i18n="feat.work.h">Workflow</h4><p data-i18n="feat.work.p">A/B patch morph that writes real automatable moves · a 6-character seed code that reproduces any random patch bit-for-bit on any machine · 22 starter presets.</p></div>
+      <div><h4 data-i18n="feat.see.h">See what you hear</h4><p data-i18n="feat.see.p">The closed-form partial comb + the analytic filter curve over the live spectrum, both tracking modulation in real time · hover any tone knob for ghost curves · the near-Nyquist aliasing meter.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="engine">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="eng.kick">For developers</p>
+    <h2 data-i18n="eng.h">The same engine, without the plugin.</h2>
+    <p class="lead" data-i18n-html="eng.lead">Underneath the Cosine plugin (<span class="mono">harmonic_synth</span>)
+      is <span class="mono">harmonic_core</span> — a <code>no_std</code>,
+      zero-dependency Rust DSP crate with a C ABI. The plugin is one host for it.</p>
+    <ul>
+      <li data-i18n-html="eng.li1"><strong>Zero dependencies, no <code>libm</code>, no allocator.</strong>
+        ~14&nbsp;KB <code>no_std</code> cdylib. Links into firmware as-is.</li>
+      <li data-i18n-html="eng.li2"><strong>One <code>Voice</code> is plain-old-data</strong> (624 bytes, no
+        pointers) — the caller owns the memory, the crate never allocates and
+        never panics on the audio path. Polyphony is the host's policy.</li>
+      <li data-i18n-html="eng.li3"><strong>Cross-compiles clean</strong> to Cortex-M4F/M7 (Daisy Seed),
+        Cortex-M0 (soft-float), RISC-V, AArch64 — and <code>wasm32</code>, where
+        an 8-voice browser demo runs the identical code with note allocation in
+        ~40 lines of JavaScript.</li>
+      <li data-i18n-html="eng.li4"><strong>Regression-test audio by hash.</strong> The determinism
+        contract means a render is reproducible across machines; a shared
+        <code>verify</code> module renders two scripted passes and every target
+        checks them against the same 64-bit values in CI.</li>
+      <li data-i18n-html="eng.li5"><strong>Verified:</strong> 120 core tests (11 an adversarial RT-safety
+        suite — NaN / ±∞ / parameter storms), 34 plugin + 9 licence tests,
+        <code>pluginval --strictness 8</code>, <code>clap-validator 35/35</code>,
+        ARM + wasm bit-exactness under QEMU / Node, all on every push.</li>
+    </ul>
+    <p data-i18n-html="eng.p">License the engine for a hardware product, a plugin, or a game —
+      per-product, per-seat or royalty. Integration and a determinism sign-off
+      for your CI are available as a fixed-fee package. <a href="#pricing">Get in
+      touch below.</a></p>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="cmp.kick">Where it sits</p>
+    <h2 data-i18n="cmp.h">Honest about the trade.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th data-i18n="cmp.th1">Approach</th><th data-i18n="cmp.th2">The trade vs this</th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="cmp.r1a">Wavetable additive (large partial banks)</td><td data-i18n-html="cmp.r1b">Full per-partial control, but <code>O(n)</code> and needs anti-aliased tables. This: one expression, flat cost, exact band-limiting — at the price of flat / geometric / one-hump spectra only.</td></tr>
+          <tr><td data-i18n="cmp.r2a">BLIT / DSF oscillators (Stilson &amp; Smith; Moorer)</td><td data-i18n="cmp.r2b">Same family. This adds the brightness tilt as a first-class control, the fractional partial ceiling, the second (Formant) term, and the cross-architecture determinism guarantee.</td></tr>
+          <tr><td data-i18n="cmp.r3a">Virtual-analog / PolyBLEP synths</td><td data-i18n-html="cmp.r3b">Great for classic waveforms — and this <em>includes</em> PolyBLEP saw/triangle, plus the additive core for spectra a subtractive chain can't reach.</td></tr>
+          <tr><td data-i18n="cmp.r4a">"Quantum-inspired" novelty synths</td><td data-i18n="cmp.r4b">This is the deliberate opposite: every claim is measured, and the limitations are published on this page.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="lim.kick">What it won't do</p>
+    <h2 data-i18n="lim.h">Published, not buried. In this market that's the marketing.</h2>
+    <div class="honest">
+      <ul>
+        <li data-i18n-html="lim.1"><strong>Not a general <code>O(1)</code> additive synth.</strong> The
+          closed form works for a spectral <em>tilt</em> plus one <em>hump</em>.
+          An arbitrary per-harmonic envelope is <code>Θ(n)</code> again.</li>
+        <li data-i18n-html="lim.2"><strong>The oscillator is alias-free; the effects are not.</strong>
+          Drive, Fold, Grit, FM, feedback and the soft-clip generate content
+          above Nyquist by design. HQ Mode cleans it for a fixed 16 samples of
+          latency.</li>
+        <li data-i18n-html="lim.3"><strong>HQ Mode does not reduce CPU.</strong> It's an anti-aliasing
+          quality mode, roughly CPU-neutral. Stated plainly everywhere.</li>
+        <li data-i18n-html="lim.4"><strong>Microtuning retunes the fundamental, not the partials.</strong>
+          Just / historical / EDO / Scala scales work; bell inharmonicity and
+          stretched-piano tuning need a different kernel.</li>
+        <li data-i18n-html="lim.5"><strong>Monotimbral</strong>, one MIDI channel. 2048-harmonic
+          ceiling. Voice-steal click past the polyphony limit.</li>
+        <li data-i18n-html="lim.6"><strong>Real embedded hardware isn't measured yet</strong> —
+          cross-compiles clean and is bit-exact under QEMU / in Node, but not
+          on a physical Cortex-M board. macOS / Linux builds and an AU format
+          are pre-launch work.</li>
+      </ul>
+    </div>
+    <p class="formhint" data-i18n-html="lim.foot">Full list, with the reason for each:
+      <a href="https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md" target="_blank" rel="noopener">docs/07_LIMITATIONS.md</a>.</p>
+  </div>
+</section>
+
+<section id="specs">
+  <div class="wrap">
+    <p class="kick" data-i18n="spec.kick">Measured</p>
+    <h2 data-i18n="spec.h">Every number here comes from a test.</h2>
+    <div class="specgrid">
+      <div><div class="v">~550×</div><div class="k" data-i18n="spec.k1">realtime, one voice @ 48 kHz</div></div>
+      <div><div class="v">±1%</div><div class="k" data-i18n="spec.k2">cost, 3 → 1200 harmonics</div></div>
+      <div><div class="v">Δ 0.0</div><div class="k" data-i18n="spec.k3">render hash: x86-64 · ARM · wasm32</div></div>
+      <div><div class="v">−94.6 dB</div><div class="k" data-i18n="spec.k4">HQ alias floor (target −75)</div></div>
+      <div><div class="v">0 / 16</div><div class="k" data-i18n="spec.k5">samples latency — HQ off / on, exact</div></div>
+      <div><div class="v">120 + 34 + 9</div><div class="k" data-i18n="spec.k6">core · plugin · licence tests, every push</div></div>
+      <div><div class="v">35 / 35</div><div class="k" data-i18n="spec.k7">clap-validator · pluginval s8</div></div>
+      <div><div class="v">~14 KB</div><div class="k" data-i18n="spec.k8">no_std engine · 0 dependencies</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="price.kick">Pricing</p>
+    <h2 data-i18n="price.h">A real free tier. One-time for the rest.</h2>
+    <div class="price">
+      <div class="tier">
+        <p class="tname">Core</p>
+        <p class="amt" data-i18n="price.core.amt">Free</p>
+        <p class="was" data-i18n="price.core.was">no watermark · no nag · yours</p>
+        <ul>
+          <li data-i18n="price.core.1">Geometric oscillator · Brightness · fractional Partials</li>
+          <li data-i18n="price.core.2">Band-limited Saw / Triangle</li>
+          <li data-i18n="price.core.3">Amp envelope · the full multimode filter (LP/BP/HP/Notch)</li>
+          <li data-i18n="price.core.4">Unison with drift · pitch bend · 12-TET</li>
+          <li data-i18n="price.core.5">A/B morph · seed codes · preset bank</li>
+        </ul>
+      </div>
+      <div class="tier hi">
+        <p class="tname">Studio</p>
+        <p class="amt" data-i18n-html="price.studio.amt">$89 <small>one-time</small></p>
+        <p class="was" data-i18n="price.studio.was">launch: $59 for the first 6 weeks</p>
+        <ul>
+          <li data-i18n="price.studio.1">Formant · Character · FM + feedback</li>
+          <li data-i18n="price.studio.2">Dedicated filter envelope · full LFO matrix · MPE expression</li>
+          <li data-i18n-html="price.studio.3">Microtuning + Scala <code>.scl</code> / <code>.kbm</code></li>
+          <li data-i18n="price.studio.4">HQ mode</li>
+          <li data-i18n="price.studio.5">The on-screen closed-form spectrum + aliasing meter</li>
+          <li data-i18n="price.studio.6">Free updates within v1</li>
+        </ul>
+      </div>
+    </div>
+    <p class="formhint" data-i18n="price.foot">One binary — Studio unlocks with a personal, watermarked
+      key file, verified offline. No dongle, no activation server, no nag.</p>
+    <h3 data-i18n="price.eng.h">License the engine</h3>
+    <p data-i18n-html="price.eng.p">For a hardware synth, a plugin, a game, or an embedded product — per
+      product, per seat, or royalty, and an integration + determinism sign-off
+      package. <code>harmonic_core</code> is <strong>AGPL-3.0 or a commercial
+      licence</strong>: free for open-source and evaluation, paid to ship it in a
+      closed product. <strong>Tell us what you're building.</strong></p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="faq.kick">FAQ</p>
+    <h2 data-i18n="faq.h">The questions a skeptic asks first.</h2>
+    <details>
+      <summary data-i18n="faq.q1">Is it really O(1)?</summary>
+      <p data-i18n-html="faq.a1">No — and we won't say it is. It's <code>Θ(log n)</code> worst case (one
+        <code>rⁿ</code> by squaring, ≤ 22 multiplies), and <code>Θ(1)</code>
+        amortised because that term is cached on a held note. Measured: flat
+        within 1&nbsp;% from 3 to 1200 harmonics. A brightness sweep or a pitch
+        change pays the <code>log n</code> again.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q2">Does it alias?</summary>
+      <p data-i18n-html="faq.a2">The oscillator does not — the harmonic count is clamped to Nyquist by
+        construction and the closed form is the exact finite sum, so nothing
+        lives above partial <em>n</em>. The nonlinear stages (Drive, Fold, Grit,
+        FM, feedback) <em>do</em> alias when pushed — that's intentional
+        character. The built-in aliasing meter tells you when, and HQ Mode is the
+        clean path.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q3">Why doesn't HQ Mode save CPU?</summary>
+      <p data-i18n-html="faq.a3">Because there was never a per-partial decimator to remove — the
+        oscillator is already band-limited. HQ oversamples the whole chain to
+        stop the <em>effects</em> aliasing; that costs about as much as it saves
+        from merging the decimators. It's a quality mode, not a performance mode,
+        and it adds exactly 16 samples of latency. We say this everywhere.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q4">What's "bit-identical" worth to me?</summary>
+      <p data-i18n-html="faq.a4">A freeze sounds exactly like real-time. A bounce on your laptop matches
+        the one on the studio Mac. A render today matches one from last month.
+        And if you ship the engine in hardware or a game, the same input
+        produces the same audio on every client — you can regression-test it by
+        hashing the output.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q5">VST3 and CLAP — where's AU / AAX?</summary>
+      <p data-i18n-html="faq.a5">VST3 + CLAP at launch. AU (for Logic) needs a wrapper and is planned.
+        AAX (Pro Tools) is not currently on the roadmap — it would require a
+        hardware dongle, which contradicts the no-dongle promise.</p>
+    </details>
+    <details>
+      <summary data-i18n="faq.q6">Where does the name come from?</summary>
+      <p data-i18n-html="faq.a6">Every note is literally a finite sum of cosine partials in closed form —
+        <code>Σ rᵏ·cos(2πkp)</code>. The name states the method and claims
+        nothing. The domain is still being registered before the first public
+        release; the engine and the plugin are real and validated today.</p>
+    </details>
+  </div>
+</section>
+</main>
+
+<div class="final">
+  <div class="wrap narrow">
+    <h2 data-i18n="final.h">Hear it when it ships.</h2>
+    <p class="sub" data-i18n="final.sub">A free Core tier, the paid Studio at an intro price, and the
+      3-minute demo that is the whole pitch — one Brightness sweep, Drive until
+      the meter goes red, HQ, watch it drop.</p>
+    <form class="notify" id="notify">
+      <input type="email" id="notify-email" name="email" placeholder="you@studio.com" aria-label="Email address" required>
+      <button class="btn primary" type="submit" data-i18n="final.notify">Notify me</button>
+    </form>
+    <p class="formhint" id="notify-hint" data-i18n="final.hint">Pre-launch — this stores your address in this browser
+      only. A real mailing list is wired up before launch.</p>
+    <div class="cta-row" style="margin-top:1.5rem">
+      <a class="btn" href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="final.cta.demo">▶ Browser demo</a>
+      <a class="btn" href="https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0" target="_blank" rel="noopener" data-i18n="final.cta.handbook">Capabilities handbook</a>
+      <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <strong data-i18n="foot.product">Product</strong>
+        <a href="#features" data-i18n="nav.features">Features</a>
+        <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+        <a href="https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0" target="_blank" rel="noopener" data-i18n="foot.handbook">Handbook</a>
+        <a href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="foot.demo">Browser demo</a>
+      </div>
+      <div>
+        <strong data-i18n="foot.technical">Technical</strong>
+        <a href="https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d" target="_blank" rel="noopener" data-i18n="foot.monograph">Scientific monograph</a>
+        <a href="https://github.com/Gnomir/AudioSynth/tree/main/docs" target="_blank" rel="noopener" data-i18n="foot.docs">Full docs</a>
+        <a href="https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md" target="_blank" rel="noopener" data-i18n="nav.limits">Limits</a>
+        <a href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener" data-i18n="foot.source">Source</a>
+      </div>
+      <div>
+        <strong data-i18n="foot.status">Status</strong>
+        <span data-i18n="foot.s1">VST3 + CLAP · validated</span>
+        <span data-i18n="foot.s2">Windows built · mac / Linux pending</span>
+        <span data-i18n="foot.s3">Engine: AGPL-3.0 or commercial</span>
+      </div>
+    </div>
+    <p data-i18n-html="foot.fine">Cosine · Rust · <code>github.com/Gnomir/AudioSynth</code><br>
+      Pre-launch page. Name, price and the licence model are decided; the domain,
+      signed macOS / Linux builds and a real mailing list are still to come.</p>
+  </div>
+</footer>
+

@@ -1,0 +1,32 @@
+<%- include('../partials/site-head', { title: title }) %>
+<div class="wrap narrow" style="padding-block:4rem">
+  <%- include('../partials/flash') %>
+  <div class="panel" style="max-width:26rem;margin:0 auto;padding:2rem">
+    <h1 style="margin-top:0">Create your account</h1>
+    <p class="sub" style="font-size:.92rem">For Studio buyers — this doesn't check your key file, it just gives you a place to keep your details. Support and license re-issue will use this account later.</p>
+    <form method="post" action="/register">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="display_name">Name</label>
+        <input id="display_name" type="text" name="display_name">
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required minlength="8">
+        <p class="hint">At least 8 characters.</p>
+      </div>
+      <div class="field">
+        <label for="license_key">Order reference / license key (optional)</label>
+        <input id="license_key" type="text" name="license_key" placeholder="e.g. your Studio order number">
+      </div>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center">Create account</button>
+    </form>
+    <p style="margin-top:1.2rem;font-size:.9rem">Already have one? <a href="/login">Log in</a>.</p>
+  </div>
+</div>
+</body>
+</html>

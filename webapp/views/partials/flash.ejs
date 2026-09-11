@@ -1,0 +1,5 @@
+<% if (typeof flash !== 'undefined' && flash && flash.length) { %>
+  <% flash.forEach(function (f) { %>
+    <div class="flash <%= f.type %>"><%= f.text %></div>
+  <% }) %>
+<% } %>

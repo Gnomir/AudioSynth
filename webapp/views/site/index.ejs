@@ -1,0 +1,293 @@
+<%- include('../partials/site-head', { title: title }) %>
+<div class="bar">
+  <div class="wrap">
+    <span class="brand">Cosine <span class="prov" data-i18n="brand.prov"><%= cms.en['brand.prov'] %></span></span>
+    <nav>
+      <a href="#how" data-i18n="nav.how"><%= cms.en['nav.how'] %></a>
+      <a href="#features" data-i18n="nav.features"><%= cms.en['nav.features'] %></a>
+      <a href="#engine" data-i18n="nav.engine"><%= cms.en['nav.engine'] %></a>
+      <a href="#limits" data-i18n="nav.limits"><%= cms.en['nav.limits'] %></a>
+      <a href="#pricing" data-i18n="nav.pricing"><%= cms.en['nav.pricing'] %></a>
+      <% if (user) { %>
+        <a href="/account">My account</a>
+      <% } else { %>
+        <a href="/login">Log in</a>
+      <% } %>
+    </nav>
+    <div class="seg" role="group" aria-label="Language / Мова">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="uk" aria-pressed="false">УКР</button>
+    </div>
+    <button type="button" class="icon-btn" id="theme" aria-label="Toggle theme" title="Theme">◐</button>
+  </div>
+</div>
+
+<div class="wrap"><%- include('../partials/flash') %></div>
+
+<header class="hero">
+  <div class="wrap grid">
+    <div>
+      <p class="eyebrow" data-i18n="hero.eyebrow"><%= cms.en['hero.eyebrow'] %></p>
+      <h1 data-i18n-html="hero.h1"><%- cms.en['hero.h1'] %></h1>
+      <p class="sub" data-i18n-html="hero.sub"><%- cms.en['hero.sub'] %></p>
+      <div class="cta-row">
+        <a class="btn primary" href="#pricing" data-i18n="hero.cta.pricing"><%= cms.en['hero.cta.pricing'] %></a>
+        <a class="btn" href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="hero.cta.demo"><%= cms.en['hero.cta.demo'] %></a>
+        <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+
+    <div class="panel" id="demo">
+      <p class="label"><span data-i18n="panel.label"><%= cms.en['panel.label'] %></span><span class="ok" id="bl" data-i18n="panel.bandlimited"><%= cms.en['panel.bandlimited'] %></span></p>
+      <div class="screen">
+        <canvas id="cv" width="900" height="520" aria-label="Live harmonic spectrum of the closed-form oscillator"></canvas>
+      </div>
+      <div class="sliders">
+        <div class="sld">
+          <label for="s-b" data-i18n="panel.brightness"><%= cms.en['panel.brightness'] %></label>
+          <input id="s-b" type="range" min="0" max="1000" value="770" aria-label="Brightness">
+          <output id="o-b">0.60</output>
+        </div>
+        <div class="sld">
+          <label for="s-p" data-i18n="panel.partials"><%= cms.en['panel.partials'] %></label>
+          <input id="s-p" type="range" min="4" max="96" value="30" aria-label="Partials">
+          <output id="o-p">30</output>
+        </div>
+        <div class="sld">
+          <label for="s-f" data-i18n="panel.formant"><%= cms.en['panel.formant'] %></label>
+          <input id="s-f" type="range" min="0" max="1000" value="440" aria-label="Formant">
+          <output id="o-f">off</output>
+        </div>
+      </div>
+      <div class="cost" id="cost"></div>
+      <p class="note" data-i18n="panel.note"><%= cms.en['panel.note'] %></p>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="why">
+  <div class="wrap">
+    <p class="kick" data-i18n="why.kick"><%= cms.en['why.kick'] %></p>
+    <div class="three">
+      <div class="card">
+        <h3 data-i18n="why.1.h"><%= cms.en['why.1.h'] %></h3>
+        <p data-i18n-html="why.1.p"><%- cms.en['why.1.p'] %></p>
+      </div>
+      <div class="card">
+        <h3 data-i18n="why.2.h"><%= cms.en['why.2.h'] %></h3>
+        <p data-i18n-html="why.2.p"><%- cms.en['why.2.p'] %></p>
+      </div>
+      <div class="card">
+        <h3 data-i18n="why.3.h"><%= cms.en['why.3.h'] %></h3>
+        <p data-i18n-html="why.3.p"><%- cms.en['why.3.p'] %></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="how.kick"><%= cms.en['how.kick'] %></p>
+    <h2 data-i18n="how.h"><%= cms.en['how.h'] %></h2>
+    <p data-i18n-html="how.p1"><%- cms.en['how.p1'] %></p>
+    <div class="formula" aria-label="Closed form of the sum of r to the k times cosine of two pi k p">
+      <b>Σ</b><sub>k=1..n</sub> <b>rᵏ·cos(2πkp)</b>
+      &nbsp;=&nbsp;
+      ( r·c₁ − r² − r<sup>n+1</sup>·c<sub>n+1</sub> + r<sup>n+2</sup>·c<sub>n</sub> ) / ( 1 − 2r·c₁ + r² )
+      &nbsp;&nbsp;<span style="color:var(--muted)">c<sub>k</sub> = cos(2πkp)</span>
+    </div>
+    <p data-i18n-html="how.p2"><%- cms.en['how.p2'] %></p>
+    <p data-i18n-html="how.p3"><%- cms.en['how.p3'] %></p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kick" data-i18n="feat.kick"><%= cms.en['feat.kick'] %></p>
+    <h2 data-i18n="feat.h"><%= cms.en['feat.h'] %></h2>
+    <div class="feat">
+      <div><h4 data-i18n="feat.osc.h"><%= cms.en['feat.osc.h'] %></h4><p data-i18n-html="feat.osc.p"><%- cms.en['feat.osc.p'] %></p></div>
+      <div><h4 data-i18n="feat.char.h"><%= cms.en['feat.char.h'] %></h4><p data-i18n="feat.char.p"><%= cms.en['feat.char.p'] %></p></div>
+      <div><h4 data-i18n="feat.fm.h"><%= cms.en['feat.fm.h'] %></h4><p data-i18n="feat.fm.p"><%= cms.en['feat.fm.p'] %></p></div>
+      <div><h4 data-i18n="feat.filt.h"><%= cms.en['feat.filt.h'] %></h4><p data-i18n-html="feat.filt.p"><%- cms.en['feat.filt.p'] %></p></div>
+      <div><h4 data-i18n="feat.voice.h"><%= cms.en['feat.voice.h'] %></h4><p data-i18n-html="feat.voice.p"><%- cms.en['feat.voice.p'] %></p></div>
+      <div><h4 data-i18n="feat.tune.h"><%= cms.en['feat.tune.h'] %></h4><p data-i18n-html="feat.tune.p"><%- cms.en['feat.tune.p'] %></p></div>
+      <div><h4 data-i18n="feat.expr.h"><%= cms.en['feat.expr.h'] %></h4><p data-i18n="feat.expr.p"><%= cms.en['feat.expr.p'] %></p></div>
+      <div><h4 data-i18n="feat.mod.h"><%= cms.en['feat.mod.h'] %></h4><p data-i18n="feat.mod.p"><%= cms.en['feat.mod.p'] %></p></div>
+      <div><h4 data-i18n="feat.work.h"><%= cms.en['feat.work.h'] %></h4><p data-i18n="feat.work.p"><%= cms.en['feat.work.p'] %></p></div>
+      <div><h4 data-i18n="feat.see.h"><%= cms.en['feat.see.h'] %></h4><p data-i18n="feat.see.p"><%= cms.en['feat.see.p'] %></p></div>
+    </div>
+  </div>
+</section>
+
+<section id="engine">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="eng.kick"><%= cms.en['eng.kick'] %></p>
+    <h2 data-i18n="eng.h"><%= cms.en['eng.h'] %></h2>
+    <p class="lead" data-i18n-html="eng.lead"><%- cms.en['eng.lead'] %></p>
+    <ul>
+      <li data-i18n-html="eng.li1"><%- cms.en['eng.li1'] %></li>
+      <li data-i18n-html="eng.li2"><%- cms.en['eng.li2'] %></li>
+      <li data-i18n-html="eng.li3"><%- cms.en['eng.li3'] %></li>
+      <li data-i18n-html="eng.li4"><%- cms.en['eng.li4'] %></li>
+      <li data-i18n-html="eng.li5"><%- cms.en['eng.li5'] %></li>
+    </ul>
+    <p data-i18n-html="eng.p"><%- cms.en['eng.p'] %></p>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="cmp.kick"><%= cms.en['cmp.kick'] %></p>
+    <h2 data-i18n="cmp.h"><%= cms.en['cmp.h'] %></h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th data-i18n="cmp.th1"><%= cms.en['cmp.th1'] %></th><th data-i18n="cmp.th2"><%= cms.en['cmp.th2'] %></th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="cmp.r1a"><%= cms.en['cmp.r1a'] %></td><td data-i18n-html="cmp.r1b"><%- cms.en['cmp.r1b'] %></td></tr>
+          <tr><td data-i18n="cmp.r2a"><%= cms.en['cmp.r2a'] %></td><td data-i18n="cmp.r2b"><%= cms.en['cmp.r2b'] %></td></tr>
+          <tr><td data-i18n="cmp.r3a"><%= cms.en['cmp.r3a'] %></td><td data-i18n-html="cmp.r3b"><%- cms.en['cmp.r3b'] %></td></tr>
+          <tr><td data-i18n="cmp.r4a"><%= cms.en['cmp.r4a'] %></td><td data-i18n="cmp.r4b"><%= cms.en['cmp.r4b'] %></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="lim.kick"><%= cms.en['lim.kick'] %></p>
+    <h2 data-i18n="lim.h"><%= cms.en['lim.h'] %></h2>
+    <div class="honest">
+      <ul>
+        <li data-i18n-html="lim.1"><%- cms.en['lim.1'] %></li>
+        <li data-i18n-html="lim.2"><%- cms.en['lim.2'] %></li>
+        <li data-i18n-html="lim.3"><%- cms.en['lim.3'] %></li>
+        <li data-i18n-html="lim.4"><%- cms.en['lim.4'] %></li>
+        <li data-i18n-html="lim.5"><%- cms.en['lim.5'] %></li>
+        <li data-i18n-html="lim.6"><%- cms.en['lim.6'] %></li>
+      </ul>
+    </div>
+    <p class="formhint" data-i18n-html="lim.foot"><%- cms.en['lim.foot'] %></p>
+  </div>
+</section>
+
+<section id="specs">
+  <div class="wrap">
+    <p class="kick" data-i18n="spec.kick"><%= cms.en['spec.kick'] %></p>
+    <h2 data-i18n="spec.h"><%= cms.en['spec.h'] %></h2>
+    <div class="specgrid">
+      <div><div class="v">~550×</div><div class="k" data-i18n="spec.k1"><%= cms.en['spec.k1'] %></div></div>
+      <div><div class="v">±1%</div><div class="k" data-i18n="spec.k2"><%= cms.en['spec.k2'] %></div></div>
+      <div><div class="v">Δ 0.0</div><div class="k" data-i18n="spec.k3"><%= cms.en['spec.k3'] %></div></div>
+      <div><div class="v">−94.6 dB</div><div class="k" data-i18n="spec.k4"><%= cms.en['spec.k4'] %></div></div>
+      <div><div class="v">0 / 16</div><div class="k" data-i18n="spec.k5"><%= cms.en['spec.k5'] %></div></div>
+      <div><div class="v">120 + 34 + 9</div><div class="k" data-i18n="spec.k6"><%= cms.en['spec.k6'] %></div></div>
+      <div><div class="v">35 / 35</div><div class="k" data-i18n="spec.k7"><%= cms.en['spec.k7'] %></div></div>
+      <div><div class="v">~14 KB</div><div class="k" data-i18n="spec.k8"><%= cms.en['spec.k8'] %></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="price.kick"><%= cms.en['price.kick'] %></p>
+    <h2 data-i18n="price.h"><%= cms.en['price.h'] %></h2>
+    <div class="price">
+      <div class="tier">
+        <p class="tname">Core</p>
+        <p class="amt" data-i18n="price.core.amt"><%= cms.en['price.core.amt'] %></p>
+        <p class="was" data-i18n="price.core.was"><%= cms.en['price.core.was'] %></p>
+        <ul>
+          <li data-i18n="price.core.1"><%= cms.en['price.core.1'] %></li>
+          <li data-i18n="price.core.2"><%= cms.en['price.core.2'] %></li>
+          <li data-i18n="price.core.3"><%= cms.en['price.core.3'] %></li>
+          <li data-i18n="price.core.4"><%= cms.en['price.core.4'] %></li>
+          <li data-i18n="price.core.5"><%= cms.en['price.core.5'] %></li>
+        </ul>
+      </div>
+      <div class="tier hi">
+        <p class="tname">Studio</p>
+        <p class="amt" data-i18n-html="price.studio.amt"><%- cms.en['price.studio.amt'] %></p>
+        <p class="was" data-i18n="price.studio.was"><%= cms.en['price.studio.was'] %></p>
+        <ul>
+          <li data-i18n="price.studio.1"><%= cms.en['price.studio.1'] %></li>
+          <li data-i18n="price.studio.2"><%= cms.en['price.studio.2'] %></li>
+          <li data-i18n-html="price.studio.3"><%- cms.en['price.studio.3'] %></li>
+          <li data-i18n="price.studio.4"><%= cms.en['price.studio.4'] %></li>
+          <li data-i18n="price.studio.5"><%= cms.en['price.studio.5'] %></li>
+          <li data-i18n="price.studio.6"><%= cms.en['price.studio.6'] %></li>
+        </ul>
+      </div>
+    </div>
+    <p class="formhint" data-i18n="price.foot"><%= cms.en['price.foot'] %></p>
+    <h3 data-i18n="price.eng.h"><%= cms.en['price.eng.h'] %></h3>
+    <p data-i18n-html="price.eng.p"><%- cms.en['price.eng.p'] %></p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="faq.kick"><%= cms.en['faq.kick'] %></p>
+    <h2 data-i18n="faq.h"><%= cms.en['faq.h'] %></h2>
+    <% faqs.forEach(function (f, i) { %>
+    <details>
+      <summary data-i18n="faq.q<%= i + 1 %>"><%= f.question_en %></summary>
+      <p data-i18n-html="faq.a<%= i + 1 %>"><%- f.answer_en %></p>
+    </details>
+    <% }) %>
+  </div>
+</section>
+</main>
+
+<div class="final">
+  <div class="wrap narrow">
+    <h2 data-i18n="final.h"><%= cms.en['final.h'] %></h2>
+    <p class="sub" data-i18n="final.sub"><%= cms.en['final.sub'] %></p>
+    <form class="notify" id="notify">
+      <input type="email" id="notify-email" name="email" placeholder="you@studio.com" aria-label="Email address" required>
+      <button class="btn primary" type="submit" data-i18n="final.notify"><%= cms.en['final.notify'] %></button>
+    </form>
+    <p class="formhint" id="notify-hint" data-i18n="final.hint"><%= cms.en['final.hint'] %></p>
+    <div class="cta-row" style="margin-top:1.5rem">
+      <a class="btn" href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="final.cta.demo"><%= cms.en['final.cta.demo'] %></a>
+      <a class="btn" href="https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0" target="_blank" rel="noopener" data-i18n="final.cta.handbook"><%= cms.en['final.cta.handbook'] %></a>
+      <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <strong data-i18n="foot.product"><%= cms.en['foot.product'] %></strong>
+        <a href="#features" data-i18n="nav.features"><%= cms.en['nav.features'] %></a>
+        <a href="#pricing" data-i18n="nav.pricing"><%= cms.en['nav.pricing'] %></a>
+        <a href="https://claude.ai/code/artifact/a734ea1b-a6ff-4afa-91e4-9a984016ccd0" target="_blank" rel="noopener" data-i18n="foot.handbook"><%= cms.en['foot.handbook'] %></a>
+        <a href="https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed" target="_blank" rel="noopener" data-i18n="foot.demo"><%= cms.en['foot.demo'] %></a>
+      </div>
+      <div>
+        <strong data-i18n="foot.technical"><%= cms.en['foot.technical'] %></strong>
+        <a href="https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d" target="_blank" rel="noopener" data-i18n="foot.monograph"><%= cms.en['foot.monograph'] %></a>
+        <a href="https://github.com/Gnomir/AudioSynth/tree/main/docs" target="_blank" rel="noopener" data-i18n="foot.docs"><%= cms.en['foot.docs'] %></a>
+        <a href="https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md" target="_blank" rel="noopener" data-i18n="nav.limits"><%= cms.en['nav.limits'] %></a>
+        <a href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener" data-i18n="foot.source"><%= cms.en['foot.source'] %></a>
+      </div>
+      <div>
+        <strong data-i18n="foot.status"><%= cms.en['foot.status'] %></strong>
+        <span data-i18n="foot.s1"><%= cms.en['foot.s1'] %></span>
+        <span data-i18n="foot.s2"><%= cms.en['foot.s2'] %></span>
+        <span data-i18n="foot.s3"><%= cms.en['foot.s3'] %></span>
+      </div>
+    </div>
+    <p data-i18n-html="foot.fine"><%- cms.en['foot.fine'] %></p>
+  </div>
+</footer>
+
+
+<script>window.__CMS_UK__ = <%- ukJson %>;</script>
+<script src="/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<%- include('../partials/site-head', { title: title }) %>
+<div class="wrap narrow" style="padding-block:4rem">
+  <%- include('../partials/flash') %>
+  <div class="panel" style="max-width:26rem;margin:0 auto;padding:2rem">
+    <h1 style="margin-top:0">Log in</h1>
+    <form method="post" action="/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required>
+      </div>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center">Log in</button>
+    </form>
+    <p style="margin-top:1.2rem;font-size:.9rem">No account yet? <a href="/register">Create one</a>.</p>
+  </div>
+</div>
+</body>
+</html>

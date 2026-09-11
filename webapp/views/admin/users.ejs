@@ -1,0 +1,33 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="admin-shell">
+  <%- include('../partials/admin-nav') %>
+  <main class="admin-main">
+    <h1>Users</h1>
+    <%- include('../partials/flash') %>
+    <table class="admin-table">
+      <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>License / order ref.</th><th>Joined</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <% users.forEach(function (u) { %>
+          <tr>
+            <td><%= u.email %></td>
+            <td><%= u.display_name || '—' %></td>
+            <td><%= u.role %></td>
+            <td><%= u.license_key || '—' %></td>
+            <td><%= u.created_at %></td>
+            <td><span class="pill <%= u.is_active ? 'on' : 'off' %>"><%= u.is_active ? 'active' : 'disabled' %></span></td>
+            <td>
+              <% if (u.id !== user.id) { %>
+                <form method="post" action="/admin/users/<%= u.id %>/toggle-active">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn" type="submit"><%= u.is_active ? 'Deactivate' : 'Activate' %></button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </main>
+</div>
+</body>
+</html>

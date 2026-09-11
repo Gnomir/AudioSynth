@@ -1,0 +1,24 @@
+<%- include('../partials/site-head', { title: title }) %>
+<div class="bar">
+  <div class="wrap">
+    <span class="brand">Cosine</span>
+    <nav><a href="/">Home</a></nav>
+  </div>
+</div>
+<div class="wrap narrow" style="padding-block:3rem">
+  <%- include('../partials/flash') %>
+  <h1>My account</h1>
+  <dl class="kv">
+    <dt>Name</dt><dd><%= user.display_name || '—' %></dd>
+    <dt>Email</dt><dd><%= user.email %></dd>
+    <dt>License / order ref.</dt><dd><%= user.license_key || 'not on file' %></dd>
+  </dl>
+  <p class="formhint" style="margin-top:2rem">Need your Studio key file re-issued, or a support question?
+    Email us and mention the email address above.</p>
+  <form method="post" action="/logout" style="margin-top:1.5rem">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn" type="submit">Log out</button>
+  </form>
+</div>
+</body>
+</html>

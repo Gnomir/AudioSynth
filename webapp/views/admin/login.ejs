@@ -1,0 +1,21 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="login-shell">
+  <div class="login-box">
+    <h1>Cosine — Admin</h1>
+    <%- include('../partials/flash') %>
+    <form method="post" action="/admin/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required>
+      </div>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center">Log in</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<%- include('../partials/admin-head', { title: title }) %>
+<div class="admin-shell">
+  <%- include('../partials/admin-nav') %>
+  <main class="admin-main">
+    <h1>Site content</h1>
+    <%- include('../partials/flash') %>
+    <p class="formhint" style="margin-bottom:1.5rem">Every heading, paragraph and label on the landing page, grouped by
+      section. Click a key to edit its English and Ukrainian text side by side.</p>
+    <% groups.forEach(function ([section, items]) { %>
+      <div class="content-group" id="<%= section %>">
+        <h2><%= section %> (<%= items.length %>)</h2>
+        <% items.forEach(function (item) { %>
+          <div class="content-row" id="<%= item.key %>">
+            <div>
+              <a href="/admin/content/<%= encodeURIComponent(item.key) %>" class="k"><%= item.key %></a>
+              <div class="preview"><%= item.en.replace(/<[^>]+>/g, '') %></div>
+            </div>
+            <a class="btn" href="/admin/content/<%= encodeURIComponent(item.key) %>">Edit</a>
+          </div>
+        <% }) %>
+      </div>
+    <% }) %>
+  </main>
+</div>
+</body>
+</html>
