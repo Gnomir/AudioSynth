@@ -10,6 +10,12 @@ as the live implementation — that file's design and copy is exactly what got
 migrated in here (see "Where the content came from" below); it isn't rebuilt
 from scratch.
 
+> **Before deploying this anywhere real, read [`AUDIT.md`](AUDIT.md).** A
+> source-level security/architecture review found one critical issue (a
+> default session secret with no production guard — full auth bypass if
+> deployed as-is) and several others worth fixing first. Nothing here has
+> been penetration-tested; it's had one careful read.
+
 ## Quick start
 
 ```sh
