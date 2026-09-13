@@ -2,7 +2,7 @@
 <div class="bar">
   <div class="wrap">
     <span class="brand">Cosine <span class="prov" data-i18n="brand.prov"><%= cms.en['brand.prov'] %></span></span>
-    <nav>
+    <nav id="site-nav">
       <a href="#tune" data-i18n="tune.kick"><%= cms.en['tune.kick'] %></a>
       <a href="#listen" data-i18n="listen.kick"><%= cms.en['listen.kick'] %></a>
       <a href="#audit" data-i18n="audit.kick"><%= cms.en['audit.kick'] %></a>
@@ -18,6 +18,7 @@
       <button type="button" data-lang="uk" aria-pressed="false">УКР</button>
     </div>
     <button type="button" class="icon-btn" id="theme" aria-label="Toggle theme" title="Theme">◐</button>
+    <button type="button" class="icon-btn menu-btn" id="menu-toggle" aria-label="Menu" aria-expanded="false" aria-controls="site-nav">☰</button>
   </div>
 </div>
 
@@ -135,7 +136,9 @@
     <p class="kick" data-i18n="tune.kick"><%= cms.en['tune.kick'] %></p>
     <h2 data-i18n="tune.h"><%= cms.en['tune.h'] %></h2>
     <p class="lead" data-i18n-html="feat.tune.p"><%- cms.en['feat.tune.p'] %></p>
-    <p data-i18n-html="tune.proof"><%- cms.en['tune.proof'] %></p>
+    <div class="callout">
+      <p data-i18n-html="tune.proof"><%- cms.en['tune.proof'] %></p>
+    </div>
   </div>
 </section>
 
@@ -228,7 +231,7 @@
         </ul>
       </div>
       <div class="tier hi">
-        <p class="tname">Studio</p>
+        <p class="tname">Studio <span class="badge" data-i18n="price.studio.badge"><%= cms.en['price.studio.badge'] %></span></p>
         <p class="amt" data-i18n-html="price.studio.amt"><%- cms.en['price.studio.amt'] %></p>
         <p class="was" data-i18n="price.studio.was"><%= cms.en['price.studio.was'] %></p>
         <ul>

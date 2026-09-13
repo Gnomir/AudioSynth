@@ -161,7 +161,19 @@
   .bar nav { display: flex; gap: 1.15rem; font-family: "JetBrains Mono", monospace; font-size: .73rem; }
   .bar nav a { color: var(--ink-soft); text-decoration: none; }
   .bar nav a:hover { color: var(--teal-ink); }
-  @media (max-width: 54rem) { .bar nav { display: none; } }
+  .menu-btn { display: none; }
+  @media (max-width: 54rem) {
+    .menu-btn { display: inline-flex; }
+    .bar nav {
+      display: none; flex-direction: column; gap: 0;
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--bg); border-bottom: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+    .bar.menu-open nav { display: flex; }
+    .bar nav a { padding: .85rem 1.5rem; border-top: 1px solid var(--line); }
+    .bar nav a:first-child { border-top: 0; }
+  }
   @media (max-width: 30rem) { .brand .prov { display: none; } }
 
   .seg {
@@ -192,10 +204,11 @@
     font-family: "JetBrains Mono", monospace; font-size: .78rem; font-weight: 500;
     padding: .6rem 1rem; border-radius: 6px; text-decoration: none;
     border: 1px solid var(--rule); color: var(--ink); background: var(--surface);
-    transition: border-color .15s;
+    transition: border-color .15s, transform .15s, box-shadow .15s;
   }
-  .btn:hover { border-color: var(--teal-ink); }
+  .btn:hover { border-color: var(--teal-ink); transform: translateY(-1px); }
   .btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .btn.primary:hover { box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--teal) 65%, transparent); }
   :root[data-theme="dark"] .btn.primary { color: #0c1413; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0c1413; } }
 
@@ -281,6 +294,11 @@
   .card {
     background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
     padding: 1.2rem 1.25rem;
+    transition: border-color .18s, transform .18s, box-shadow .18s;
+  }
+  .card:hover {
+    border-color: var(--teal-ink); transform: translateY(-3px);
+    box-shadow: 0 16px 30px -22px rgba(0,0,0,.4);
   }
   .card h3 { margin: 0 0 .4rem; font-size: 1.06rem; }
   .card p { font-size: .91rem; color: var(--ink-soft); margin: 0; }
@@ -293,13 +311,23 @@
   }
   .formula b { color: var(--ink); }
 
+  .callout {
+    background: var(--teal-bg); border: 1px solid color-mix(in srgb, var(--teal) 32%, var(--line));
+    border-left: 3px solid var(--teal); border-radius: 0 9px 9px 0;
+    padding: 1.1rem 1.3rem; margin: 1.25rem 0 0;
+  }
+  .callout p { margin: 0; color: var(--ink-soft); font-size: .95rem; }
+  .callout p:not(:last-child) { margin-bottom: .5rem; }
+  .callout b { color: var(--teal-ink); font-variant-numeric: tabular-nums; }
+
   .feat {
     display: grid; grid-template-columns: repeat(2, 1fr);
     gap: 1px; background: var(--line); border: 1px solid var(--line);
     border-radius: 9px; overflow: hidden;
   }
   @media (max-width: 48rem) { .feat { grid-template-columns: 1fr; } }
-  .feat > div { background: var(--surface); padding: 1rem 1.15rem; }
+  .feat > div { background: var(--surface); padding: 1rem 1.15rem; transition: background-color .15s; }
+  .feat > div:hover { background: var(--surface-2); }
   .feat h4 {
     font-family: "JetBrains Mono", monospace; font-size: .66rem; font-weight: 500;
     letter-spacing: .06em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 .4rem;
@@ -336,13 +364,16 @@
     text-transform: uppercase; color: var(--muted); margin-top: .25rem; line-height: 1.5;
   }
 
+  /* 9 items — 3 columns divides evenly (unlike 2, which strands a lone
+     card in a half-empty last row). */
   .auditgrid {
-    display: grid; grid-template-columns: repeat(2, 1fr);
+    display: grid; grid-template-columns: repeat(3, 1fr);
     gap: 1px; background: var(--line); border: 1px solid var(--line);
     border-radius: 9px; overflow: hidden;
   }
-  @media (max-width: 48rem) { .auditgrid { grid-template-columns: 1fr; } }
-  .auditgrid > div { background: var(--surface); padding: 1rem 1.15rem; }
+  @media (max-width: 56rem) { .auditgrid { grid-template-columns: 1fr; } }
+  .auditgrid > div { background: var(--surface); padding: 1rem 1.15rem; transition: background-color .15s; }
+  .auditgrid > div:hover { background: var(--surface-2); }
   .auditgrid .v {
     font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 1.05rem;
     color: var(--teal-ink); font-variant-numeric: tabular-nums; margin: 0 0 .35rem;
@@ -368,9 +399,15 @@
 
   .price { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   @media (max-width: 48rem) { .price { grid-template-columns: 1fr; } }
-  .tier { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 1.35rem 1.35rem 1.45rem; }
+  .tier { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 1.35rem 1.35rem 1.45rem; }
   .tier.hi { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
-  .tier .tname { font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .tier .tname { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .badge {
+    font-family: "JetBrains Mono", monospace; font-size: .6rem; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--teal-ink); background: var(--teal-bg);
+    border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line));
+    border-radius: 20px; padding: .22rem .6rem;
+  }
   .tier .amt { font-family: "Newsreader", serif; font-weight: 600; font-size: 2rem; margin: .3rem 0 .1rem; }
   .tier .amt small { font-size: .88rem; color: var(--muted); font-weight: 400; }
   .tier .was { font-family: "JetBrains Mono", monospace; font-size: .68rem; color: var(--muted); }

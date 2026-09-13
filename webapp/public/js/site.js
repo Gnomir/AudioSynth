@@ -81,6 +81,29 @@
     if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
   })();
 
+  /* ================= mobile nav ================= */
+  var bar = document.querySelector(".bar");
+  var menuBtn = document.getElementById("menu-toggle");
+  var siteNav = document.getElementById("site-nav");
+  function setMenu(open) {
+    if (!bar || !menuBtn) return;
+    bar.classList.toggle("menu-open", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+  }
+  if (menuBtn) {
+    menuBtn.addEventListener("click", function () {
+      setMenu(!bar.classList.contains("menu-open"));
+    });
+  }
+  if (siteNav) {
+    siteNav.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function () { setMenu(false); });
+    });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") setMenu(false);
+  });
+
   /* ================= live spectrum ================= */
   var cv = document.getElementById("cv"), ctx = cv && cv.getContext("2d");
   var sB = document.getElementById("s-b"), sP = document.getElementById("s-p"), sF = document.getElementById("s-f");
