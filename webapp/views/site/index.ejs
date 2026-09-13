@@ -30,16 +30,11 @@
       <h1 data-i18n-html="hero.h1"><%- cms.en['hero.h1'] %></h1>
       <p class="sub" data-i18n-html="hero.sub"><%- cms.en['hero.sub'] %></p>
       <div class="cta-row">
-        <a class="btn primary" href="#pricing" data-i18n="hero.cta.pricing"><%= cms.en['hero.cta.pricing'] %></a>
-        <a class="btn" href="/demo" target="_blank" rel="noopener" data-i18n="hero.cta.demo"><%= cms.en['hero.cta.demo'] %></a>
+        <a class="btn primary" href="/demo" target="_blank" rel="noopener" data-i18n="hero.cta.demo"><%= cms.en['hero.cta.demo'] %></a>
+        <a class="btn" href="#pricing" data-i18n="hero.cta.pricing"><%= cms.en['hero.cta.pricing'] %></a>
         <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
       </div>
       <p class="formhint" data-i18n-html="hero.proof" style="margin-top:1rem"><%- cms.en['hero.proof'] %></p>
-      <div class="trust">
-        <span data-i18n="hero.trust.1"><%= cms.en['hero.trust.1'] %></span>
-        <span data-i18n="hero.trust.2"><%= cms.en['hero.trust.2'] %></span>
-        <span data-i18n="hero.trust.3"><%= cms.en['hero.trust.3'] %></span>
-      </div>
     </div>
 
     <div class="panel" id="demo">
@@ -69,6 +64,17 @@
     </div>
   </div>
 </header>
+
+<div class="trustbar">
+  <div class="wrap">
+    <span data-i18n="trustbar.1"><%= cms.en['trustbar.1'] %></span>
+    <span data-i18n="trustbar.2"><%= cms.en['trustbar.2'] %></span>
+    <span data-i18n="trustbar.3"><%= cms.en['trustbar.3'] %></span>
+    <span data-i18n="trustbar.4"><%= cms.en['trustbar.4'] %></span>
+    <span data-i18n="trustbar.5"><%= cms.en['trustbar.5'] %></span>
+    <span data-i18n="trustbar.6"><%= cms.en['trustbar.6'] %></span>
+  </div>
+</div>
 
 <main>
 <section id="why">
@@ -110,6 +116,20 @@
   </div>
 </section>
 
+<section id="serum">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="serum.kick"><%= cms.en['serum.kick'] %></p>
+    <h2 data-i18n="serum.h"><%= cms.en['serum.h'] %></h2>
+    <p class="lead" data-i18n-html="serum.lead"><%- cms.en['serum.lead'] %></p>
+    <div class="feat">
+      <div><h4 data-i18n="serum.1.h"><%= cms.en['serum.1.h'] %></h4><p data-i18n-html="serum.1.p"><%- cms.en['serum.1.p'] %></p></div>
+      <div><h4 data-i18n="serum.2.h"><%= cms.en['serum.2.h'] %></h4><p data-i18n-html="serum.2.p"><%- cms.en['serum.2.p'] %></p></div>
+      <div><h4 data-i18n="serum.3.h"><%= cms.en['serum.3.h'] %></h4><p data-i18n-html="serum.3.p"><%- cms.en['serum.3.p'] %></p></div>
+      <div><h4 data-i18n="serum.4.h"><%= cms.en['serum.4.h'] %></h4><p data-i18n-html="serum.4.p"><%- cms.en['serum.4.p'] %></p></div>
+    </div>
+  </div>
+</section>
+
 <section id="tune">
   <div class="wrap narrow">
     <p class="kick" data-i18n="tune.kick"><%= cms.en['tune.kick'] %></p>
@@ -119,13 +139,24 @@
   </div>
 </section>
 
+<section id="shot">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="shot.kick"><%= cms.en['shot.kick'] %></p>
+    <h2 data-i18n="shot.h"><%= cms.en['shot.h'] %></h2>
+    <figure class="shot">
+      <img src="/images/reaper-screenshot.png" alt="Cosine plugin editor running live in REAPER v7.79" loading="lazy">
+      <figcaption data-i18n="shot.caption"><%= cms.en['shot.caption'] %></figcaption>
+    </figure>
+  </div>
+</section>
+
 <section id="audit">
   <div class="wrap">
     <p class="kick" data-i18n="audit.kick"><%= cms.en['audit.kick'] %></p>
     <h2 data-i18n="audit.h"><%= cms.en['audit.h'] %></h2>
     <p class="lead" data-i18n-html="audit.sub"><%- cms.en['audit.sub'] %></p>
     <div class="auditgrid">
-      <% for (let i = 1; i <= 8; i++) { %>
+      <% for (let i = 1; i <= 9; i++) { %>
       <div>
         <p class="v"><%= cms.en['audit.' + i + '.v'] %></p>
         <p data-i18n="audit.<%= i %>.p"><%= cms.en['audit.' + i + '.p'] %></p>

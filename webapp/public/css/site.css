@@ -404,6 +404,30 @@
   }
   .trust span::before { content: "\2713"; color: var(--good); margin-right: .4em; }
 
+  .trustbar {
+    background: var(--surface-2); border-block: 1px solid var(--line);
+    padding-block: 1rem;
+  }
+  .trustbar .wrap {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: .6rem 1.6rem;
+  }
+  .trustbar span {
+    font-family: "JetBrains Mono", monospace; font-size: .76rem;
+    color: var(--ink-soft); white-space: nowrap;
+  }
+  .trustbar span::before { content: "\2713"; color: var(--good); margin-right: .45em; font-weight: 600; }
+
+  .shot { margin: 1.5rem 0 0; text-align: center; }
+  .shot img {
+    max-width: 100%; border-radius: 9px; border: 1px solid var(--line);
+    box-shadow: 0 20px 50px -30px rgba(0,0,0,.5);
+  }
+  .shot figcaption {
+    font-family: "JetBrains Mono", monospace; font-size: .74rem;
+    color: var(--muted); margin-top: .75rem;
+  }
+
   footer { padding-block: 2.5rem 3.25rem; font-family: "JetBrains Mono", monospace; font-size: .69rem; color: var(--muted); line-height: 1.85; }
   footer a { color: var(--ink-soft); }
   footer .cols { display: flex; flex-wrap: wrap; gap: 1.3rem 2.4rem; margin-bottom: 1.5rem; }
