@@ -3,10 +3,9 @@
   <div class="wrap">
     <span class="brand">Cosine <span class="prov" data-i18n="brand.prov"><%= cms.en['brand.prov'] %></span></span>
     <nav>
-      <a href="#how" data-i18n="nav.how"><%= cms.en['nav.how'] %></a>
-      <a href="#features" data-i18n="nav.features"><%= cms.en['nav.features'] %></a>
-      <a href="#engine" data-i18n="nav.engine"><%= cms.en['nav.engine'] %></a>
-      <a href="#limits" data-i18n="nav.limits"><%= cms.en['nav.limits'] %></a>
+      <a href="#tune" data-i18n="tune.kick"><%= cms.en['tune.kick'] %></a>
+      <a href="#listen" data-i18n="listen.kick"><%= cms.en['listen.kick'] %></a>
+      <a href="#audit" data-i18n="audit.kick"><%= cms.en['audit.kick'] %></a>
       <a href="#pricing" data-i18n="nav.pricing"><%= cms.en['nav.pricing'] %></a>
       <% if (user) { %>
         <a href="/account">My account</a>
@@ -35,6 +34,7 @@
         <a class="btn" href="/demo" target="_blank" rel="noopener" data-i18n="hero.cta.demo"><%= cms.en['hero.cta.demo'] %></a>
         <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
       </div>
+      <p class="formhint" data-i18n-html="hero.proof" style="margin-top:1rem"><%- cms.en['hero.proof'] %></p>
     </div>
 
     <div class="panel" id="demo">
@@ -75,65 +75,80 @@
         <p data-i18n-html="why.1.p"><%- cms.en['why.1.p'] %></p>
       </div>
       <div class="card">
-        <h3 data-i18n="why.2.h"><%= cms.en['why.2.h'] %></h3>
-        <p data-i18n-html="why.2.p"><%- cms.en['why.2.p'] %></p>
-      </div>
-      <div class="card">
         <h3 data-i18n="why.3.h"><%= cms.en['why.3.h'] %></h3>
         <p data-i18n-html="why.3.p"><%- cms.en['why.3.p'] %></p>
       </div>
+      <div class="card">
+        <h3 data-i18n="why.4.h"><%= cms.en['why.4.h'] %></h3>
+        <p data-i18n-html="why.4.p"><%- cms.en['why.4.p'] %></p>
+      </div>
     </div>
+    <p class="formhint" style="margin-top:1.25rem" data-i18n-html="how.p3"><%- cms.en['how.p3'] %></p>
   </div>
 </section>
 
-<section id="how">
+<section id="audience">
   <div class="wrap narrow">
-    <p class="kick" data-i18n="how.kick"><%= cms.en['how.kick'] %></p>
-    <h2 data-i18n="how.h"><%= cms.en['how.h'] %></h2>
-    <p data-i18n-html="how.p1"><%- cms.en['how.p1'] %></p>
-    <div class="formula" aria-label="Closed form of the sum of r to the k times cosine of two pi k p">
-      <b>Σ</b><sub>k=1..n</sub> <b>rᵏ·cos(2πkp)</b>
-      &nbsp;=&nbsp;
-      ( r·c₁ − r² − r<sup>n+1</sup>·c<sub>n+1</sub> + r<sup>n+2</sup>·c<sub>n</sub> ) / ( 1 − 2r·c₁ + r² )
-      &nbsp;&nbsp;<span style="color:var(--muted)">c<sub>k</sub> = cos(2πkp)</span>
-    </div>
-    <p data-i18n-html="how.p2"><%- cms.en['how.p2'] %></p>
-    <p data-i18n-html="how.p3"><%- cms.en['how.p3'] %></p>
-  </div>
-</section>
-
-<section id="features">
-  <div class="wrap">
-    <p class="kick" data-i18n="feat.kick"><%= cms.en['feat.kick'] %></p>
-    <h2 data-i18n="feat.h"><%= cms.en['feat.h'] %></h2>
-    <div class="feat">
-      <div><h4 data-i18n="feat.osc.h"><%= cms.en['feat.osc.h'] %></h4><p data-i18n-html="feat.osc.p"><%- cms.en['feat.osc.p'] %></p></div>
-      <div><h4 data-i18n="feat.char.h"><%= cms.en['feat.char.h'] %></h4><p data-i18n="feat.char.p"><%= cms.en['feat.char.p'] %></p></div>
-      <div><h4 data-i18n="feat.fm.h"><%= cms.en['feat.fm.h'] %></h4><p data-i18n="feat.fm.p"><%= cms.en['feat.fm.p'] %></p></div>
-      <div><h4 data-i18n="feat.filt.h"><%= cms.en['feat.filt.h'] %></h4><p data-i18n-html="feat.filt.p"><%- cms.en['feat.filt.p'] %></p></div>
-      <div><h4 data-i18n="feat.voice.h"><%= cms.en['feat.voice.h'] %></h4><p data-i18n-html="feat.voice.p"><%- cms.en['feat.voice.p'] %></p></div>
-      <div><h4 data-i18n="feat.tune.h"><%= cms.en['feat.tune.h'] %></h4><p data-i18n-html="feat.tune.p"><%- cms.en['feat.tune.p'] %></p></div>
-      <div><h4 data-i18n="feat.expr.h"><%= cms.en['feat.expr.h'] %></h4><p data-i18n="feat.expr.p"><%= cms.en['feat.expr.p'] %></p></div>
-      <div><h4 data-i18n="feat.mod.h"><%= cms.en['feat.mod.h'] %></h4><p data-i18n="feat.mod.p"><%= cms.en['feat.mod.p'] %></p></div>
-      <div><h4 data-i18n="feat.work.h"><%= cms.en['feat.work.h'] %></h4><p data-i18n="feat.work.p"><%= cms.en['feat.work.p'] %></p></div>
-      <div><h4 data-i18n="feat.see.h"><%= cms.en['feat.see.h'] %></h4><p data-i18n="feat.see.p"><%= cms.en['feat.see.p'] %></p></div>
-    </div>
-  </div>
-</section>
-
-<section id="engine">
-  <div class="wrap narrow">
-    <p class="kick" data-i18n="eng.kick"><%= cms.en['eng.kick'] %></p>
-    <h2 data-i18n="eng.h"><%= cms.en['eng.h'] %></h2>
-    <p class="lead" data-i18n-html="eng.lead"><%- cms.en['eng.lead'] %></p>
+    <p class="kick" data-i18n="audience.kick"><%= cms.en['audience.kick'] %></p>
+    <h2 data-i18n="audience.h"><%= cms.en['audience.h'] %></h2>
     <ul>
-      <li data-i18n-html="eng.li1"><%- cms.en['eng.li1'] %></li>
-      <li data-i18n-html="eng.li2"><%- cms.en['eng.li2'] %></li>
-      <li data-i18n-html="eng.li3"><%- cms.en['eng.li3'] %></li>
-      <li data-i18n-html="eng.li4"><%- cms.en['eng.li4'] %></li>
-      <li data-i18n-html="eng.li5"><%- cms.en['eng.li5'] %></li>
+      <li data-i18n="audience.1"><%= cms.en['audience.1'] %></li>
+      <li data-i18n="audience.2"><%= cms.en['audience.2'] %></li>
+      <li data-i18n="audience.3"><%= cms.en['audience.3'] %></li>
+      <li data-i18n="audience.4"><%= cms.en['audience.4'] %></li>
     </ul>
-    <p data-i18n-html="eng.p"><%- cms.en['eng.p'] %></p>
+    <p class="formhint" data-i18n="audience.note"><%= cms.en['audience.note'] %></p>
+  </div>
+</section>
+
+<section id="tune">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="tune.kick"><%= cms.en['tune.kick'] %></p>
+    <h2 data-i18n="tune.h"><%= cms.en['tune.h'] %></h2>
+    <p class="lead" data-i18n-html="feat.tune.p"><%- cms.en['feat.tune.p'] %></p>
+    <p data-i18n-html="tune.proof"><%- cms.en['tune.proof'] %></p>
+  </div>
+</section>
+
+<section id="audit">
+  <div class="wrap">
+    <p class="kick" data-i18n="audit.kick"><%= cms.en['audit.kick'] %></p>
+    <h2 data-i18n="audit.h"><%= cms.en['audit.h'] %></h2>
+    <p class="lead" data-i18n-html="audit.sub"><%- cms.en['audit.sub'] %></p>
+    <div class="auditgrid">
+      <% for (let i = 1; i <= 8; i++) { %>
+      <div>
+        <p class="v"><%= cms.en['audit.' + i + '.v'] %></p>
+        <p data-i18n="audit.<%= i %>.p"><%= cms.en['audit.' + i + '.p'] %></p>
+      </div>
+      <% } %>
+    </div>
+    <p class="formhint" style="margin-top:1rem" data-i18n-html="audit.foot"><%- cms.en['audit.foot'] %></p>
+  </div>
+</section>
+
+<section id="listen">
+  <div class="wrap">
+    <p class="kick" data-i18n="listen.kick"><%= cms.en['listen.kick'] %></p>
+    <h2 data-i18n="listen.h"><%= cms.en['listen.h'] %></h2>
+    <p class="lead" data-i18n="listen.p"><%= cms.en['listen.p'] %></p>
+    <div class="listen">
+      <div>
+        <p class="lbl" data-i18n="listen.1.label"><%= cms.en['listen.1.label'] %></p>
+        <audio controls preload="none" src="/audio/brightness-sweep.wav"></audio>
+      </div>
+      <div>
+        <p class="lbl" data-i18n="listen.2.label"><%= cms.en['listen.2.label'] %></p>
+        <audio controls preload="none" src="/audio/unison-pad.wav"></audio>
+      </div>
+      <div>
+        <p class="lbl" data-i18n="listen.3.label"><%= cms.en['listen.3.label'] %></p>
+        <audio controls preload="none" src="/audio/character-progression.wav"></audio>
+      </div>
+    </div>
+    <p style="margin-top:1.25rem">
+      <a class="btn primary" href="/demo" target="_blank" rel="noopener" data-i18n="listen.cta"><%= cms.en['listen.cta'] %></a>
+    </p>
   </div>
 </section>
 
@@ -151,41 +166,6 @@
           <tr><td data-i18n="cmp.r4a"><%= cms.en['cmp.r4a'] %></td><td data-i18n="cmp.r4b"><%= cms.en['cmp.r4b'] %></td></tr>
         </tbody>
       </table>
-    </div>
-  </div>
-</section>
-
-<section id="limits">
-  <div class="wrap narrow">
-    <p class="kick" data-i18n="lim.kick"><%= cms.en['lim.kick'] %></p>
-    <h2 data-i18n="lim.h"><%= cms.en['lim.h'] %></h2>
-    <div class="honest">
-      <ul>
-        <li data-i18n-html="lim.1"><%- cms.en['lim.1'] %></li>
-        <li data-i18n-html="lim.2"><%- cms.en['lim.2'] %></li>
-        <li data-i18n-html="lim.3"><%- cms.en['lim.3'] %></li>
-        <li data-i18n-html="lim.4"><%- cms.en['lim.4'] %></li>
-        <li data-i18n-html="lim.5"><%- cms.en['lim.5'] %></li>
-        <li data-i18n-html="lim.6"><%- cms.en['lim.6'] %></li>
-      </ul>
-    </div>
-    <p class="formhint" data-i18n-html="lim.foot"><%- cms.en['lim.foot'] %></p>
-  </div>
-</section>
-
-<section id="specs">
-  <div class="wrap">
-    <p class="kick" data-i18n="spec.kick"><%= cms.en['spec.kick'] %></p>
-    <h2 data-i18n="spec.h"><%= cms.en['spec.h'] %></h2>
-    <div class="specgrid">
-      <div><div class="v">~550×</div><div class="k" data-i18n="spec.k1"><%= cms.en['spec.k1'] %></div></div>
-      <div><div class="v">±1%</div><div class="k" data-i18n="spec.k2"><%= cms.en['spec.k2'] %></div></div>
-      <div><div class="v">Δ 0.0</div><div class="k" data-i18n="spec.k3"><%= cms.en['spec.k3'] %></div></div>
-      <div><div class="v">−94.6 dB</div><div class="k" data-i18n="spec.k4"><%= cms.en['spec.k4'] %></div></div>
-      <div><div class="v">0 / 16</div><div class="k" data-i18n="spec.k5"><%= cms.en['spec.k5'] %></div></div>
-      <div><div class="v">120 + 34 + 9</div><div class="k" data-i18n="spec.k6"><%= cms.en['spec.k6'] %></div></div>
-      <div><div class="v">35 / 35</div><div class="k" data-i18n="spec.k7"><%= cms.en['spec.k7'] %></div></div>
-      <div><div class="v">~14 KB</div><div class="k" data-i18n="spec.k8"><%= cms.en['spec.k8'] %></div></div>
     </div>
   </div>
 </section>
@@ -227,6 +207,24 @@
   </div>
 </section>
 
+<section id="limits">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="lim.kick"><%= cms.en['lim.kick'] %></p>
+    <h2 data-i18n="lim.h"><%= cms.en['lim.h'] %></h2>
+    <div class="honest">
+      <ul>
+        <li data-i18n-html="lim.1"><%- cms.en['lim.1'] %></li>
+        <li data-i18n-html="lim.2"><%- cms.en['lim.2'] %></li>
+        <li data-i18n-html="lim.3"><%- cms.en['lim.3'] %></li>
+        <li data-i18n-html="lim.4"><%- cms.en['lim.4'] %></li>
+        <li data-i18n-html="lim.5"><%- cms.en['lim.5'] %></li>
+        <li data-i18n-html="lim.6"><%- cms.en['lim.6'] %></li>
+      </ul>
+    </div>
+    <p class="formhint" data-i18n-html="lim.foot"><%- cms.en['lim.foot'] %></p>
+  </div>
+</section>
+
 <section id="faq">
   <div class="wrap narrow">
     <p class="kick" data-i18n="faq.kick"><%= cms.en['faq.kick'] %></p>
@@ -237,6 +235,41 @@
       <p data-i18n-html="faq.a<%= i + 1 %>"><%- f.answer_en %></p>
     </details>
     <% }) %>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="feat.kick"><%= cms.en['feat.kick'] %></p>
+    <h2 data-i18n="feat.h"><%= cms.en['feat.h'] %></h2>
+    <ul>
+      <li><strong data-i18n="feat.osc.h"><%= cms.en['feat.osc.h'] %></strong> — <span data-i18n-html="feat.osc.p"><%- cms.en['feat.osc.p'] %></span></li>
+      <li><strong data-i18n="feat.char.h"><%= cms.en['feat.char.h'] %></strong> — <span data-i18n="feat.char.p"><%= cms.en['feat.char.p'] %></span></li>
+      <li><strong data-i18n="feat.fm.h"><%= cms.en['feat.fm.h'] %></strong> — <span data-i18n="feat.fm.p"><%= cms.en['feat.fm.p'] %></span></li>
+      <li><strong data-i18n="feat.filt.h"><%= cms.en['feat.filt.h'] %></strong> — <span data-i18n-html="feat.filt.p"><%- cms.en['feat.filt.p'] %></span></li>
+      <li><strong data-i18n="feat.voice.h"><%= cms.en['feat.voice.h'] %></strong> — <span data-i18n-html="feat.voice.p"><%- cms.en['feat.voice.p'] %></span></li>
+      <li><strong data-i18n="feat.expr.h"><%= cms.en['feat.expr.h'] %></strong> — <span data-i18n="feat.expr.p"><%= cms.en['feat.expr.p'] %></span></li>
+      <li><strong data-i18n="feat.mod.h"><%= cms.en['feat.mod.h'] %></strong> — <span data-i18n="feat.mod.p"><%= cms.en['feat.mod.p'] %></span></li>
+      <li><strong data-i18n="feat.work.h"><%= cms.en['feat.work.h'] %></strong> — <span data-i18n="feat.work.p"><%= cms.en['feat.work.p'] %></span></li>
+      <li><strong data-i18n="feat.see.h"><%= cms.en['feat.see.h'] %></strong> — <span data-i18n="feat.see.p"><%= cms.en['feat.see.p'] %></span></li>
+    </ul>
+    <p class="formhint"><a href="/handbook" target="_blank" rel="noopener" data-i18n="final.cta.handbook"><%= cms.en['final.cta.handbook'] %></a></p>
+  </div>
+</section>
+
+<section id="engine">
+  <div class="wrap narrow">
+    <p class="kick" data-i18n="eng.kick"><%= cms.en['eng.kick'] %></p>
+    <h2 data-i18n="eng.h"><%= cms.en['eng.h'] %></h2>
+    <p class="lead" data-i18n-html="eng.lead"><%- cms.en['eng.lead'] %></p>
+    <ul>
+      <li data-i18n-html="eng.li1"><%- cms.en['eng.li1'] %></li>
+      <li data-i18n-html="eng.li2"><%- cms.en['eng.li2'] %></li>
+      <li data-i18n-html="eng.li3"><%- cms.en['eng.li3'] %></li>
+      <li data-i18n-html="eng.li4"><%- cms.en['eng.li4'] %></li>
+      <li data-i18n-html="eng.li5"><%- cms.en['eng.li5'] %></li>
+    </ul>
+    <p data-i18n-html="eng.p"><%- cms.en['eng.p'] %></p>
   </div>
 </section>
 </main>
@@ -251,7 +284,6 @@
     </form>
     <p class="formhint" id="notify-hint" data-i18n="final.hint"><%= cms.en['final.hint'] %></p>
     <div class="cta-row" style="margin-top:1.5rem">
-      <a class="btn" href="/demo" target="_blank" rel="noopener" data-i18n="final.cta.demo"><%= cms.en['final.cta.demo'] %></a>
       <a class="btn" href="/handbook" target="_blank" rel="noopener" data-i18n="final.cta.handbook"><%= cms.en['final.cta.handbook'] %></a>
       <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
     </div>

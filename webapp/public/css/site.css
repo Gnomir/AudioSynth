@@ -275,6 +275,9 @@
 
   .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
   @media (max-width: 48rem) { .three { grid-template-columns: 1fr; } }
+  .four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  @media (max-width: 64rem) { .four { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 48rem) { .four { grid-template-columns: 1fr; } }
   .card {
     background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
     padding: 1.2rem 1.25rem;
@@ -332,6 +335,28 @@
     font-family: "JetBrains Mono", monospace; font-size: .57rem; letter-spacing: .07em;
     text-transform: uppercase; color: var(--muted); margin-top: .25rem; line-height: 1.5;
   }
+
+  .auditgrid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 9px; overflow: hidden;
+  }
+  @media (max-width: 48rem) { .auditgrid { grid-template-columns: 1fr; } }
+  .auditgrid > div { background: var(--surface); padding: 1rem 1.15rem; }
+  .auditgrid .v {
+    font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 1.05rem;
+    color: var(--teal-ink); font-variant-numeric: tabular-nums; margin: 0 0 .35rem;
+  }
+  .auditgrid p { font-size: .88rem; color: var(--ink-soft); margin: 0; }
+
+  .listen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 56rem) { .listen { grid-template-columns: 1fr; } }
+  .listen > div {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+    padding: 1.1rem 1.15rem;
+  }
+  .listen .lbl { font-size: .88rem; color: var(--ink-soft); margin: 0 0 .6rem; }
+  .listen audio { width: 100%; }
 
   .honest {
     background: var(--amber-bg);

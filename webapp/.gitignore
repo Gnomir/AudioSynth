@@ -4,3 +4,4 @@ database/*.sqlite
 database/*.sqlite-*
 storage/uploads/*
 !storage/uploads/.gitkeep
+server.log

@@ -10,6 +10,10 @@ target/
 # --- generated artifacts ---
 # demo renders — regenerate: cargo run --example <name> --release
 *.wav
+# ...except the site's own committed audio examples (webapp/public/audio/) —
+# regenerated the same way, but these are served by the live site, not
+# throwaway dev output.
+!webapp/public/audio/*.wav
 # wasm demo build output — regenerate: see harmonic_core/contrib/wasm-demo/README.md
 harmonic_core/contrib/wasm-demo/harmonic_core.wasm
 # plugin bundles live under target/ (already ignored)
