@@ -206,6 +206,5 @@ rest of the live-DAW checklist, an upstream PR for the nih-plug CLAP fix, real
 hardware / Daisy firmware, an MTS-ESP client, and an inharmonic third kernel /
 SoA-SIMD if a concrete need ever appears.
 
-Commercial packaging of all of the above — capability spec sheet, positioning,
-pricing models, first-customer channels — is in
-**[`../product/`](../product/README.md)**.
+The independent technical audit behind every measured claim above is
+**[`../product/QA_REPORT.md`](../product/QA_REPORT.md)**.

@@ -155,21 +155,19 @@ this way on purpose, so each is a natural extension instead of a rewrite:
   the admin editor pattern generalise directly to a `pages` table (slug,
   title, body per language) rendered through one more EJS view + route — the
   same shape as what FAQ already is — the natural next step if these need
-  in-admin editing rather than a code change. The repo's own `docs/*.md` and
-  `product/CAPABILITIES.md` are the obvious first import source (a
-  `marked`-based Markdown-to-HTML step, similar in spirit to `db/seed.js`'s
-  HTML import).
+  in-admin editing rather than a code change. The repo's own `docs/*.md` is
+  the obvious first import source (a `marked`-based Markdown-to-HTML step,
+  similar in spirit to `db/seed.js`'s HTML import).
 - **News / changelog.** Same shape as `faqs` (a table with a publish flag and
   sort/date order) with its own small admin CRUD screen.
 - **A real support Q&A / ticket system**, if the public FAQ ever isn't
-  enough — schema note in `LAUNCH_CHECKLIST.md`. The FAQ tool this pass built
-  is deliberately the simpler "public FAQ, admin-edited" reading of that
-  requirement, not a per-customer ticket inbox.
+  enough. The FAQ tool this pass built is deliberately the simpler "public
+  FAQ, admin-edited" reading of that requirement, not a per-customer ticket
+  inbox.
 - **Payment / license integration.** Registration is self-serve with a free-text
-  "order reference" field today — no check against Freemius or the Ed25519 key
-  file (`harmonic_synth/license/`). Wiring a purchase webhook to
-  auto-create/upgrade an account is the natural next step once a merchant of
-  record is live (`product/LAUNCH_CHECKLIST.md` §0.4).
+  "order reference" field today — no check against a merchant of record or the
+  Ed25519 key file (`harmonic_synth/license/`). Wiring a purchase webhook to
+  auto-create/upgrade an account is the natural next step once one is live.
 - **File uploads.** `storage/uploads/` and static-serving for it exist; nothing
   writes there yet — wire it up when a feature needs it (a press-kit asset
   download, a preset-bank attachment, …).

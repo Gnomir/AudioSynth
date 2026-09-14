@@ -35,8 +35,7 @@ cd site && python3 -m http.server 8000   # → http://localhost:8000
 
 ## Deploy
 
-It's one self-contained HTML file — any static host works. Two free options
-that fit the budget in `product/GO_TO_MARKET_RESEARCH.md §6`:
+It's one self-contained HTML file — any static host works. Two free options:
 
 - **Cloudflare Pages** — connect the repo, set the build output directory to
   `site/`, no build command.
@@ -44,8 +43,7 @@ that fit the budget in `product/GO_TO_MARKET_RESEARCH.md §6`:
   the repo with publish directory `site`.
 
 Point the registered domain's DNS at whichever host you pick, then update
-`URL` / `EMAIL` in `harmonic_synth/src/lib.rs` to match
-(`product/LAUNCH_CHECKLIST.md` §1).
+`URL` / `EMAIL` in `harmonic_synth/src/lib.rs` to match.
 
 ## Editing
 
@@ -67,16 +65,14 @@ separate demo: `harmonic_core/contrib/wasm-demo/`.
 
 ## Where the content comes from
 
-Copy traces to [`../product/CAPABILITIES.md`](../product/CAPABILITIES.md) —
-update that first when a number or capability changes, then bring the same
-change here (and to the Ukrainian string, and to the archived copy that may
-still exist as a Claude artifact if one hasn't been retired).
+Copy traces to [`../product/QA_REPORT.md`](../product/QA_REPORT.md) — update
+that first when a measured number changes, then bring the same change here
+(and to the Ukrainian string, and to the archived copy that may still exist
+as a Claude artifact if one hasn't been retired).
 
 ## History
 
 Designed and iterated as a Claude artifact first (published preview, fast
 redeploys, live audit via browser automation); moved into the repo on request
 once the design and both languages were settled, so the real implementation
-lives in version control rather than only on Claude's hosting. See
-`product/LAUNCH_CHECKLIST.md` and the `harmonic-core-project` /
-`audiosynth-artifacts` project memory for the fuller history.
+lives in version control rather than only on Claude's hosting.

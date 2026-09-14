@@ -8,8 +8,8 @@
 > Це **dev-facing** гайд: збірка з коду, інтеграція в DAW, повний довідник
 > параметрів, траблшутинг. Стислий **англійський посібник кінцевого
 > користувача** (той, що постачається з завантаженням плагіна) —
-> [`../harmonic_synth/MANUAL.md`](../harmonic_synth/MANUAL.md). Комерційні
-> матеріали — [`../product/`](../product/README.md).
+> [`../harmonic_synth/MANUAL.md`](../harmonic_synth/MANUAL.md). Незалежний
+> технічний аудит — [`../product/QA_REPORT.md`](../product/QA_REPORT.md).
 
 ---
 

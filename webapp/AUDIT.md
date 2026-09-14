@@ -17,9 +17,9 @@ verified in this environment, that is stated explicitly rather than asserted.*
   `pluginval`, `clap-validator`; see `docs/06_VERIFICATION.md`). Re-auditing
   that surface here would be redundant; its three remaining accepted
   trade-offs (B‑3, C‑1, C‑4) are documented in project memory with reasons,
-  not repeated here. Legal/licensing items (EULA review, `RELICENSING.md`
-  execution, production signing key) are tracked in
-  `../product/LAUNCH_CHECKLIST.md` and not duplicated in this document.
+  not repeated here. Legal/licensing items (EULA review, engine relicensing,
+  production signing key) are tracked separately and not duplicated in this
+  document.
 - **Audited at**: HEAD `4a22e88` (repo), Node `v24.18.0`, `npm audit`: 0 known
   vulnerabilities in the resolved dependency tree (verified below).
 - **Method**: full manual read of every file under `src/`, every view under

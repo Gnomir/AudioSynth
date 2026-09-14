@@ -354,8 +354,8 @@ LFO-матриці, expr-brightness, HQ) на нейтральному знач�
 `if studio {…} else {…}`; мікротюнінг форситься на 12-TET/A440 сентинелом
 `tuning_sig`. Редактор сіріє відповідні рядки + показує «Licensed to …».
 `harmonic_license` верифікує Ed25519-підпис офлайн; плагін несе лише
-`LICENSE_PUBKEY`. Деталі: `harmonic_synth/license/README.md`,
-`product/GO_TO_MARKET_RESEARCH.md §2 / §5`. Продукт називається **Cosine**
+`LICENSE_PUBKEY`. Деталі: `harmonic_synth/license/README.md`.
+Продукт називається **Cosine**
 (`NAME`); `harmonic_synth` лишається іменем крейта.
 
 `MidiConfig::MidiCCs`, `SAMPLE_ACCURATE_AUTOMATION = true`, стерео-вихід

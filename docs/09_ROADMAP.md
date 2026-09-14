@@ -5,9 +5,9 @@
 чистий (std / no_std / nightly-simd), VST3 проходить `pluginval --strictness 8`
 (з GUI-тестами), CLAP — `clap-validator 35/35`, плагін має GUI (`nih_plug_vizia`).
 Free-Core / paid-Studio гейт **увімкнено** (`TIER_ENFORCED = true`) + водяний
-Ed25519-keyfile — це вже зроблено (`harmonic_synth/license/`,
-`product/GO_TO_MARKET_RESEARCH.md`); продукт названо **Cosine**. Нижче — DSP /
-інтеграційні напрямки; комерційний трек — у `product/`.
+Ed25519-keyfile — це вже зроблено (`harmonic_synth/license/`); продукт
+названо **Cosine**. Нижче — DSP / інтеграційні напрямки; незалежний аудит —
+`product/QA_REPORT.md`.
 
 Нижче — **тільки незавершене**: активні задачі та свідомо відкладені
 напрямки з причиною відкладення. Кожен пункт: **Проблема / Напрямок /

@@ -445,5 +445,4 @@ LFO, понотна MPE-експресія, HQ, а також будь-який 
 у Core тримаються на нейтралі (`process` форсить, редактор сіріє рядки).
 Studio-пресети у Core звучать як їхня Core-версія. Це продуктове рішення, не
 технічне обмеження рушія: `harmonic_core` не гейтований узагалі, а межу
-`CORE_LOCKS` можна пересунути одним рядком. `harmonic_synth/license/README.md`,
-`product/GO_TO_MARKET_RESEARCH.md §2`.
+`CORE_LOCKS` можна пересунути одним рядком. Деталі: `harmonic_synth/license/README.md`.

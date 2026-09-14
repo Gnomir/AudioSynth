@@ -465,7 +465,7 @@ $ grep -nE 'unwrap\(\)|expect\(|panic!' src/*.rs | grep -v '#\[cfg(test)\]' ...
 | `tuning::kbm_formal_octave_degree_sets_the_repeat_interval` | «формальна октава» = ступінь 2 (чиста квінта): один повний повтор мапи вгору = `3:2`, не `2:1` |
 | `tuning::root_name_round_trips_and_is_lenient` | `root_from_name`: кожне ім'я з `ROOT_NAMES` парситься назад у свій індекс; толерантний вхід (` c# `, `Db`, `cb→11`, `Cs`); `""`/`H`/`C##`/`7`/`#` → `None` без паніки. Інверсія `value_to_string` для `Tune Root` (вимога `clap-validator param-conversions`) |
 | `load_license_honours_the_explicit_path_and_verifies_it` | `COSINE_LICENSE` → `SAMPLE_LICENSE.key` → `load_license()` повертає верифіковану ліцензію (`tier == "studio"`, вотермарк `name <email>`); шлях-оверрайд працює, читання поза аудіо-потоком |
-| `every_core_lock_names_a_real_parameter` | кожен `#[id]` у `CORE_LOCKS` (список Studio-only параметрів для free Core тіру) — реальний параметр; без дублікатів. `product/GO_TO_MARKET_RESEARCH.md §2` |
+| `every_core_lock_names_a_real_parameter` | кожен `#[id]` у `CORE_LOCKS` (список Studio-only параметрів для free Core тіру) — реальний параметр; без дублікатів |
 | `tier_follows_the_licence_when_the_split_is_enforced` | `TIER_ENFORCED == true`: `SAMPLE_LICENSE.key` через `$COSINE_LICENSE` → `HarmonicSynth::tier() == Studio`; `force_core` перекриває навіть валідну ліцензію → `Core`; без ключа (чиста машина) → `Core` |
 
 ---
