@@ -8,9 +8,9 @@
       <a href="#audit" data-i18n="audit.kick"><%= cms.en['audit.kick'] %></a>
       <a href="#pricing" data-i18n="nav.pricing"><%= cms.en['nav.pricing'] %></a>
       <% if (user) { %>
-        <a href="/account">My account</a>
+        <a href="/account" data-i18n="nav.account"><%= cms.en['nav.account'] %></a>
       <% } else { %>
-        <a href="/login">Log in</a>
+        <a href="/login" data-i18n="nav.login"><%= cms.en['nav.login'] %></a>
       <% } %>
     </nav>
     <div class="seg" role="group" aria-label="Language / Мова">
@@ -229,6 +229,7 @@
           <li data-i18n="price.core.4"><%= cms.en['price.core.4'] %></li>
           <li data-i18n="price.core.5"><%= cms.en['price.core.5'] %></li>
         </ul>
+        <a class="btn tier-cta" href="/demo" data-i18n="price.core.cta"><%= cms.en['price.core.cta'] %></a>
       </div>
       <div class="tier hi">
         <p class="tname">Studio <span class="badge" data-i18n="price.studio.badge"><%= cms.en['price.studio.badge'] %></span></p>
@@ -242,6 +243,7 @@
           <li data-i18n="price.studio.5"><%= cms.en['price.studio.5'] %></li>
           <li data-i18n="price.studio.6"><%= cms.en['price.studio.6'] %></li>
         </ul>
+        <a class="btn primary tier-cta" href="#notify" data-i18n="price.studio.cta"><%= cms.en['price.studio.cta'] %></a>
       </div>
     </div>
     <p class="formhint" data-i18n="price.foot"><%= cms.en['price.foot'] %></p>

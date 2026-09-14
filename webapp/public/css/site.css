@@ -399,8 +399,9 @@
 
   .price { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   @media (max-width: 48rem) { .price { grid-template-columns: 1fr; } }
-  .tier { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 1.35rem 1.35rem 1.45rem; }
+  .tier { position: relative; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 1.35rem 1.35rem 1.45rem; }
   .tier.hi { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+  .tier .tier-cta { justify-content: center; margin-top: auto; }
   .tier .tname { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
   .badge {
     font-family: "JetBrains Mono", monospace; font-size: .6rem; letter-spacing: .06em;
@@ -411,7 +412,7 @@
   .tier .amt { font-family: "Newsreader", serif; font-weight: 600; font-size: 2rem; margin: .3rem 0 .1rem; }
   .tier .amt small { font-size: .88rem; color: var(--muted); font-weight: 400; }
   .tier .was { font-family: "JetBrains Mono", monospace; font-size: .68rem; color: var(--muted); }
-  .tier ul { font-size: .89rem; margin: .85rem 0 0; }
+  .tier ul { font-size: .89rem; margin: .85rem 0 1.35rem; }
 
   details { border-bottom: 1px solid var(--line); padding: .9rem 0; }
   details summary {
