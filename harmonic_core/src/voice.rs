@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Mironov Mykhailo Viktorovych.
+// A commercial licence without the AGPL obligations is available —
+// see product/COMMERCIAL_LICENSE.md.
+
 //! A single synthesiser voice: band-limited oscillator, FM + feedback, a
 //! per-voice LFO, the character stage, the SVF, pitch bend, equal-power pan,
 //! and a per-sample de-click ramp. Stereo out.

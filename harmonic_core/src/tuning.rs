@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Mironov Mykhailo Viktorovych.
+// A commercial licence without the AGPL obligations is available —
+// see product/COMMERCIAL_LICENSE.md.
+
 //! Note → frequency mapping for [`PolySynth`](crate::PolySynth).
 //!
 //! The default is 12-tone equal temperament, A4 = 440 Hz — and on that path the

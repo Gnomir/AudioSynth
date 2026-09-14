@@ -116,16 +116,30 @@ covered.
 
 ## License
 
-Dual-licensed under **MIT** ([`LICENSE-MIT`](LICENSE-MIT)) OR **Apache-2.0**
-([`LICENSE-APACHE`](LICENSE-APACHE)), at your option — the standard Rust
-convention. Both `harmonic_core` and `harmonic_synth` declare
-`license = "MIT OR Apache-2.0"`.
+The two crates are licensed separately:
 
-> The permissive license is a deliberate decision point before any commercial
-> release — it currently means the engine can be shipped in a closed product for
-> free. Options (keep permissive / open-core dual-license / source-available):
-> [`product/COMMERCIAL_BRIEF.md §5`](product/COMMERCIAL_BRIEF.md).
+- **`harmonic_core`** (the DSP engine) — **AGPL-3.0-only**
+  ([`LICENSE-AGPL`](LICENSE-AGPL)), or a separate commercial license for
+  closed-source use ([`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md) →
+  [`product/COMMERCIAL_LICENSE.md`](product/COMMERCIAL_LICENSE.md)). See
+  [`product/RELICENSING.md`](product/RELICENSING.md) for why and when this
+  changed from the earlier permissive license.
+- **`harmonic_synth`** (the Cosine plugin) and **`harmonic_synth/license`**
+  (the `harmonic_license` key-file crate) — dual-licensed under **MIT**
+  ([`harmonic_synth/LICENSE-MIT`](harmonic_synth/LICENSE-MIT)) OR
+  **Apache-2.0** ([`harmonic_synth/LICENSE-APACHE`](harmonic_synth/LICENSE-APACHE)),
+  at your option. The compiled plugin binary's end-user terms (the Studio-tier
+  key file, what you may and may not do with it) are separate again — see
+  [`product/EULA.md`](product/EULA.md).
 
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you shall be dual-licensed as above,
+> `harmonic_synth` staying permissively-licensed while its EULA restricts
+> reverse-engineering and tier-gate circumvention is a real, currently
+> unresolved tension (`product/LAUNCH_CHECKLIST.md` decision 0.7): a
+> permissive license already grants the freedoms the EULA tries to restrict.
+> This needs an owner decision, not a silent default.
+
+By contributing to `harmonic_core`, you agree to the terms in
+[`CONTRIBUTING.md`](CONTRIBUTING.md) (AGPL-3.0-only plus a relicensing grant
+to the maintainer). Unless you explicitly state otherwise, any contribution
+to `harmonic_synth` or `harmonic_synth/license` is dual-licensed as above,
 without any additional terms or conditions.

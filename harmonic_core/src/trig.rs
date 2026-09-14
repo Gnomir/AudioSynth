@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Mironov Mykhailo Viktorovych.
+// A commercial licence without the AGPL obligations is available —
+// see product/COMMERCIAL_LICENSE.md.
+
 //! Zero-dependency range-reduced sine/cosine, arguments in **turns**
 //! (1 turn = 2π rad).
 //!

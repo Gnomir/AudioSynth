@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Mironov Mykhailo Viktorovych.
+// A commercial licence without the AGPL obligations is available —
+// see product/COMMERCIAL_LICENSE.md.
+
 //! C ABI. The **caller owns the memory** for a [`Voice`]: this crate performs
 //! no heap allocation anywhere, which is the simplest way to be genuinely
 //! RT-safe and `no_std` (no global allocator, no `Box`).

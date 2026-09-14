@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Mironov Mykhailo Viktorovych.
+// A commercial licence without the AGPL obligations is available —
+// see product/COMMERCIAL_LICENSE.md.
+
 //! The "character" stage — everything the clean Dirichlet oscillator is not.
 //!
 //! The band-limited core gives a mathematically perfect starting point. That is
