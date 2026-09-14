@@ -834,10 +834,10 @@
         <tbody>
           <tr><td>Voices / channels</td><td>24, stereo out; unison 1–8 shares the pool</td></tr>
           <tr><td>Parameters</td><td>39 automatable</td></tr>
-          <tr><td>Latency</td><td>0 samples; exactly 16 in HQ (constant, PDC-reported)</td></tr>
+          <tr><td>Latency</td><td>0 samples in Core; a constant, PDC-reported 16 in Studio (regardless of the HQ toggle — CLAP forbids changing latency outside <code>activate</code>)</td></tr>
           <tr><td>One clean voice</td><td>~26 M samples/s ≈ 550× realtime @ 48 kHz, flat within 1 % from 3 to 1200 harmonics</td></tr>
           <tr><td>64-voice chord</td><td>~9.4× realtime @ 48 kHz</td></tr>
-          <tr><td>HQ alias floor</td><td>−94.6 dBFS at +6 dB overdrive (target −75); CPU ~neutral</td></tr>
+          <tr><td>HQ alias floor</td><td>−94.6 dBFS at +6 dB overdrive (target −75); CPU ~neutral. A dirtier patch under heavier drive measures differently — e.g. −44.9 dBFS clean / −48.5 dBFS with HQ on a Drive+Fold+Crush torture patch; see <a href="/monograph">the monograph</a> for why that's the same honest number under a harder test, not a contradiction.</td></tr>
           <tr><td>Determinism</td><td>bit-identical render on x86-64 / ARM / wasm32, at 48 + 96 kHz, any block size (measured, Δ = 0.0)</td></tr>
           <tr><td>Tests</td><td>114 core (11 an adversarial RT-safety suite: NaN / ±∞ / parameter storms) + 34 plugin + 9 licence; run on every push by CI</td></tr>
           <tr><td>Validators</td><td>pluginval <code>--strictness-level 8</code> (VST3, GUI tests) · clap-validator 35 / 35</td></tr>
