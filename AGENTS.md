@@ -112,12 +112,13 @@ Still run the lints and tests yourself before pushing.
   (`.gitignore` blocks `*SECRET*` / `license.key`). Do not treat the dev file as
   a leak.
 - The product is named **Cosine** (`NAME = "Cosine"`, `VENDOR = "Cosine Audio"`).
-  `URL` / `EMAIL` in `harmonic_synth/src/lib.rs` stay `example.invalid`
-  placeholders until a domain is registered; `CLAP_ID`
-  (`com.cosine-audio.cosine`) and `VST3_CLASS_ID` (`CosineSynth\0\0\0\0\0`) are
-  provisional and follow the final domain — **freeze both at the first public
-  release**; changing either afterwards breaks every saved project that
-  references the plugin. The crate / directory /
+  `CLAP_ID` (`io.github.gnomir.cosine`, reverse-DNS on the GitHub repo, not a
+  purchased domain) and `VST3_CLASS_ID` (`CosineSynth\0\0\0\0\0`) are
+  **frozen as of the first public release (2026-09-14)** — changing either
+  afterwards breaks every saved project that references the plugin, even
+  once a real domain exists. `URL` / `EMAIL` are informational only (points
+  at the GitHub repo and a real contact address) and can move to a real
+  domain anytime without that concern. The crate / directory /
   bundle filename are still `harmonic_synth` — renaming them is a separate
   launch-prep step.
 - The **Core/Studio split is enforced** (`TIER_ENFORCED = true` in
