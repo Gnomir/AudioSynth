@@ -189,7 +189,14 @@ impl Voice {
     pub const ROLLOFF_MAX: f64 = 0.9995;
 
     /// Latency, in samples, added by [`Voice::set_hq`] `true` (the character
-    /// decimation FIR). Zero when HQ is off.
+    /// decimation FIR) when a `Voice` is driven standalone. Zero when HQ is
+    /// off. **Not what the plugin reports**: driven through [`crate::poly::PolySynth`]
+    /// (the real signal path — every shipped plugin build), the unified HQ
+    /// bus's own master decimator supersedes this per-voice figure, at
+    /// [`crate::poly::PolySynth::HQ_LATENCY`] (16, not this constant's 3).
+    /// The two exist for different callers and are independently asserted
+    /// equal to their own values in `poly.rs`'s tests — not a stray
+    /// duplicate to consolidate.
     pub const HQ_LATENCY: usize = crate::character::HQ_LATENCY;
 
     /// Create a voice. Non-finite / out-of-range `sample_rate` is clamped —
