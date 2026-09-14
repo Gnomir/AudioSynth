@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Mironov Mykhailo Viktorovych.
 // A commercial licence without the AGPL obligations is available —
-// see product/COMMERCIAL_LICENSE.md.
+// see LICENSE-COMMERCIAL.md at the repo root.
 
 //! A low-frequency oscillator for modulation. `Copy`, `no_std`, no `libm`.
 //! Sine / triangle / saw, all phase-aligned (rising through 0 at phase 0) so

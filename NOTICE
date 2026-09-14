@@ -5,18 +5,16 @@ Sole-author status: as of this file, every commit in this repository's
 history is authored by Mironov Mykhailo Viktorovych, with Claude (Anthropic)
 credited as an AI co-author on some commits per its own commit-message
 convention. An AI co-author credit does not represent an independent
-copyright holder. This makes relicensing (see `product/RELICENSING.md`)
-a single-party decision.
+copyright holder. This makes relicensing a single-party decision.
 
 Licensing summary (see the individual LICENSE-* files for full text):
 
   harmonic_core                  AGPL-3.0-only, or a separate commercial
-                                  license (LICENSE-COMMERCIAL.md /
-                                  product/COMMERCIAL_LICENSE.md).
+                                  license — see LICENSE-COMMERCIAL.md.
   harmonic_synth (Cosine plugin)  see harmonic_synth/LICENSE-MIT and
-                                  harmonic_synth/LICENSE-APACHE, and the
-                                  end-user terms in product/EULA.md for the
-                                  distributed binary.
+                                  harmonic_synth/LICENSE-APACHE. The
+                                  distributed binary carries its own
+                                  end-user terms, available on request.
   harmonic_synth/license
   (harmonic_license crate)        MIT OR Apache-2.0 — see
                                   harmonic_synth/LICENSE-MIT and

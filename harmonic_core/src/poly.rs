@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 Mironov Mykhailo Viktorovych.
 // A commercial licence without the AGPL obligations is available —
-// see product/COMMERCIAL_LICENSE.md.
+// see LICENSE-COMMERCIAL.md at the repo root.
 
 //! Polyphonic MIDI engine over [`Voice`]. Fixed voice array, no allocation,
 //! no locks — safe to drive straight from an audio callback.

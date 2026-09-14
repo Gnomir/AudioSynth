@@ -12,7 +12,8 @@ bend, equal-power pan, and note→frequency microtuning (`Tuning`).
 `nih-plug`. The plugin ships as **Cosine** (`NAME = "Cosine"`; the crate keeps
 its name) with an enforced free-**Core** / paid-**Studio** split (`CORE_LOCKS`,
 `TIER_ENFORCED = true`, watermarked Ed25519 key file). Full design docs: `docs/`
-(start at `docs/README.md`); commercial material: `product/`.
+(start at `docs/README.md`); the independent audit: `product/QA_REPORT.md`.
+Internal business/legal material lives outside this repo, not under `product/`.
 
 Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi,verify}.rs`
 · `harmonic_core/tests/{spectrum,stress,cross_platform_bit_exact}.rs` (integration) ·
@@ -115,8 +116,8 @@ Still run the lints and tests yourself before pushing.
   placeholders until a domain is registered; `CLAP_ID`
   (`com.cosine-audio.cosine`) and `VST3_CLASS_ID` (`CosineSynth\0\0\0\0\0`) are
   provisional and follow the final domain — **freeze both at the first public
-  release** (`product/GO_TO_MARKET_RESEARCH.md §9`); changing either afterwards
-  breaks every saved project that references the plugin. The crate / directory /
+  release**; changing either afterwards breaks every saved project that
+  references the plugin. The crate / directory /
   bundle filename are still `harmonic_synth` — renaming them is a separate
   launch-prep step.
 - The **Core/Studio split is enforced** (`TIER_ENFORCED = true` in

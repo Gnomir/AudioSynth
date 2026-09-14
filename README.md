@@ -43,7 +43,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala `.scl` / `.kbm` import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
 | `harmonic_synth/license/` | `harmonic_license` — watermarked Ed25519 key-file format, verified offline (no dongle, no activation server). Drives the enforced free-**Core** / paid-**Studio** split; `cargo xtask keygen` issues keys. |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
-| `product/` | Commercial material — capability spec sheet and go-to-market brief ([`product/README.md`](product/README.md)) |
+| `product/` | [`product/QA_REPORT.md`](product/QA_REPORT.md) — the independent technical audit every measured claim on the site traces back to. (Internal business/legal material is kept out of this repo.) |
 | `webapp/` | The web portal — the landing page + a public FAQ + customer accounts, content-managed through a browser admin panel. Node.js/Express + SQLite (`node:sqlite`, no separate DB server), server-rendered, bilingual EN/Українська ([`webapp/README.md`](webapp/README.md)) |
 | `site/` | Superseded by `webapp/` — the earlier single static HTML file, kept as a dependency-free fallback ([`site/README.md`](site/README.md)) |
 | `AGENTS.md` | Contributor / AI-agent conventions (build, test, style, boundaries) |
@@ -56,7 +56,7 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | **Evaluating the maths** | [Scientific monograph](https://claude.ai/code/artifact/c4b2806f-90f3-4eb9-84c2-35b43461c30d) → [`docs/01_MATHEMATICS.md`](docs/01_MATHEMATICS.md) → [`docs/06_VERIFICATION.md`](docs/06_VERIFICATION.md) |
 | **Integrating the engine** | [`docs/03_ARCHITECTURE.md`](docs/03_ARCHITECTURE.md) → [`docs/05_API_REFERENCE.md`](docs/05_API_REFERENCE.md) → [`docs/08_EMBEDDED_INTEGRATION.md`](docs/08_EMBEDDED_INTEGRATION.md) |
 | **Try it now** | [Playable browser demo](https://claude.ai/code/artifact/ad41ef31-c87c-4d3c-b2c3-34d9cb85a5ed) (the same DSP, `wasm32`) |
-| **Commercial picture** | [`product/README.md`](product/README.md) · [Go-to-market playbook](https://claude.ai/code/artifact/[redacted-internal-artifact-id]-cef8-43c2-ac3b-9eb9405e34d4) |
+| **The evidence behind the marketing** | [`product/QA_REPORT.md`](product/QA_REPORT.md) — every performance/accuracy number on the site, traced to a measurement |
 
 ## Build
 
@@ -102,8 +102,7 @@ unlicensed build is the free **Core** tier — oscillator, Brightness, Partials,
 amp envelope, the full filter, unison, pitch bend, 12-TET; a watermarked
 Ed25519 key file (verified offline, no dongle, no server) unlocks **Studio**
 (Formant, Character, FM, filter envelope, LFO matrix, MPE, microtuning, HQ).
-`harmonic_synth/license/` · [`product/GO_TO_MARKET_RESEARCH.md`](product/GO_TO_MARKET_RESEARCH.md).
-The DAW-visible product name is **Cosine**.
+`harmonic_synth/license/`. The DAW-visible product name is **Cosine**.
 
 **Live-DAW status:** a first pass in REAPER 7.79 (CLAP, Windows 11) is done —
 sound, editor, spectrum, presets and the randomiser all work; it also caught and
@@ -120,23 +119,21 @@ The two crates are licensed separately:
 
 - **`harmonic_core`** (the DSP engine) — **AGPL-3.0-only**
   ([`LICENSE-AGPL`](LICENSE-AGPL)), or a separate commercial license for
-  closed-source use ([`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md) →
-  [`product/COMMERCIAL_LICENSE.md`](product/COMMERCIAL_LICENSE.md)). See
-  [`product/RELICENSING.md`](product/RELICENSING.md) for why and when this
-  changed from the earlier permissive license.
+  closed-source use ([`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md)). This
+  replaced an earlier permissive license before any public release.
 - **`harmonic_synth`** (the Cosine plugin) and **`harmonic_synth/license`**
   (the `harmonic_license` key-file crate) — dual-licensed under **MIT**
   ([`harmonic_synth/LICENSE-MIT`](harmonic_synth/LICENSE-MIT)) OR
   **Apache-2.0** ([`harmonic_synth/LICENSE-APACHE`](harmonic_synth/LICENSE-APACHE)),
-  at your option. The compiled plugin binary's end-user terms (the Studio-tier
-  key file, what you may and may not do with it) are separate again — see
-  [`product/EULA.md`](product/EULA.md).
+  at your option. The compiled plugin binary carries its own separate
+  end-user terms (the Studio-tier key file, what you may and may not do with
+  it) — contact **cityobukhov@gmail.com** for a copy.
 
-> `harmonic_synth` staying permissively-licensed while its EULA restricts
-> reverse-engineering and tier-gate circumvention is a real, currently
-> unresolved tension (`product/LAUNCH_CHECKLIST.md` decision 0.7): a
-> permissive license already grants the freedoms the EULA tries to restrict.
-> This needs an owner decision, not a silent default.
+> `harmonic_synth` staying permissively-licensed while its end-user terms
+> restrict reverse-engineering and tier-gate circumvention is a real,
+> currently unresolved tension: a permissive license already grants the
+> freedoms those terms try to restrict. This needs an owner decision, not a
+> silent default.
 
 By contributing to `harmonic_core`, you agree to the terms in
 [`CONTRIBUTING.md`](CONTRIBUTING.md) (AGPL-3.0-only plus a relicensing grant

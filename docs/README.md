@@ -5,7 +5,7 @@
 плагіном VST3/CLAP над ним. Плагін називається **Cosine**; `harmonic_core` /
 `harmonic_synth` — імена крейтів. Плагін ділиться на безкоштовний **Core** і
 платний **Studio** тір (`TIER_ENFORCED = true`), розблоковується водяним
-Ed25519-keyfile (`harmonic_synth/license/`, `product/`).
+Ed25519-keyfile (`harmonic_synth/license/`).
 
 Це **не** AQOE-AudioSynth: формула `cos²(2εθ)` та «квантово-натхнена»
 маршрутизація тут не використовуються (та ідея була проаналізована й
@@ -18,7 +18,7 @@ Ed25519-keyfile (`harmonic_synth/license/`, `product/`).
 **Не інтегратор, а музикант / потенційний клієнт?** Кінцевий посібник —
 [`../harmonic_synth/MANUAL.md`](../harmonic_synth/MANUAL.md); повний довідник
 можливостей із прикладами й гарячими клавішами — окремий опублікований
-артефакт (лінк у [`../product/README.md`](../product/README.md)).
+артефакт (посилання на нього — на сайті, розділ Handbook).
 
 > **[MONOGRAPH.md](MONOGRAPH.md)** — зведена монографія: теорія двох замкнених
 > ядер, чисельні методи, архітектура, інструмент, верифікація, продуктовий
@@ -87,5 +87,4 @@ retrigger/free-run + матриця (→ brightness / pitch / cutoff / FM index)
 гейт (`CORE_LOCKS`, водяний Ed25519-keyfile, офлайн-верифікація, без донгла) ·
 перший живий прогін у REAPER 7.79 зроблено (`11_DAW_CHECKLIST.md`).
 
-Комерційне пакування (spec sheet потужностей, позиціювання, ціни, канали
-перших клієнтів) — **[`../product/`](../product/README.md)**.
+Незалежний технічний аудит, на який спирається кожна цифра на сайті — **[`../product/QA_REPORT.md`](../product/QA_REPORT.md)**.

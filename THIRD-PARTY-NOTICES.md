@@ -38,7 +38,7 @@ No fonts are vendored in this repository.
 
 ## Note on the engine licence
 
-`harmonic_core` itself is licensed **AGPL-3.0-only OR commercial**
-(`product/RELICENSING.md`). The components above are the plugin's, not the
-engine's — an embedded integrator who licenses `harmonic_core` commercially
-links **none** of them.
+`harmonic_core` itself is licensed **AGPL-3.0-only OR commercial** — see
+`LICENSE-AGPL` and `LICENSE-COMMERCIAL.md`. The components above are the
+plugin's, not the engine's — an embedded integrator who licenses
+`harmonic_core` commercially links **none** of them.

@@ -21,10 +21,10 @@ name **Cosine**). Conventions — build, test, style, boundaries — are in
 ## Licensing of contributions (Developer Certificate of Origin + dual-licence grant)
 
 `harmonic_core` is dual-licensed: **AGPL-3.0-only** for the community, and a
-**commercial licence** for closed products ([`product/RELICENSING.md`](product/RELICENSING.md),
-[`product/COMMERCIAL_LICENSE.md`](product/COMMERCIAL_LICENSE.md)). For the project
-to keep offering the commercial licence, every contribution must come in under
-terms that allow it.
+**commercial licence** for closed products (see [`LICENSE-AGPL`](LICENSE-AGPL)
+and [`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md)). For the project to keep
+offering the commercial licence, every contribution must come in under terms
+that allow it.
 
 By adding a `Signed-off-by:` line to your commits (`git commit -s`), you certify
 the [Developer Certificate of Origin 1.1](https://developercertificate.org/)

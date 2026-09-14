@@ -5,10 +5,8 @@
 lifts the AGPL's copyleft and network-use obligations — for anyone who wants
 to ship `harmonic_core` inside a closed-source product — is available.
 
-See [`product/COMMERCIAL_LICENSE.md`](product/COMMERCIAL_LICENSE.md) for
-terms, pricing models, and the enquiry process.
-
-To ask about a commercial license, contact: **cityobukhov@gmail.com**.
+To ask about a commercial license — terms, pricing, and the enquiry
+process are worked out per deal — contact: **cityobukhov@gmail.com**.
 
 `harmonic_synth` (the Cosine plugin built on top of `harmonic_core`) and
 `harmonic_synth/license` are licensed separately — see their own `LICENSE-*`
