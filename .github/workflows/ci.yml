@@ -16,6 +16,9 @@ env:
 # NB: no `cargo fmt --check`. The checked-in style predates rustfmt 1.9's
 # stricter defaults and running fmt churns every file (see AGENTS.md and the
 # repo history). Style is matched by hand.
+#
+# NB: no `harmonic_synth` job. The plugin moved to a private repo
+# (Gnomir/cosine-synth-private) — its own CI lives there now, not here.
 
 jobs:
   core:
@@ -83,46 +86,6 @@ jobs:
         run: cargo clippy --no-default-features --release --features portable-simd -- -D warnings
       - name: build (portable-simd)
         run: cargo build --no-default-features --release --features portable-simd
-
-  plugin:
-    name: harmonic_synth · test + lint + bundle
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: harmonic_synth
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: harmonic_synth
-
-      - name: Linux GUI / audio dev libraries (nih_plug_vizia)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libasound2-dev libjack-jackd2-dev \
-            libx11-dev libxcb1-dev libxcb-icccm4-dev libxcb-dri2-0-dev \
-            libxcb-dri3-dev libxcb-present-dev libxcb-sync-dev \
-            libxcb-xfixes0-dev libxcb-xkb-dev libxcb-shape0-dev \
-            libxkbcommon-dev libxkbcommon-x11-dev libgl1-mesa-dev
-
-      - name: test
-        run: cargo test
-
-      - name: clippy
-        run: cargo clippy --all-targets -- -D warnings
-
-      - name: bundle (VST3 + CLAP)
-        run: cargo xtask bundle harmonic_synth --release
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: harmonic_synth-linux
-          path: harmonic_synth/target/bundled/
-          if-no-files-found: error
 
   webapp:
     name: webapp · test + smoke boot
