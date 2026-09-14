@@ -15,6 +15,16 @@ its name) with an enforced free-**Core** / paid-**Studio** split (`CORE_LOCKS`,
 (start at `docs/README.md`); the independent audit: `product/QA_REPORT.md`.
 Internal business/legal material lives outside this repo, not under `product/`.
 
+**Repo split:** this repo (`Gnomir/AudioSynth`, public) holds `harmonic_core`
+plus `docs/` and `webapp/`. `harmonic_synth` (the plugin: UI glue, presets,
+the tier-gate, the license verifier) is **proprietary and lives in a private
+repo**, checked out locally as a nested git repo at `harmonic_synth/` — same
+paths, same build commands below, just a different remote. Only compiled
+builds are published (GitHub Releases). Reason: `harmonic_synth` used to be
+MIT/Apache-2.0 with its source public here, which let anyone legally
+recompile past the paid Studio tier-gate — moving the source private closes
+that gap. See `README.md`'s License section.
+
 Layout: `harmonic_core/src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi,verify}.rs`
 · `harmonic_core/tests/{spectrum,stress,cross_platform_bit_exact}.rs` (integration) ·
 `harmonic_synth/src/{lib,editor,analyzer,presets,rando,tuning}.rs` (host glue +

@@ -11,14 +11,17 @@ Licensing summary (see the individual LICENSE-* files for full text):
 
   harmonic_core                  AGPL-3.0-only, or a separate commercial
                                   license — see LICENSE-COMMERCIAL.md.
-  harmonic_synth (Cosine plugin)  see harmonic_synth/LICENSE-MIT and
-                                  harmonic_synth/LICENSE-APACHE. The
-                                  distributed binary carries its own
-                                  end-user terms, available on request.
+                                  Source stays in this public repository.
+  harmonic_synth (Cosine plugin)  Proprietary, all rights reserved. Source
+                                  moved to a private repository; only
+                                  compiled builds are distributed (see
+                                  GitHub Releases). The distributed binary
+                                  carries its own end-user terms, available
+                                  on request.
   harmonic_synth/license
-  (harmonic_license crate)        MIT OR Apache-2.0 — see
-                                  harmonic_synth/LICENSE-MIT and
-                                  harmonic_synth/LICENSE-APACHE.
+  (harmonic_license crate)        Proprietary, all rights reserved — moved
+                                  alongside harmonic_synth for the same
+                                  reason.
 
 Third-party components linked into the plugin binary (nih-plug, vizia and
 its dependency tree, ed25519-compact, and others) remain under their own

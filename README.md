@@ -6,6 +6,15 @@ no per-partial loop, no oversampling filter. A `no_std` Rust DSP core
 it. The repository is `Gnomir/AudioSynth`; the crate / directory names still read
 `harmonic_synth` pending a launch-time rename.
 
+**Repo split:** this repository holds `harmonic_core` (the DSP engine, open
+source) plus docs and the web portal. `harmonic_synth` (the Cosine plugin
+itself — UI glue, presets, the Studio tier-gate, the license-key verifier) is
+closed source and lives in a private repository; it's checked out locally
+as a nested repo at `harmonic_synth/` for development, and only compiled
+builds are published, on
+[GitHub Releases](https://github.com/Gnomir/AudioSynth/releases). See the
+[License](#license) section below for why.
+
 ## What it is
 
 The oscillator renders the first *n* harmonics of a fundamental as one truncated
@@ -40,8 +49,8 @@ and dropped (the formula is degenerate as a spectral envelope). Details:
 | Path | What |
 |---|---|
 | `harmonic_core/` | `no_std`, **zero-dependency** DSP crate — `src/{trig,kernel,character,filter,env,lfo,voice,poly,tuning,ffi,verify}.rs` + C ABI; also builds to `wasm32` (`contrib/wasm-demo/`) |
-| `harmonic_synth/` | 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala `.scl` / `.kbm` import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
-| `harmonic_synth/license/` | `harmonic_license` — watermarked Ed25519 key-file format, verified offline (no dongle, no activation server). Drives the enforced free-**Core** / paid-**Studio** split; `cargo xtask keygen` issues keys. |
+| `harmonic_synth/` | **Private repo, checked out as a nested clone here.** 24-voice polyphonic VST3 + CLAP plugin (via `nih-plug`), 39 params, microtuning (+ Scala `.scl` / `.kbm` import), `nih_plug_vizia` editor: grouped sections + spectrum with the closed-form partial comb and the filter response drawn over it + honest aliasing meter + A/B morph + seed randomiser + 22 presets |
+| `harmonic_synth/license/` | Also in the private repo. `harmonic_license` — watermarked Ed25519 key-file format, verified offline (no dongle, no activation server). Drives the enforced free-**Core** / paid-**Studio** split; `cargo xtask keygen` issues keys. |
 | `docs/` | Full technical documentation — start at [`docs/README.md`](docs/README.md) |
 | `product/` | [`product/QA_REPORT.md`](product/QA_REPORT.md) — the independent technical audit every measured claim on the site traces back to. (Internal business/legal material is kept out of this repo.) |
 | `webapp/` | The web portal — the landing page + a public FAQ + customer accounts, content-managed through a browser admin panel. Node.js/Express + SQLite (`node:sqlite`, no separate DB server), server-rendered, bilingual EN/Українська ([`webapp/README.md`](webapp/README.md)) |
@@ -122,21 +131,23 @@ The two crates are licensed separately:
   closed-source use ([`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md)). This
   replaced an earlier permissive license before any public release.
 - **`harmonic_synth`** (the Cosine plugin) and **`harmonic_synth/license`**
-  (the `harmonic_license` key-file crate) — dual-licensed under **MIT**
-  ([`harmonic_synth/LICENSE-MIT`](harmonic_synth/LICENSE-MIT)) OR
-  **Apache-2.0** ([`harmonic_synth/LICENSE-APACHE`](harmonic_synth/LICENSE-APACHE)),
-  at your option. The compiled plugin binary carries its own separate
-  end-user terms (the Studio-tier key file, what you may and may not do with
-  it) — contact **cityobukhov@gmail.com** for a copy.
+  (the `harmonic_license` key-file crate) — **proprietary, all rights
+  reserved**. Source lives in a private repository; only compiled builds
+  (VST3/CLAP binaries) are distributed publicly, on
+  [GitHub Releases](https://github.com/Gnomir/AudioSynth/releases). The
+  compiled plugin binary carries its own separate end-user terms (the
+  Studio-tier key file, what you may and may not do with it) — contact
+  **cityobukhov@gmail.com** for a copy.
 
-> `harmonic_synth` staying permissively-licensed while its end-user terms
-> restrict reverse-engineering and tier-gate circumvention is a real,
-> currently unresolved tension: a permissive license already grants the
-> freedoms those terms try to restrict. This needs an owner decision, not a
-> silent default.
+  This used to be dual-licensed MIT/Apache-2.0 with the source public
+  alongside `harmonic_core`. That was a real gap: a permissive license
+  already grants the freedoms (recompiling past the Studio tier-gate) that
+  the end-user terms tried to restrict at the same time. Moving the source
+  private closes that specific gap. It does not make the tier gate
+  unbreakable — a determined party can still reverse-engineer a compiled
+  binary — but it removes "just read the public repo" as the way in.
 
 By contributing to `harmonic_core`, you agree to the terms in
 [`CONTRIBUTING.md`](CONTRIBUTING.md) (AGPL-3.0-only plus a relicensing grant
-to the maintainer). Unless you explicitly state otherwise, any contribution
-to `harmonic_synth` or `harmonic_synth/license` is dual-licensed as above,
-without any additional terms or conditions.
+to the maintainer). `harmonic_synth` and `harmonic_synth/license` are closed
+source and not open to outside contributions.
