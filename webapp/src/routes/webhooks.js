@@ -38,7 +38,13 @@ async function verifySale(saleId, accessToken) {
   const apiBase = process.env.GUMROAD_API_BASE || 'https://api.gumroad.com';
   const url = `${apiBase}/v2/sales/${encodeURIComponent(saleId)}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // 401/403 here almost always means GUMROAD_ACCESS_TOKEN is wrong or
+    // lacks the view_sales scope — distinct from a 404 (sale_id just
+    // doesn't exist, e.g. a forged Ping), worth telling apart in logs.
+    logger.warn('gumroad webhook: sales API call failed', { saleId, httpStatus: res.status });
+    return null;
+  }
   const body = await res.json();
   if (!body || body.success === false || !body.sale) return null;
   return body.sale;
