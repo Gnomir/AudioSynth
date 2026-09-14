@@ -1,3 +1,9 @@
+# --- private repo split ---
+# harmonic_synth/ is its own git repo now (Gnomir/cosine-synth-private,
+# proprietary) checked out here as a sibling of harmonic_core/ for local
+# dev. Not part of this repo's history — see README.md's License section.
+/harmonic_synth/
+
 # --- Rust ---
 # Build output — ~500 MB here. Regenerate: cargo build [--release]
 target/
@@ -16,10 +22,6 @@ target/
 !webapp/public/audio/*.wav
 # wasm demo build output — regenerate: see harmonic_core/contrib/wasm-demo/README.md
 harmonic_core/contrib/wasm-demo/harmonic_core.wasm
-# plugin bundles live under target/ (already ignored)
-# downloaded validation tooling (pluginval etc.)
-harmonic_synth/tools/
-
 # --- licensing ---
 # The PRODUCTION signing secret and any real customer key files must never be
 # committed. `keygen new` prints the secret to the terminal only; keep it in a
@@ -29,7 +31,6 @@ harmonic_synth/tools/
 **/license.key
 *PRODUCTION_SECRET*
 *production-secret*
-harmonic_synth/license/CUSTOMER_KEYS/
 
 # --- test scratch ---
 .playwright-mcp/
