@@ -24,7 +24,7 @@ cd harmonic_synth
 # швидка перевірка, що плагін компілюється
 cargo build --release
 
-# повні бандли VST3 + CLAP
+# повні бандли VST3 + CLAP — імена з назви крейта (для розробки/валідації)
 cargo xtask bundle harmonic_synth --release
 ```
 
@@ -35,9 +35,17 @@ target/bundled/harmonic_synth.vst3     (тека-бандл: Contents/x86_64-win
 target/bundled/harmonic_synth.clap     (один файл)
 ```
 
+Для реального релізу (файли з назвою продукту, не крейта) —
+`cargo xtask release --release` замість прямого `bundle`: збирає те саме, а
+тоді перейменовує `harmonic_synth.{vst3,clap}` → `Cosine.{vst3,clap}` (крейт
+лишається `harmonic_synth` — це косметичне перейменування вихідних файлів,
+не перейменування самого крейта).
+
 Опційно — прогнати валідатори (потрібні `pluginval` і `clap-validator` на
 `PATH` або в `harmonic_synth/tools/`; pwsh-скрипт має `-Fetch` для
-автозавантаження):
+автозавантаження). `validate` звіряє bundle з назвою крейта — якщо
+перевіряєте результат `cargo xtask release`, натравіть валідатори на
+`Cosine.vst3`/`Cosine.clap` напряму:
 
 ```
 cargo xtask validate
@@ -58,7 +66,8 @@ cargo xtask validate
 | Linux | `~/.vst3/` | `~/.clap/` |
 | macOS | `~/Library/Audio/Plug-Ins/VST3/` | `~/Library/Audio/Plug-Ins/CLAP/` |
 
-VST3 копіюється як **тека** `harmonic_synth.vst3` цілком, CLAP — як файл.
+VST3 копіюється як **тека** цілком (`Cosine.vst3` для реліз-збірки,
+`harmonic_synth.vst3` для прямого `bundle`), CLAP — як файл.
 
 ### Варіант Б — додаткова тека сканування (без адмін-прав)
 
