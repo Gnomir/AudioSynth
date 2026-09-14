@@ -61,6 +61,14 @@ router.get('/monograph', (req, res) => {
   res.render('site/monograph');
 });
 
+// The DSP/hardware-integrator audience (embedding harmonic_core in a
+// product, not buying the plugin) gets its own page instead of one section
+// on the musician-facing landing page — see MAPS.md's audience-segmentation
+// principle.
+router.get('/engine', (req, res) => {
+  res.render('site/engine');
+});
+
 router.get('/login', (req, res) => {
   res.render('site/login', { title: 'Log in — Cosine' });
 });
