@@ -21,6 +21,7 @@ const logger = require('./lib/logger');
 
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
+const webhookRoutes = require('./routes/webhooks');
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
@@ -130,6 +131,10 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'storage', 'upload
 // AUDIT.md I-4: a cheap liveness endpoint for a process supervisor / load
 // balancer, ahead of the session middleware so it never touches the DB.
 app.get('/healthz', (req, res) => res.status(200).json({ ok: true }));
+
+// Ahead of the session middleware, same reasoning as /healthz — a
+// third-party webhook carries no session cookie and shouldn't get one.
+app.use('/webhooks', webhookRoutes);
 
 app.use(session({
   store: new SqliteSessionStore(db),
