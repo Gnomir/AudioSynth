@@ -1,0 +1,35 @@
+# Render Blueprint — deploys webapp/ (the Cosine marketing site + portal) as
+# a single free web service. See webapp/README.md for what this app is;
+# webapp/.env.example for what every env var below does.
+#
+# IMPORTANT — free-tier caveat (not something this file can fix): Render's
+# free web services have an ephemeral filesystem. It's wiped on every
+# restart or spin-down (the service sleeps after ~15 min idle and wakes on
+# the next request), not just on a redeploy. That means the SQLite database
+# resets on every wake-up. webapp/src/server.js already self-heals the
+# *content* (reseeds from src/db/seed-data.json automatically if
+# content_blocks is empty) and the admin account, so the marketing site
+# comes back intact. It does NOT preserve anything a real visitor does
+# in between — customer registrations, admin-panel content edits made
+# after the last export, etc. Fine for a pre-launch marketing/demo site;
+# not a place to run real customer accounts yet. A Render persistent Disk
+# (paid) or moving to Postgres would fix this properly later.
+services:
+  - name: cosine-portal
+    type: web
+    runtime: node
+    plan: free
+    rootDir: webapp
+    buildCommand: npm ci
+    startCommand: node --experimental-sqlite src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: NODE_VERSION
+        value: 24.18.0

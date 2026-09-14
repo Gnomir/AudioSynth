@@ -1,105 +1,46 @@
-// One-time (idempotent) seed: pulls every editable string out of the
-// existing static `site/index.html` (built earlier as the first prototype)
-// into `content_blocks` + `faqs`, and creates the first admin account.
+// One-time (idempotent) seed: loads content_blocks + faqs from seed-data.json
+// (a snapshot of the real, current site copy — export it fresh with
+// `node src/db/export-seed-data.js` whenever the live content changes
+// meaningfully) and creates the first admin account.
 //
-// Run: node src/db/seed.js
+// This also runs automatically at server startup if content_blocks is empty
+// (see app.js) — a free-tier host with an ephemeral filesystem (e.g. Render's
+// free web services) wipes the SQLite file on every restart/spin-down, so
+// the site needs to be able to reseed itself without a manual step.
+//
+// Run standalone: node src/db/seed.js
 'use strict';
 
 const fs = require('node:fs');
 const path = require('node:path');
-const cheerio = require('cheerio');
 const { db } = require('./index');
 const { setValue } = require('../lib/content');
 const { hashPassword } = require('../lib/password');
 
-const STATIC_SITE = path.join(__dirname, '..', '..', '..', 'site', 'index.html');
-
-// FAQ question/answer keys live in content_blocks in the static page but
-// become full rows in `faqs` here (they need add/remove/reorder, which a
-// flat key→value block can't do). Everything else stays a content_block.
-const FAQ_KEY_RE = /^faq\.(q|a)(\d+)$/;
-
-function section(key) {
-  return key.split('.')[0];
-}
-
-// The static source wraps long strings across multiple indented lines for
-// readability; `.textContent`/`.html()` return that literal whitespace.
-// Harmless in a browser (CSS collapses it on render) but ugly in a <textarea>
-// admin editor — collapse it once, here, so the DB holds clean single-line
-// values. Safe: nothing in this page relies on preserved whitespace (no
-// <pre>/multi-line <code> blocks).
-function normalize(str) {
-  return str.replace(/\s+/g, ' ').trim();
-}
-
-function extractStatic() {
-  const html = fs.readFileSync(STATIC_SITE, 'utf8');
-  const $ = cheerio.load(html);
-
-  const en = { text: {}, html: {} };
-  $('[data-i18n]').each((_, el) => {
-    const key = $(el).attr('data-i18n');
-    if (!(key in en.text)) en.text[key] = normalize($(el).text());
-  });
-  $('[data-i18n-html]').each((_, el) => {
-    const key = $(el).attr('data-i18n-html');
-    if (!(key in en.html)) en.html[key] = normalize($(el).html());
-  });
-
-  // The Ukrainian dictionary lives in the page's own <script> as `var UK = {...}`.
-  // Trusted, self-authored source (not user input) — safe to evaluate directly.
-  const scriptBody = $('script').last().html() || '';
-  const m = scriptBody.match(/var UK = (\{[\s\S]*?\n {2}\};)/);
-  if (!m) throw new Error('Could not find the UK dictionary in site/index.html');
-  // eslint-disable-next-line no-new-func
-  const uk = new Function(`"use strict"; return ${m[1].slice(0, -1)};`)();
-
-  return { en, uk };
-}
+const SEED_DATA = path.join(__dirname, 'seed-data.json');
 
 function seedContent() {
-  const { en, uk } = extractStatic();
-  const allKeys = new Set([...Object.keys(en.text), ...Object.keys(en.html)]);
+  const already = db.prepare('SELECT COUNT(*) AS n FROM content_blocks').get().n;
+  if (already > 0) {
+    console.log('[seed] content_blocks already populated — skipped');
+    return;
+  }
 
-  let blocks = 0;
-  let faqRows = new Map(); // n -> { question_en, answer_en, question_uk, answer_uk }
-
-  for (const key of allKeys) {
-    const isHtml = key in en.html;
-    const enValue = isHtml ? en.html[key] : en.text[key];
-    const ukValue = normalize(uk[key] != null ? uk[key] : enValue);
-
-    const faqMatch = key.match(FAQ_KEY_RE);
-    if (faqMatch) {
-      const [, part, n] = faqMatch;
-      if (!faqRows.has(n)) faqRows.set(n, {});
-      const row = faqRows.get(n);
-      if (part === 'q') { row.question_en = enValue; row.question_uk = ukValue; }
-      else { row.answer_en = enValue; row.answer_uk = ukValue; }
-      continue;
-    }
-
-    setValue(key, 'en', enValue, isHtml, section(key));
-    setValue(key, 'uk', ukValue, isHtml, section(key));
-    blocks++;
+  const { blocks, faqs } = JSON.parse(fs.readFileSync(SEED_DATA, 'utf8'));
+  for (const row of blocks) {
+    setValue(row.key, row.lang, row.value, row.is_html, row.section);
   }
 
   const insertFaq = db.prepare(`
     INSERT INTO faqs (sort_order, published, question_en, answer_en, question_uk, answer_uk)
     VALUES (?, 1, ?, ?, ?, ?)
   `);
-  const faqCount = db.prepare('SELECT COUNT(*) AS n FROM faqs').get().n;
-  let faqsInserted = 0;
-  if (faqCount === 0) {
-    for (const [n, row] of [...faqRows.entries()].sort((a, b) => +a[0] - +b[0])) {
-      insertFaq.run(+n, row.question_en, row.answer_en, row.question_uk, row.answer_uk);
-      faqsInserted++;
-    }
+  for (const f of faqs) {
+    insertFaq.run(f.sort_order, f.question_en, f.answer_en, f.question_uk, f.answer_uk);
   }
 
-  console.log(`[seed] content_blocks: ${blocks * 2} rows (${blocks} keys × 2 languages)`);
-  console.log(`[seed] faqs: ${faqsInserted} inserted${faqCount > 0 ? ' (skipped — already present)' : ''}`);
+  console.log(`[seed] content_blocks: ${blocks.length} rows`);
+  console.log(`[seed] faqs: ${faqs.length} inserted`);
 }
 
 function seedAdmin() {

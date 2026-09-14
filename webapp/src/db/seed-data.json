@@ -1,0 +1,3009 @@
+{
+  "blocks": [
+    {
+      "key": "audience.1",
+      "lang": "en",
+      "value": "Producers tired of budgeting CPU — one knob controls tone complexity with no processor penalty.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.1",
+      "lang": "uk",
+      "value": "Продюсери, які втомились рахувати CPU — одна ручка контролює складність тону без штрафу на процесор.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.2",
+      "lang": "en",
+      "value": "Musicians working in microtuning and just intonation — here it’s structural, not a bolt-on.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.2",
+      "lang": "uk",
+      "value": "Музиканти в мікротюнінгу й чистій інтонації — тут це структурна властивість, а не надбудова.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.3",
+      "lang": "en",
+      "value": "Sound designers who want controlled digital character (PPG/DX7-style) with an instant “clean it up” switch.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.3",
+      "lang": "uk",
+      "value": "Саунд-дизайнери, яким потрібен контрольований цифровий характер (PPG/DX7-стиль) з миттєвим перемикачем \"почистити\".",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.4",
+      "lang": "en",
+      "value": "Embedded-audio developers — the same engine compiles to Cortex-M, RISC-V, and the browser.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.4",
+      "lang": "uk",
+      "value": "Розробники embedded-звуку — той самий рушій компілюється під Cortex-M, RISC-V і в браузер.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.h",
+      "lang": "en",
+      "value": "Who this synth is for",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.h",
+      "lang": "uk",
+      "value": "Для кого цей синтезатор",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.kick",
+      "lang": "en",
+      "value": "Who it’s for",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.kick",
+      "lang": "uk",
+      "value": "Для кого",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.note",
+      "lang": "en",
+      "value": "Not for anyone who needs full manual control over every single overtone — the product says so itself.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audience.note",
+      "lang": "uk",
+      "value": "Не для тих, кому потрібен повний ручний контроль кожного окремого обертона — це чесно позначено в самому продукті.",
+      "is_html": 0,
+      "section": "audience"
+    },
+    {
+      "key": "audit.1.p",
+      "lang": "en",
+      "value": "Automated tests passed (120 engine + 34 plugin + 9 licensing) — hundreds of checks for things going wrong, from odd MIDI values to extreme sample rates, with zero failures.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.1.p",
+      "lang": "uk",
+      "value": "Автоматичні тести пройдено (120 ядра + 34 плагіна + 9 ліцензування) — сотні перевірок на несправності — від дивних значень MIDI до екстремальних частот дискретизації — без жодного збою.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.1.v",
+      "lang": "en",
+      "value": "163 / 163",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.1.v",
+      "lang": "uk",
+      "value": "163 / 163",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.2.p",
+      "lang": "en",
+      "value": "Level-8 strictness, freshly run: the VST3 build correctly saves and restores presets and survives the host changing buffer size on the fly.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.2.p",
+      "lang": "uk",
+      "value": "Рівень 8, щойно запущено: VST3-збірка коректно зберігає й відновлює пресети й витримує зміну розміру буфера хостом \"на льоту\".",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.2.v",
+      "lang": "en",
+      "value": "pluginval — SUCCESS",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.2.v",
+      "lang": "uk",
+      "value": "pluginval — SUCCESS",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.3.p",
+      "lang": "en",
+      "value": "Zero failures. The same level of independent checking for the CLAP format.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.3.p",
+      "lang": "uk",
+      "value": "Нуль провалів. Той же рівень незалежної перевірки для формату CLAP.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.3.v",
+      "lang": "en",
+      "value": "clap-validator — 35 / 35",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.3.v",
+      "lang": "uk",
+      "value": "clap-validator — 35 / 35",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.4.p",
+      "lang": "en",
+      "value": "Tuning error, both 12-TET and just intonation. Chords stay clean at a precision beyond what any equipment can even register.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.4.p",
+      "lang": "uk",
+      "value": "Похибка строю, як у 12-TET, так і в чистій інтонації. Акорди лишаються чистими на межі точності, яку взагалі здатне зафіксувати обладнання.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.4.v",
+      "lang": "en",
+      "value": "< 0.001 cent",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.4.v",
+      "lang": "uk",
+      "value": "< 0.001 cent",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.5.p",
+      "lang": "en",
+      "value": "Per voice, under 3% spread from 3 to 1200 harmonics. Turn Brightness up as far as it goes — the processor won’t notice.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.5.p",
+      "lang": "uk",
+      "value": "На голос, розкид менше 3% від 3 до 1200 гармонік. Крути Яскравість як завгодно далеко — процесор цього не відчує.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.5.v",
+      "lang": "en",
+      "value": "530× realtime",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.5.v",
+      "lang": "uk",
+      "value": "530× realtime",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.6.p",
+      "lang": "en",
+      "value": "Cleaner on a driven test patch with HQ mode on vs off — the cleanup switch measurably works.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.6.p",
+      "lang": "uk",
+      "value": "Чистіше на тестовому \"брудному\" патчі з HQ-режимом увімкнено проти вимкнено — перемикач очищення вимірювано працює.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.6.v",
+      "lang": "en",
+      "value": "+3.6 dB with HQ",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.6.v",
+      "lang": "uk",
+      "value": "+3.6 dB with HQ",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.7.p",
+      "lang": "en",
+      "value": "HQ-mode latency, confirmed by independent cross-correlation — fixed and predictable, so your DAW compensates for it automatically.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.7.p",
+      "lang": "uk",
+      "value": "Затримка HQ-режиму, підтверджено незалежною крос-кореляцією — фіксована й передбачувана, тож DAW компенсує її автоматично.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.7.v",
+      "lang": "en",
+      "value": "16 samples",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.7.v",
+      "lang": "uk",
+      "value": "16 samples",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.8.p",
+      "lang": "en",
+      "value": "Per voice, zero heap allocation during rendering — no architectural reason for clicks or stutter mid-note.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.8.p",
+      "lang": "uk",
+      "value": "На голос, без виділення пам’яті під час рендеру — немає архітектурної причини для клацань чи \"заїкань\" посеред ноти.",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.8.v",
+      "lang": "en",
+      "value": "624 bytes",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.8.v",
+      "lang": "uk",
+      "value": "624 bytes",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.9.p",
+      "lang": "en",
+      "value": "Freshly built VST3 and CLAP both scanned and loaded live in a real DAW. Host-reported CPU 0.09–0.28%, RAM 149–155MB, PDC 16 samples — matching the crate’s own tests.",
+      "is_html": 1,
+      "section": "audit"
+    },
+    {
+      "key": "audit.9.p",
+      "lang": "uk",
+      "value": "Щойно зібрані VST3 і CLAP просканувались і завантажились наживо в реальному DAW. Хост показує CPU 0.09–0.28%, RAM 149–155МБ, PDC 16 семплів — збігається з власними тестами крейта.",
+      "is_html": 1,
+      "section": "audit"
+    },
+    {
+      "key": "audit.9.v",
+      "lang": "en",
+      "value": "REAPER v7.79 — loads & runs",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.9.v",
+      "lang": "uk",
+      "value": "REAPER v7.79 — завантажується й працює",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.foot",
+      "lang": "en",
+      "value": "Honestly, what this audit did NOT measure: real CPU load inside your specific DAW (needs a host environment) or how it sounds by ear — only objective measurements from real rendered audio. The full list of what’s still open is in the report itself.",
+      "is_html": 1,
+      "section": "audit"
+    },
+    {
+      "key": "audit.foot",
+      "lang": "uk",
+      "value": "Чесно про межі: аудит не вимірював реальне навантаження CPU у вашому DAW (потрібне тестове середовище з хостом) і не оцінював звук на слух — лише об’єктивні виміри з реального рендеру. Повний перелік того, що ще не перевірено, — у самому звіті.",
+      "is_html": 1,
+      "section": "audit"
+    },
+    {
+      "key": "audit.h",
+      "lang": "en",
+      "value": "What the independent audit found",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.h",
+      "lang": "uk",
+      "value": "Що показав незалежний аудит",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.kick",
+      "lang": "en",
+      "value": "Audit",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.kick",
+      "lang": "uk",
+      "value": "Аудит",
+      "is_html": 0,
+      "section": "audit"
+    },
+    {
+      "key": "audit.sub",
+      "lang": "en",
+      "value": "Every number below is from a fresh test run on the real code, 2026-09-13. Full report: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>.",
+      "is_html": 1,
+      "section": "audit"
+    },
+    {
+      "key": "audit.sub",
+      "lang": "uk",
+      "value": "Кожне число нижче — зі свіжого прогону тестів на реальному коді, 2026-09-13. Повний звіт: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>.",
+      "is_html": 1,
+      "section": "audit"
+    },
+    {
+      "key": "brand.prov",
+      "lang": "en",
+      "value": "additive synth",
+      "is_html": 0,
+      "section": "brand"
+    },
+    {
+      "key": "brand.prov",
+      "lang": "uk",
+      "value": "адитивний синт",
+      "is_html": 0,
+      "section": "brand"
+    },
+    {
+      "key": "cmp.h",
+      "lang": "en",
+      "value": "Honest about the trade.",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.h",
+      "lang": "uk",
+      "value": "Чесно про компроміс.",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.kick",
+      "lang": "en",
+      "value": "Where it sits",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.kick",
+      "lang": "uk",
+      "value": "Де це стоїть",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r1a",
+      "lang": "en",
+      "value": "Wavetable additive (large partial banks)",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r1a",
+      "lang": "uk",
+      "value": "Вейвтейбловий адитив (великі банки гармонік)",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r1b",
+      "lang": "en",
+      "value": "Full manual control over every harmonic, but it gets slower the richer the sound gets and needs pre-baked anti-aliased tables. Cosine: one knob, flat cost, guaranteed clean — the trade is you get a tilt + one hump, not total per-harmonic control.",
+      "is_html": 1,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r1b",
+      "lang": "uk",
+      "value": "Повний ручний контроль кожної гармоніки, але чим багатший звук — тим повільніше, і потрібні заготовлені антиаліасні таблиці. Cosine: одна ручка, стала вартість, гарантована чистота — компроміс у тому, що це нахил + один горб, а не повний контроль кожної гармоніки.",
+      "is_html": 1,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r2a",
+      "lang": "en",
+      "value": "BLIT / DSF oscillators",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r2a",
+      "lang": "uk",
+      "value": "BLIT / DSF осцилятори",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r2b",
+      "lang": "en",
+      "value": "Same family of maths. Cosine adds the Brightness knob as a real-time control, the fractional Partials ceiling, the Formant hump, and a guarantee it sounds the same on every machine.",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r2b",
+      "lang": "uk",
+      "value": "Та сама математична родина. Cosine додає ручку Яскравості як контроль у реальному часі, дробову стелю Гармонік, горб Форманта і гарантію однакового звучання на будь-якій машині.",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r3a",
+      "lang": "en",
+      "value": "Virtual-analog / PolyBLEP synths",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r3a",
+      "lang": "uk",
+      "value": "Virtual-analog / PolyBLEP синти",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r3b",
+      "lang": "en",
+      "value": "Great for classic analog waveforms — and Cosine <em>includes</em> those (Saw/Triangle), plus the additive engine for tones a subtractive synth simply can’t reach.",
+      "is_html": 1,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r3b",
+      "lang": "uk",
+      "value": "Чудові для класичних аналогових форм — і Cosine <em>включає</em> їх (Пилка/Трикутник), плюс адитивний рушій для тонів, недосяжних субтрактивному синту.",
+      "is_html": 1,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r4a",
+      "lang": "en",
+      "value": "\"Quantum-inspired\" novelty synths",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r4a",
+      "lang": "uk",
+      "value": "«Квантово-натхненні» синти-новинки",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r4b",
+      "lang": "en",
+      "value": "The deliberate opposite: every claim here is measured, and the limitations are published on this very page.",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.r4b",
+      "lang": "uk",
+      "value": "Навмисна протилежність: кожне твердження тут виміряне, а обмеження опубліковані прямо на цій сторінці.",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.th1",
+      "lang": "en",
+      "value": "Approach",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.th1",
+      "lang": "uk",
+      "value": "Підхід",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.th2",
+      "lang": "en",
+      "value": "The trade vs this",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "cmp.th2",
+      "lang": "uk",
+      "value": "Компроміс проти цього",
+      "is_html": 0,
+      "section": "cmp"
+    },
+    {
+      "key": "eng.h",
+      "lang": "en",
+      "value": "The same engine, without the plugin.",
+      "is_html": 0,
+      "section": "eng"
+    },
+    {
+      "key": "eng.h",
+      "lang": "uk",
+      "value": "Той самий рушій, без плагіна.",
+      "is_html": 0,
+      "section": "eng"
+    },
+    {
+      "key": "eng.kick",
+      "lang": "en",
+      "value": "For developers",
+      "is_html": 0,
+      "section": "eng"
+    },
+    {
+      "key": "eng.kick",
+      "lang": "uk",
+      "value": "Розробникам",
+      "is_html": 0,
+      "section": "eng"
+    },
+    {
+      "key": "eng.lead",
+      "lang": "en",
+      "value": "Underneath the Cosine plugin (<span class=\"mono\">harmonic_synth</span>) is <span class=\"mono\">harmonic_core</span> — a <code>no_std</code>, zero-dependency Rust DSP crate with a C ABI. The plugin is one host for it; the same engine also compiles to Cortex-M, RISC-V, and the browser.",
+      "is_html": 1,
+      "section": "engine"
+    },
+    {
+      "key": "eng.lead",
+      "lang": "uk",
+      "value": "Під плагіном Cosine (<span class=\"mono\">harmonic_synth</span>) — <span class=\"mono\">harmonic_core</span>, <code>no_std</code>-крейт DSP на Rust без залежностей, із C ABI. Плагін — лише один його хост; той самий рушій також компілюється під Cortex-M, RISC-V і в браузер.",
+      "is_html": 1,
+      "section": "engine"
+    },
+    {
+      "key": "eng.li1",
+      "lang": "en",
+      "value": "<strong>Zero dependencies, no <code>libm</code>, no allocator.</strong> ~14&nbsp;KB <code>no_std</code> cdylib. Links into firmware as-is.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li1",
+      "lang": "uk",
+      "value": "<strong>Нуль залежностей, без <code>libm</code>, без алокатора.</strong> ~14&nbsp;КБ <code>no_std</code> cdylib. Лінкується у прошивку як є.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li2",
+      "lang": "en",
+      "value": "<strong>One <code>Voice</code> is plain-old-data</strong> (624 bytes, no pointers) — the caller owns the memory, the crate never allocates and never panics on the audio path. Polyphony is the host's policy.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li2",
+      "lang": "uk",
+      "value": "<strong>Один <code>Voice</code> — це plain-old-data</strong> (624 байти, без вказівників) — пам'ять володіє викликач, крейт ніколи не алокує й ніколи не панікує на аудіо-шляху. Поліфонія — політика хоста.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li3",
+      "lang": "en",
+      "value": "<strong>Cross-compiles clean</strong> to Cortex-M4F/M7 (Daisy Seed), Cortex-M0 (soft-float), RISC-V, AArch64 — and <code>wasm32</code>, where an 8-voice browser demo runs the identical code with note allocation in ~40 lines of JavaScript.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li3",
+      "lang": "uk",
+      "value": "<strong>Чисто крос-компілюється</strong> під Cortex-M4F/M7 (Daisy Seed), Cortex-M0 (soft-float), RISC-V, AArch64 — і <code>wasm32</code>, де 8-голосне демо в браузері виконує той самий код із розподілом нот у ~40 рядках JavaScript.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li4",
+      "lang": "en",
+      "value": "<strong>Regression-test audio by hash.</strong> The determinism contract means a render is reproducible across machines; a shared <code>verify</code> module renders two scripted passes and every target checks them against the same 64-bit values in CI.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li4",
+      "lang": "uk",
+      "value": "<strong>Регресійний тест аудіо через хеш.</strong> Контракт детермінізму означає, що рендер відтворюваний між машинами; спільний модуль <code>verify</code> робить два скриптовані проходи, і кожна ціль звіряє їх із тими самими 64-бітними значеннями в CI.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li5",
+      "lang": "en",
+      "value": "<strong>Verified:</strong> 120 core tests (11 an adversarial RT-safety suite — NaN / ±∞ / parameter storms), 34 plugin + 9 licence tests, <code>pluginval --strictness 8</code>, <code>clap-validator 35/35</code>, ARM + wasm bit-exactness under QEMU / Node, all on every push.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.li5",
+      "lang": "uk",
+      "value": "<strong>Перевірено:</strong> 120 тестів ядра (11 — ворожий набір RT-safety: NaN / ±∞ / шторми параметрів), 34 тести плагіна + 9 тестів ліцензії, <code>pluginval --strictness 8</code>, <code>clap-validator 35/35</code>, побітова ідентичність на ARM + wasm під QEMU / Node — усе на кожен пуш.",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.p",
+      "lang": "en",
+      "value": "License the engine for a hardware product, a plugin, or a game — per-product, per-seat or royalty. Integration and a determinism sign-off for your CI are available as a fixed-fee package. <a href=\"#pricing\">Get in touch below.</a>",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "eng.p",
+      "lang": "uk",
+      "value": "Ліцензуйте рушій для апаратного продукту, плагіна чи гри — per-product, per-seat або роялті. Інтеграція й підпис детермінізму для вашого CI доступні як пакет за фіксовану ціну. <a href=\"#pricing\">Напишіть нижче.</a>",
+      "is_html": 1,
+      "section": "eng"
+    },
+    {
+      "key": "faq.h",
+      "lang": "en",
+      "value": "The questions a skeptic asks first.",
+      "is_html": 0,
+      "section": "faq"
+    },
+    {
+      "key": "faq.h",
+      "lang": "uk",
+      "value": "Питання, які скептик ставить першими.",
+      "is_html": 0,
+      "section": "faq"
+    },
+    {
+      "key": "faq.kick",
+      "lang": "en",
+      "value": "FAQ",
+      "is_html": 0,
+      "section": "faq"
+    },
+    {
+      "key": "faq.kick",
+      "lang": "uk",
+      "value": "FAQ",
+      "is_html": 0,
+      "section": "faq"
+    },
+    {
+      "key": "feat.char.h",
+      "lang": "en",
+      "value": "Character — the dirt, on purpose",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.char.h",
+      "lang": "uk",
+      "value": "Character — бруд, навмисне",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.char.p",
+      "lang": "en",
+      "value": "Drive, an asymmetric wavefolder, bit-crush and sample-rate reduction. Silky clean at zero, PPG / DX7-style digital grit the moment you push it.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.char.p",
+      "lang": "uk",
+      "value": "Драйв, асиметричний вейвфолдер, біт-крашер і зниження частоти дискретизації. Ідеально чисто на нулі, цифровий грит у стилі PPG / DX7, щойно додаси.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.expr.h",
+      "lang": "en",
+      "value": "Expression",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.expr.h",
+      "lang": "uk",
+      "value": "Експресія",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.expr.p",
+      "lang": "en",
+      "value": "Press one note of a chord harder — MPE, poly aftertouch, channel pressure — and only that note gets brighter. Real per-note expression, not a global filter sweep.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.expr.p",
+      "lang": "uk",
+      "value": "Натисни одну ноту акорду сильніше — MPE, поліфонічний post-touch, канальний тиск — і яскравішою стане лише вона. Справжня понотна експресія, а не загальний свіп фільтра.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.filt.h",
+      "lang": "en",
+      "value": "Filter & envelopes",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.filt.h",
+      "lang": "uk",
+      "value": "Фільтр і обвідні",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.filt.p",
+      "lang": "en",
+      "value": "A resonant filter (low/band/high-pass, notch) plus a filter envelope that’s <em>completely independent</em> from the amp envelope — a pluck and its filter sweep can move on their own separate clocks. Envelope times are honest: set 1&nbsp;second, get 1&nbsp;second.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.filt.p",
+      "lang": "uk",
+      "value": "Резонансний фільтр (LP/BP/HP, нотч) плюс обвідна фільтра, <em>повністю незалежна</em> від амплітудної обвідної — щипок і його зміна фільтра можуть жити за різним годинником. Часи обвідних чесні: постав 1&nbsp;с — отримаєш 1&nbsp;с.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.fm.h",
+      "lang": "en",
+      "value": "FM",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.fm.h",
+      "lang": "uk",
+      "value": "FM",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.fm.p",
+      "lang": "en",
+      "value": "A classic sine-operator FM voice — ratio and amount — plus operator feedback: bell and metallic tones, or push feedback into full-on noise.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.fm.p",
+      "lang": "uk",
+      "value": "Класичний FM-оператор на синусі — відношення й глибина — плюс зворотний зв’язок оператора: дзвіночкові й металічні тони, або зворотний зв’язок на повну — в шум.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.h",
+      "lang": "en",
+      "value": "A 24-voice synth, laid out the way you actually build a sound.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.h",
+      "lang": "uk",
+      "value": "24-голосний синт, побудований так, як ти реально створюєш звук.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.kick",
+      "lang": "en",
+      "value": "What's in it",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.kick",
+      "lang": "uk",
+      "value": "Що всередині",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.mod.h",
+      "lang": "en",
+      "value": "Modulation",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.mod.h",
+      "lang": "uk",
+      "value": "Модуляція",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.mod.p",
+      "lang": "en",
+      "value": "A per-voice LFO — sine, triangle or saw, retriggered per note or running free — that can hit brightness, vibrato, filter cutoff or FM depth. Pick one target, or stack a few at once.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.mod.p",
+      "lang": "uk",
+      "value": "Понотний LFO — синус, трикутник чи пилка, ретригер на кожну ноту або вільний хід — б’є по яскравості, вібрато, зрізу фільтра чи глибині FM. Обери одну ціль або накладай кілька разом.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.osc.h",
+      "lang": "en",
+      "value": "Oscillator",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.osc.h",
+      "lang": "uk",
+      "value": "Осцилятор",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.osc.p",
+      "lang": "en",
+      "value": "Brightness sweeps dark-to-bright with zero stepping. Partials caps how many harmonics you hear — great for melting a buzzy tone down into something round and simple, live. Formant adds a resonant, almost vocal peak. Plus band-limited Saw and Triangle for classic analog-style tones.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.osc.p",
+      "lang": "uk",
+      "value": "Яскравість веде від темного до яскравого без жодних сходинок. Гармоніки обмежують, скільки обертонів чути, — зручно, щоб на льоту перетворити дзижчачий тон на округлий і простий. Формант додає резонансний, майже вокальний пік. Плюс смугово-обмежені Пилка й Трикутник для класичних аналогових тонів.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.see.h",
+      "lang": "en",
+      "value": "See what you hear",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.see.h",
+      "lang": "uk",
+      "value": "Бачити те, що чуєш",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.see.p",
+      "lang": "en",
+      "value": "Watch the real shape of your tone on screen — the harmonic comb and the filter curve, both moving live with your modulation — plus a simple meter that lights up the moment something’s about to sound harsh, so you know exactly when to reach for the cleanup switch.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.see.p",
+      "lang": "uk",
+      "value": "Дивись справжню форму свого тону на екрані — гребінка гармонік і крива фільтра, обидві рухаються наживо з модуляцією — плюс простий індикатор, що загоряється, коли щось ось-ось зазвучить різко, тож ти точно знаєш, коли тягнутись за «почистити».",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.tune.h",
+      "lang": "en",
+      "value": "Microtuning that's in tune with itself",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.tune.h",
+      "lang": "uk",
+      "value": "Мікротюнінг, що в ладу сам із собою",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.tune.p",
+      "lang": "en",
+      "value": "Just intonation, historical tunings, 19/24/31-tone equal temperament, Bohlen-Pierce, or your own Scala file. Because the harmonics sit exactly where the maths says they should, a just-intonation chord actually <strong>stops beating</strong> — you can hear it lock in. 12-TET stays the untouched default.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.tune.p",
+      "lang": "uk",
+      "value": "Чиста інтонація, історичні темперації, 19/24/31-щаблева рівна темперація, Бален-Пірс або власний файл Scala. Оскільки гармоніки стоять точно там, де каже математика, акорд у чистій інтонації справді <strong>перестає битися</strong> — це чутно. 12-TET лишається дефолтом без змін.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.voice.h",
+      "lang": "en",
+      "value": "Voices & unison",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.voice.h",
+      "lang": "uk",
+      "value": "Голоси й унісон",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.voice.p",
+      "lang": "en",
+      "value": "24-voice polyphony, and up to 8 voices stacked per note with detune, stereo spread and a slow, natural drift — so big unison pads <strong>breathe</strong> instead of sitting there static. Flip on HQ mode any time a patch needs extra headroom, for a small, fixed amount of latency.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.voice.p",
+      "lang": "uk",
+      "value": "24-голосна поліфонія і до 8 голосів в унісоні на ноту з розстройкою, стерео-розкидом і повільним природним дрейфом — тож товсті унісонні пади <strong>дихають</strong>, а не стоять статично. Вмикай HQ-режим, коли патчу треба більше запасу, за невелику фіксовану затримку.",
+      "is_html": 1,
+      "section": "feat"
+    },
+    {
+      "key": "feat.work.h",
+      "lang": "en",
+      "value": "Workflow",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.work.h",
+      "lang": "uk",
+      "value": "Робочий процес",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.work.p",
+      "lang": "en",
+      "value": "A live A/B morph slider you can automate for real. A 6-character code that reproduces any random patch exactly — share a sound in a text message instead of a preset file. 22 starting presets to build from.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "feat.work.p",
+      "lang": "uk",
+      "value": "Живий A/B-морф-повзунок, який можна по-справжньому автоматизувати. 6-символьний код, що точно відтворює будь-який випадковий патч — ділись звуком у повідомленні, а не файлом пресета. 22 стартові пресети для старту.",
+      "is_html": 0,
+      "section": "feat"
+    },
+    {
+      "key": "final.cta.demo",
+      "lang": "en",
+      "value": "▶ Browser demo",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.cta.demo",
+      "lang": "uk",
+      "value": "▶ Демо в браузері",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.cta.handbook",
+      "lang": "en",
+      "value": "Capabilities handbook",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.cta.handbook",
+      "lang": "uk",
+      "value": "Довідник можливостей",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.download",
+      "lang": "en",
+      "value": "⬇ Download Core (Windows)",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.download",
+      "lang": "uk",
+      "value": "⬇ Завантажити Core (Windows)",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.h",
+      "lang": "en",
+      "value": "Try Core today.",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.h",
+      "lang": "uk",
+      "value": "Спробуй Core вже сьогодні.",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.hint",
+      "lang": "en",
+      "value": "Want Studio or a signed build the moment it's out? Leave your email below — stored in this browser only until a real mailing list is wired up.",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.hint",
+      "lang": "uk",
+      "value": "Хочеш дізнатись про Studio чи підписаний білд одразу, як вийде? Залиш email нижче — поки що зберігається лише в цьому браузері, до підключення справжньої розсилки.",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.notify",
+      "lang": "en",
+      "value": "Notify me",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.notify",
+      "lang": "uk",
+      "value": "Сповістити мене",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.sub",
+      "lang": "en",
+      "value": "Core is a real, downloadable Windows build — free, no watermark, no time limit, validated with pluginval and clap-validator on the exact commit it was built from. Not code-signed yet (a certificate isn't in the budget for a pre-revenue solo project), so Windows SmartScreen may warn on first run — click \"More info\" → \"Run anyway\". Studio, signed builds, and macOS/Linux are still on the way.",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "final.sub",
+      "lang": "uk",
+      "value": "Core — це реальний, завантажуваний Windows-білд: безкоштовний, без вотермарки, без обмеження в часі, перевірений pluginval і clap-validator саме на тому комміті, з якого зібраний. Ще не підписаний (сертифікат поки не по кишені для проєкту без виручки), тож Windows SmartScreen може попередити при першому запуску — тисни \"More info\" → \"Run anyway\". Studio, підписані білди й macOS/Linux — ще в дорозі.",
+      "is_html": 0,
+      "section": "final"
+    },
+    {
+      "key": "foot.demo",
+      "lang": "en",
+      "value": "Browser demo",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.demo",
+      "lang": "uk",
+      "value": "Демо в браузері",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.docs",
+      "lang": "en",
+      "value": "Full docs",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.docs",
+      "lang": "uk",
+      "value": "Повна документація",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.fine",
+      "lang": "en",
+      "value": "Cosine · Rust · <code>github.com/Gnomir/AudioSynth</code><br> Core is out (Windows, unsigned). Name, price and the licence model are decided; signed builds, macOS / Linux, Studio purchases, and a real mailing list are still to come.",
+      "is_html": 1,
+      "section": "foot"
+    },
+    {
+      "key": "foot.fine",
+      "lang": "uk",
+      "value": "Cosine · Rust · <code>github.com/Gnomir/AudioSynth</code><br> Core вже вийшов (Windows, без підпису). Назва, ціна й ліцензійна модель вирішені; підписані білди, macOS / Linux, купівля Studio й справжня розсилка — ще в дорозі.",
+      "is_html": 1,
+      "section": "foot"
+    },
+    {
+      "key": "foot.handbook",
+      "lang": "en",
+      "value": "Handbook",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.handbook",
+      "lang": "uk",
+      "value": "Довідник",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.monograph",
+      "lang": "en",
+      "value": "Scientific monograph",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.monograph",
+      "lang": "uk",
+      "value": "Наукова монографія",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.product",
+      "lang": "en",
+      "value": "Product",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.product",
+      "lang": "uk",
+      "value": "Продукт",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.s1",
+      "lang": "en",
+      "value": "VST3 + CLAP · validated",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.s1",
+      "lang": "uk",
+      "value": "VST3 + CLAP · перевірено",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.s2",
+      "lang": "en",
+      "value": "Windows: Core released · mac / Linux pending",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.s2",
+      "lang": "uk",
+      "value": "Windows: Core вийшов · mac / Linux в дорозі",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.s3",
+      "lang": "en",
+      "value": "Engine: AGPL-3.0 or commercial",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.s3",
+      "lang": "uk",
+      "value": "Рушій: AGPL-3.0 або комерційна",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.source",
+      "lang": "en",
+      "value": "Source",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.source",
+      "lang": "uk",
+      "value": "Вихідний код",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.status",
+      "lang": "en",
+      "value": "Status",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.status",
+      "lang": "uk",
+      "value": "Статус",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.technical",
+      "lang": "en",
+      "value": "Technical",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "foot.technical",
+      "lang": "uk",
+      "value": "Технічне",
+      "is_html": 0,
+      "section": "foot"
+    },
+    {
+      "key": "hero.cta.demo",
+      "lang": "en",
+      "value": "▶ Try it in your browser",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.cta.demo",
+      "lang": "uk",
+      "value": "▶ Спробувати в браузері",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.cta.pricing",
+      "lang": "en",
+      "value": "See pricing",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.cta.pricing",
+      "lang": "uk",
+      "value": "Ціна",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.eyebrow",
+      "lang": "en",
+      "value": "Additive synth · verified by an independent audit",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.eyebrow",
+      "lang": "uk",
+      "value": "Адитивний синт · перевірений незалежним аудитом",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.h1",
+      "lang": "en",
+      "value": "<em>Cosine.</em> One knob takes the tone from a pure sine to a full wall of harmonics — and we measured what that costs your CPU: nothing changes.",
+      "is_html": 1,
+      "section": "hero"
+    },
+    {
+      "key": "hero.h1",
+      "lang": "uk",
+      "value": "<em>Cosine.</em> Одна ручка веде звук від чистого синуса до повної стіни гармонік — і навантаження на процесор ми виміряли: воно не змінюється.",
+      "is_html": 1,
+      "section": "hero"
+    },
+    {
+      "key": "hero.proof",
+      "lang": "en",
+      "value": "Independently measured: 530× realtime per voice, identical from 3 to 1200 harmonics (under 3% spread). Full report: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>.",
+      "is_html": 1,
+      "section": "hero"
+    },
+    {
+      "key": "hero.proof",
+      "lang": "uk",
+      "value": "Виміряно незалежно: 530× реального часу на голос, однаково від 3 до 1200 гармонік (розкид 3%). Повний звіт: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>.",
+      "is_html": 1,
+      "section": "hero"
+    },
+    {
+      "key": "hero.sub",
+      "lang": "en",
+      "value": "Turn Brightness up and the tone goes from a pure, dark sine to a buzzing wall of harmonics — smoothly, with <strong>no extra CPU cost</strong> no matter how many voices are stacked on top. It’s a real, deterministic engine under the hood — <strong>a freeze or bounce sounds identical months later, on any machine</strong> — sold as a finished VST3 / CLAP plugin.",
+      "is_html": 1,
+      "section": "hero"
+    },
+    {
+      "key": "hero.sub",
+      "lang": "uk",
+      "value": "Крути Яскравість — і тон іде від чистого темного синуса до дзижчачої стіни гармонік, плавно, без <strong>жодних додаткових витрат CPU</strong>, скільки б голосів не було накладено. Під капотом — справжній детермінований рушій: <strong>фриз чи зведення звучить так само й через кілька місяців, на будь-якій машині</strong> — продається як готовий плагін VST3 / CLAP.",
+      "is_html": 1,
+      "section": "hero"
+    },
+    {
+      "key": "hero.trust.1",
+      "lang": "en",
+      "value": "163 / 163 tests passed",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.trust.1",
+      "lang": "uk",
+      "value": "163 / 163 тести пройдено",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.trust.2",
+      "lang": "en",
+      "value": "pluginval — SUCCESS",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.trust.2",
+      "lang": "uk",
+      "value": "pluginval — SUCCESS",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.trust.3",
+      "lang": "en",
+      "value": "clap-validator — 35 / 35",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "hero.trust.3",
+      "lang": "uk",
+      "value": "clap-validator — 35 / 35",
+      "is_html": 0,
+      "section": "hero"
+    },
+    {
+      "key": "how.h",
+      "lang": "en",
+      "value": "You don’t need to understand any of this to use Cosine. Here it is anyway, for the curious.",
+      "is_html": 0,
+      "section": "how"
+    },
+    {
+      "key": "how.h",
+      "lang": "uk",
+      "value": "Щоб користуватись Cosine, це знати не обов’язково. Але ось воно — для допитливих.",
+      "is_html": 0,
+      "section": "how"
+    },
+    {
+      "key": "how.kick",
+      "lang": "en",
+      "value": "How it works",
+      "is_html": 0,
+      "section": "how"
+    },
+    {
+      "key": "how.kick",
+      "lang": "uk",
+      "value": "Як це працює",
+      "is_html": 0,
+      "section": "how"
+    },
+    {
+      "key": "how.p1",
+      "lang": "en",
+      "value": "Under the hood, every note is built by adding up its harmonics directly — the way a pipe organ or a Hammond does it, not a wavetable and not a stack of separate oscillators. That’s the whole trick: turning up Brightness just changes how loud each harmonic is, all at once, for free.",
+      "is_html": 1,
+      "section": "how"
+    },
+    {
+      "key": "how.p1",
+      "lang": "uk",
+      "value": "Під капотом кожна нота будується прямим додаванням її гармонік — так, як це робить орган чи Hammond, а не вейвтейбл і не стос окремих осциляторів. У цьому весь фокус: збільшення Яскравості просто міняє гучність кожної гармоніки одразу, безкоштовно.",
+      "is_html": 1,
+      "section": "how"
+    },
+    {
+      "key": "how.p2",
+      "lang": "en",
+      "value": "Written out, that’s a closed-form sum of cosines — one per harmonic, with a mathematically exact cutoff, so nothing lives above the harmonic you set. That’s the whole reason the oscillator itself can never sound harsh or aliased, no matter how bright you push it:",
+      "is_html": 1,
+      "section": "how"
+    },
+    {
+      "key": "how.p2",
+      "lang": "uk",
+      "value": "Записано формулою, це — замкнена сума косинусів, по одній на гармоніку, з математично точною стелею, тож вище заданої гармоніки нема нічого. Саме тому сам осцилятор ніколи не звучить різко чи «цифрово», хоч як б яскраво його ні викрути:",
+      "is_html": 1,
+      "section": "how"
+    },
+    {
+      "key": "how.p3",
+      "lang": "en",
+      "value": "The one part of that sum that takes any real work stays cheap even at 2000 harmonics, and it’s remembered for as long as you hold a note — which is why the cost never climbs. Full derivation and every measured number, if you want to go deeper: <a href=\"/monograph\">the scientific monograph</a>.",
+      "is_html": 1,
+      "section": "how"
+    },
+    {
+      "key": "how.p3",
+      "lang": "uk",
+      "value": "Єдина частина цієї суми, що потребує реальної роботи, лишається дешевою навіть при 2000 гармоніках, і вона запам’ятовується, поки нота тримається, — тому вартість ніколи не росте. Повне виведення й усі виміряні числа, якщо хочеться глибше: <a href=\"/monograph\">наукова монографія</a>.",
+      "is_html": 1,
+      "section": "how"
+    },
+    {
+      "key": "lim.1",
+      "lang": "en",
+      "value": "<strong>It’s not infinitely flexible.</strong> One knob controls the overall brightness tilt, not each harmonic by hand. If you need to hand-draw a completely custom, wild harmonic curve partial-by-partial, that’s a different (and much slower) kind of synth.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.1",
+      "lang": "uk",
+      "value": "<strong>Це не безмежно гнучко.</strong> Одна ручка керує загальним нахилом яскравості, а не кожною гармонікою окремо вручну. Якщо треба намалювати вручну повністю довільну, дику криву гармонік по-парціально — це вже інший (і набагато повільніший) тип синта.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.2",
+      "lang": "en",
+      "value": "<strong>The oscillator can’t sound harsh; the effects can.</strong> Drive, Fold, Grit, FM and feedback generate real digital edge on purpose when you push them — that’s intentional character. HQ Mode cleans it up for a small, fixed amount of latency.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.2",
+      "lang": "uk",
+      "value": "<strong>Осцилятор не може звучати різко; ефекти — можуть.</strong> Drive, Fold, Grit, FM і зворотний зв’язок навмисно дають справжню цифрову різкість, коли їх викручуєш, — це навмисний характер. HQ-режим чистить це за невелику фіксовану затримку.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.3",
+      "lang": "en",
+      "value": "<strong>HQ Mode won’t lower your CPU usage.</strong> It’s a cleanup switch for the dirt/FM stages, not a performance mode. We say this everywhere so nobody’s surprised.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.3",
+      "lang": "uk",
+      "value": "<strong>HQ-режим не знизить навантаження CPU.</strong> Це перемикач очищення для брудних стадій/FM, а не режим продуктивності. Ми кажемо це всюди, щоб нікого це не дивувало.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.4",
+      "lang": "en",
+      "value": "<strong>Microtuning retunes the fundamental, not each overtone.</strong> Just intonation, historical and equal-division scales all work; true bell inharmonicity or a stretched-piano tuning need a different kind of oscillator.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.4",
+      "lang": "uk",
+      "value": "<strong>Мікротюнінг ретюнить фундаментал, не кожен обертон окремо.</strong> Чиста інтонація, історичні й рівноподільні шкали працюють; справжня інгармонічність дзвону чи розтягнутий стрій піаніно потребують іншого типу осцилятора.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.5",
+      "lang": "en",
+      "value": "<strong>One MIDI channel at a time</strong>, a 2048-harmonic ceiling, and a small click if you steal past the 24-voice limit.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.5",
+      "lang": "uk",
+      "value": "<strong>Один MIDI-канал за раз</strong>, стеля 2048 гармонік, і легке клацання, якщо крадеш голос понад ліміт у 24.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.6",
+      "lang": "en",
+      "value": "<strong>Real embedded hardware hasn’t been measured yet</strong> — it compiles clean and passes every check we can run without a physical board. macOS / Linux builds and an AU version are still on the way.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.6",
+      "lang": "uk",
+      "value": "<strong>Реальне вбудоване залізо ще не виміряне</strong> — компілюється чисто й проходить усі перевірки, які можна зробити без фізичної плати. Білди macOS / Linux і версія AU — ще в дорозі.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.foot",
+      "lang": "en",
+      "value": "Full list, with the reason for each: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md\" target=\"_blank\" rel=\"noopener\">docs/07_LIMITATIONS.md</a>.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.foot",
+      "lang": "uk",
+      "value": "Повний перелік, із причиною для кожного пункту: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/docs/07_LIMITATIONS.md\" target=\"_blank\" rel=\"noopener\">docs/07_LIMITATIONS.md</a>.",
+      "is_html": 1,
+      "section": "lim"
+    },
+    {
+      "key": "lim.h",
+      "lang": "en",
+      "value": "Published, not buried. In this market that's the marketing.",
+      "is_html": 0,
+      "section": "lim"
+    },
+    {
+      "key": "lim.h",
+      "lang": "uk",
+      "value": "Опубліковано, не сховано. На цьому ринку це і є маркетинг.",
+      "is_html": 0,
+      "section": "lim"
+    },
+    {
+      "key": "lim.kick",
+      "lang": "en",
+      "value": "What it won't do",
+      "is_html": 0,
+      "section": "lim"
+    },
+    {
+      "key": "lim.kick",
+      "lang": "uk",
+      "value": "Чого воно не робить",
+      "is_html": 0,
+      "section": "lim"
+    },
+    {
+      "key": "listen.1.label",
+      "lang": "en",
+      "value": "One parameter, sine to full brightness",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.1.label",
+      "lang": "uk",
+      "value": "Один параметр, від синуса до повної яскравості",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.2.label",
+      "lang": "en",
+      "value": "A chord, 7-voice unison, stereo",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.2.label",
+      "lang": "uk",
+      "value": "Акорд, 7-голосний унісон, стерео",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.3.label",
+      "lang": "en",
+      "value": "Character stages, one after another: drive → fold → grit → FM → feedback",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.3.label",
+      "lang": "uk",
+      "value": "Character-стадії одна за одною: drive → fold → grit → FM → feedback",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.cta",
+      "lang": "en",
+      "value": "▶ Try it yourself in the browser",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.cta",
+      "lang": "uk",
+      "value": "▶ Спробувати самому в браузері",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.h",
+      "lang": "en",
+      "value": "Hear it",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.h",
+      "lang": "uk",
+      "value": "Приклади звучання",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.kick",
+      "lang": "en",
+      "value": "Listen",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.kick",
+      "lang": "uk",
+      "value": "Послухати",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.p",
+      "lang": "en",
+      "value": "Three recordings straight from the engine — the same code that runs in the plugin, no editing.",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.p",
+      "lang": "uk",
+      "value": "Три записи прямо з рушія — той самий код, що й у плагіні, без монтажу.",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.tech.kick",
+      "lang": "en",
+      "value": "The technical proof",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "listen.tech.kick",
+      "lang": "uk",
+      "value": "Технічний доказ",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "nav.account",
+      "lang": "en",
+      "value": "My account",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.account",
+      "lang": "uk",
+      "value": "Мій акаунт",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.engine",
+      "lang": "en",
+      "value": "For developers",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.engine",
+      "lang": "uk",
+      "value": "Розробникам",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.features",
+      "lang": "en",
+      "value": "Features",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.features",
+      "lang": "uk",
+      "value": "Можливості",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.how",
+      "lang": "en",
+      "value": "How it works",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.how",
+      "lang": "uk",
+      "value": "Як це працює",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.limits",
+      "lang": "en",
+      "value": "Limits",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.limits",
+      "lang": "uk",
+      "value": "Межі",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.login",
+      "lang": "en",
+      "value": "Log in",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.login",
+      "lang": "uk",
+      "value": "Увійти",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.pricing",
+      "lang": "en",
+      "value": "Pricing",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "nav.pricing",
+      "lang": "uk",
+      "value": "Ціна",
+      "is_html": 0,
+      "section": "nav"
+    },
+    {
+      "key": "panel.bandlimited",
+      "lang": "en",
+      "value": "band-limited ✓",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.bandlimited",
+      "lang": "uk",
+      "value": "смугово-обмежено ✓",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.brightness",
+      "lang": "en",
+      "value": "Brightness",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.brightness",
+      "lang": "uk",
+      "value": "Яскравість",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.formant",
+      "lang": "en",
+      "value": "Formant",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.formant",
+      "lang": "uk",
+      "value": "Формант",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.label",
+      "lang": "en",
+      "value": "Live · the spectrum this patch defines",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.label",
+      "lang": "uk",
+      "value": "Наживо · спектр, який задає цей патч",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.note",
+      "lang": "en",
+      "value": "Drag the sliders. The bars are the exact partial weights the closed form produces — a tilt (rᵏ) plus one movable hump — and there is nothing above the ceiling, ever. In the plugin this is drawn over a live analyser.",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.note",
+      "lang": "uk",
+      "value": "Тягніть повзунки. Стовпці — це точні ваги гармонік, які дає замкнена форма: нахил (rᵏ) плюс один рухомий горб — і над стелею немає нічого, ніколи. У плагіні це малюється поверх живого аналізатора.",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.partials",
+      "lang": "en",
+      "value": "Partials",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "panel.partials",
+      "lang": "uk",
+      "value": "Гармоніки",
+      "is_html": 0,
+      "section": "panel"
+    },
+    {
+      "key": "presets.1.label",
+      "lang": "en",
+      "value": "Deep Sub — a sub-bass that holds the bottom",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.1.label",
+      "lang": "uk",
+      "value": "Deep Sub — суб-бас, що тримає низ",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.2.label",
+      "lang": "en",
+      "value": "Bright Saw Lead — a cutting lead line",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.2.label",
+      "lang": "uk",
+      "value": "Bright Saw Lead — пробивний лід",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.3.label",
+      "lang": "en",
+      "value": "Warm Analog Pad — a slow-blooming chord",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.3.label",
+      "lang": "uk",
+      "value": "Warm Analog Pad — акорд, що повільно розкривається",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.4.label",
+      "lang": "en",
+      "value": "DX Bell — an FM bell with a long tail",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.4.label",
+      "lang": "uk",
+      "value": "DX Bell — FM-дзвіночок з довгим хвостом",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.h",
+      "lang": "en",
+      "value": "What you can make in seconds",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.h",
+      "lang": "uk",
+      "value": "Що можна створити за секунди",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.kick",
+      "lang": "en",
+      "value": "Presets",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.kick",
+      "lang": "uk",
+      "value": "Пресети",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.p",
+      "lang": "en",
+      "value": "4 of the 22 starter presets — real patches from the actual engine, no editing.",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "presets.p",
+      "lang": "uk",
+      "value": "4 з 22 стартових пресетів — реальні патчі з того самого рушія, без монтажу.",
+      "is_html": 0,
+      "section": "listen"
+    },
+    {
+      "key": "price.core.1",
+      "lang": "en",
+      "value": "Geometric oscillator · Brightness · fractional Partials",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.1",
+      "lang": "uk",
+      "value": "Геометричний осцилятор · Яскравість · дробові Гармоніки",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.2",
+      "lang": "en",
+      "value": "Band-limited Saw / Triangle",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.2",
+      "lang": "uk",
+      "value": "Смугово-обмежені Пилка / Трикутник",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.3",
+      "lang": "en",
+      "value": "Amp envelope · the full multimode filter (LP/BP/HP/Notch)",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.3",
+      "lang": "uk",
+      "value": "Амплітудна обвідна · повний мультимод-фільтр (LP/BP/HP/Notch)",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.4",
+      "lang": "en",
+      "value": "Unison with drift · pitch bend · 12-TET",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.4",
+      "lang": "uk",
+      "value": "Унісон із дрейфом · пітч-бенд · 12-TET",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.5",
+      "lang": "en",
+      "value": "A/B morph · seed codes · preset bank",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.5",
+      "lang": "uk",
+      "value": "A/B-морф · сід-коди · банк пресетів",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.amt",
+      "lang": "en",
+      "value": "Free",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.amt",
+      "lang": "uk",
+      "value": "Безкоштовно",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.cta",
+      "lang": "en",
+      "value": "Download Core (Windows) →",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.cta",
+      "lang": "uk",
+      "value": "Завантажити Core (Windows) →",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.was",
+      "lang": "en",
+      "value": "no watermark · no nag · yours",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.core.was",
+      "lang": "uk",
+      "value": "без вотермарки · без нагадувань · ваше",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.eng.h",
+      "lang": "en",
+      "value": "License the engine",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.eng.h",
+      "lang": "uk",
+      "value": "Ліцензувати рушій",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.eng.p",
+      "lang": "en",
+      "value": "For a hardware synth, a plugin, a game, or an embedded product — per product, per seat, or royalty, and an integration + determinism sign-off package. <code>harmonic_core</code> is <strong>AGPL-3.0 or a commercial licence</strong>: free for open-source and evaluation, paid to ship it in a closed product. <strong>Tell us what you're building.</strong>",
+      "is_html": 1,
+      "section": "price"
+    },
+    {
+      "key": "price.eng.p",
+      "lang": "uk",
+      "value": "Для апаратного синта, плагіна, гри чи вбудованого продукту — per-product, per-seat або роялті, плюс пакет інтеграції + підпису детермінізму. <code>harmonic_core</code> — <strong>AGPL-3.0 або комерційна ліцензія</strong>: безкоштовно для open-source і оцінки, платно — щоб постачати в закритому продукті. <strong>Розкажіть, що ви будуєте.</strong>",
+      "is_html": 1,
+      "section": "price"
+    },
+    {
+      "key": "price.foot",
+      "lang": "en",
+      "value": "One binary — Studio unlocks with a personal key file that just works: no login, no internet check, no nagging, ever.",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.foot",
+      "lang": "uk",
+      "value": "Один бінарник — Studio відмикається персональним ключ-файлом, який просто працює: без логіну, без перевірки в інтернеті, без нагадувань, ніколи.",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.h",
+      "lang": "en",
+      "value": "A real free tier. One-time for the rest.",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.h",
+      "lang": "uk",
+      "value": "Справжній безкоштовний рівень. Разова оплата за решту.",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.kick",
+      "lang": "en",
+      "value": "Pricing",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.kick",
+      "lang": "uk",
+      "value": "Ціна",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.1",
+      "lang": "en",
+      "value": "Formant · Character · FM + feedback",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.1",
+      "lang": "uk",
+      "value": "Формант · Character · FM + зворотний зв'язок",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.2",
+      "lang": "en",
+      "value": "Dedicated filter envelope · full LFO matrix · MPE expression",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.2",
+      "lang": "uk",
+      "value": "Окрема обвідна фільтра · повна матриця LFO · MPE-експресія",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.3",
+      "lang": "en",
+      "value": "Microtuning + Scala <code>.scl</code> / <code>.kbm</code>",
+      "is_html": 1,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.3",
+      "lang": "uk",
+      "value": "Мікротюнінг + Scala <code>.scl</code> / <code>.kbm</code>",
+      "is_html": 1,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.4",
+      "lang": "en",
+      "value": "HQ mode",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.4",
+      "lang": "uk",
+      "value": "HQ-режим",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.5",
+      "lang": "en",
+      "value": "The on-screen closed-form spectrum + aliasing meter",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.5",
+      "lang": "uk",
+      "value": "Спектр замкненої форми на екрані + індикатор аліасингу",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.6",
+      "lang": "en",
+      "value": "Free updates within v1",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.6",
+      "lang": "uk",
+      "value": "Безкоштовні оновлення в межах v1",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.amt",
+      "lang": "en",
+      "value": "$89 <small>one-time</small>",
+      "is_html": 1,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.amt",
+      "lang": "uk",
+      "value": "$89 <small>разово</small>",
+      "is_html": 1,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.badge",
+      "lang": "en",
+      "value": "Everything unlocked",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.badge",
+      "lang": "uk",
+      "value": "Усе розблоковано",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.cta",
+      "lang": "en",
+      "value": "Get notified when Studio ships →",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.cta",
+      "lang": "uk",
+      "value": "Дізнатись, коли вийде Studio →",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.was",
+      "lang": "en",
+      "value": "launch: $59 for the first 6 weeks",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.was",
+      "lang": "uk",
+      "value": "на старті: $59 перші 6 тижнів",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "serum.1.h",
+      "lang": "en",
+      "value": "Tuning is structural, not bolted on",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.1.h",
+      "lang": "uk",
+      "value": "Стрій — структурний, а не надбудова",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.1.p",
+      "lang": "en",
+      "value": "A Scala import or a tuning table retunes note positions on a fixed set of overtones. Here the overtones themselves are recomputed from the retuned fundamental — measured, not assumed.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.1.p",
+      "lang": "uk",
+      "value": "Імпорт Scala чи таблиця строю ретюнить позиції нот на фіксованому наборі обертонів. Тут самі обертони перераховуються з ретюненого фундаменталу — виміряно, не припущено.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.2.h",
+      "lang": "en",
+      "value": "Brightness doesn’t tax the CPU",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.2.h",
+      "lang": "uk",
+      "value": "Яскравість не навантажує CPU",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.2.p",
+      "lang": "en",
+      "value": "Measured: 530× realtime per voice at both 3 and 1200 harmonics, under 3% spread. Stacking harmonic content doesn’t cost more than a plain sine.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.2.p",
+      "lang": "uk",
+      "value": "Виміряно: 530× реального часу на голос і на 3, і на 1200 гармоніках, розкид менше 3%. Нарощування гармонік не коштує дорожче за простий синус.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.3.h",
+      "lang": "en",
+      "value": "What it doesn’t try to be",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.3.h",
+      "lang": "uk",
+      "value": "Чим він не намагається бути",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.3.p",
+      "lang": "en",
+      "value": "39 parameters, on purpose — not a wavetable morph engine, not a deep modulation matrix. If that’s what a patch needs, reach for what you already have.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.3.p",
+      "lang": "uk",
+      "value": "39 параметрів, навмисно — не двигун вейвтейбл-морфінгу, не глибока модуляційна матриця. Якщо патчу потрібно саме це — берете те, що вже маєте.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.4.h",
+      "lang": "en",
+      "value": "Tested where you’d actually use it",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.4.h",
+      "lang": "uk",
+      "value": "Перевірено там, де ви реально працюєте",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.4.p",
+      "lang": "en",
+      "value": "Loaded and run live in REAPER v7.79 as both VST3 and CLAP: scans clean, opens, plays. Host-reported: 0.09–0.28% CPU per voice, 16-sample PDC — the same number the crate’s own tests report, now confirmed by a real host.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.4.p",
+      "lang": "uk",
+      "value": "Завантажено й запущено наживо в REAPER v7.79 як VST3, так і CLAP: чисто сканується, відкривається, грає. Хост показує: 0.09–0.28% CPU на голос, PDC 16 семплів — те саме число, що й у власних тестах крейта, тепер підтверджене реальним хостом.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.h",
+      "lang": "en",
+      "value": "For Serum, Vital, Pigments, Massive X and Phase Plant users",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.h",
+      "lang": "uk",
+      "value": "Для тих, хто вже грає на Serum, Vital, Pigments, Massive X чи Phase Plant",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.kick",
+      "lang": "en",
+      "value": "If you already own a synth",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.kick",
+      "lang": "uk",
+      "value": "Якщо у вас уже є синт",
+      "is_html": 0,
+      "section": "serum"
+    },
+    {
+      "key": "serum.lead",
+      "lang": "en",
+      "value": "Cosine doesn’t replace what those do well. It does one thing they don’t: the harmonics are built fresh on a retuned fundamental, not read off a fixed wavetable — measured tuning error under 0.001 cent, in both 12-TET and just intonation.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "serum.lead",
+      "lang": "uk",
+      "value": "Cosine не замінює те, що ці синти вже роблять добре. Він робить одну річ, якої вони не роблять: гармоніки будуються заново на ретюненому фундаменталі, а не читаються з фіксованого вейвтейблу — виміряна похибка строю менше 0.001 цента, як у 12-TET, так і в чистій інтонації.",
+      "is_html": 1,
+      "section": "serum"
+    },
+    {
+      "key": "shot.caption",
+      "lang": "en",
+      "value": "The real plugin editor, loaded live in REAPER v7.79 — not a mockup. STUDIO badges mark Studio-tier controls.",
+      "is_html": 0,
+      "section": "shot"
+    },
+    {
+      "key": "shot.caption",
+      "lang": "uk",
+      "value": "Реальний редактор плагіна, завантажений наживо в REAPER v7.79 — не макет. Бейджі STUDIO позначають можливості рівня Studio.",
+      "is_html": 0,
+      "section": "shot"
+    },
+    {
+      "key": "shot.h",
+      "lang": "en",
+      "value": "What you actually open",
+      "is_html": 0,
+      "section": "shot"
+    },
+    {
+      "key": "shot.h",
+      "lang": "uk",
+      "value": "Що ви реально відкриваєте",
+      "is_html": 0,
+      "section": "shot"
+    },
+    {
+      "key": "shot.kick",
+      "lang": "en",
+      "value": "Interface",
+      "is_html": 0,
+      "section": "shot"
+    },
+    {
+      "key": "shot.kick",
+      "lang": "uk",
+      "value": "Інтерфейс",
+      "is_html": 0,
+      "section": "shot"
+    },
+    {
+      "key": "spec.h",
+      "lang": "en",
+      "value": "Every number here comes from a test.",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.h",
+      "lang": "uk",
+      "value": "Кожне число тут — із тесту.",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k1",
+      "lang": "en",
+      "value": "realtime, one voice @ 48 kHz",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k1",
+      "lang": "uk",
+      "value": "реального часу, один голос @ 48 кГц",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k2",
+      "lang": "en",
+      "value": "cost, 3 → 1200 harmonics",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k2",
+      "lang": "uk",
+      "value": "вартість, 3 → 1200 гармонік",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k3",
+      "lang": "en",
+      "value": "identical sound on every chip — x86 · ARM · in your browser",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k3",
+      "lang": "uk",
+      "value": "однаковий звук на будь-якому чіпі — x86 · ARM · у браузері",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k4",
+      "lang": "en",
+      "value": "how clean HQ mode gets (lower is cleaner)",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k4",
+      "lang": "uk",
+      "value": "наскільки чистим HQ-режим (нижче — чистіше)",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k5",
+      "lang": "en",
+      "value": "samples latency — HQ off / on, exact",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k5",
+      "lang": "uk",
+      "value": "семплів затримки — HQ вимк / увімк, точно",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k6",
+      "lang": "en",
+      "value": "automated tests that must pass before any update ships",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k6",
+      "lang": "uk",
+      "value": "автоматичні тести, які мають пройти перед будь-яким оновленням",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k7",
+      "lang": "en",
+      "value": "passes every official plugin-format check",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k7",
+      "lang": "uk",
+      "value": "проходить усі офіційні перевірки формату плагіна",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k8",
+      "lang": "en",
+      "value": "engine size — small enough for a $30 hardware board",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.k8",
+      "lang": "uk",
+      "value": "розмір рушія — вистачає місця на платі за $30",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.kick",
+      "lang": "en",
+      "value": "Measured",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "spec.kick",
+      "lang": "uk",
+      "value": "Виміряно",
+      "is_html": 0,
+      "section": "spec"
+    },
+    {
+      "key": "trustbar.1",
+      "lang": "en",
+      "value": "163 / 163 tests passed",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.1",
+      "lang": "uk",
+      "value": "163 / 163 тести пройдено",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.2",
+      "lang": "en",
+      "value": "pluginval — SUCCESS",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.2",
+      "lang": "uk",
+      "value": "pluginval — SUCCESS",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.3",
+      "lang": "en",
+      "value": "clap-validator — 35 / 35",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.3",
+      "lang": "uk",
+      "value": "clap-validator — 35 / 35",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.4",
+      "lang": "en",
+      "value": "< 0.001 cent tuning error",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.4",
+      "lang": "uk",
+      "value": "< 0.001 цента похибки строю",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.5",
+      "lang": "en",
+      "value": "Verified live in REAPER",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.5",
+      "lang": "uk",
+      "value": "Перевірено наживо в REAPER",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.6",
+      "lang": "en",
+      "value": "530× realtime, flat CPU cost",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "trustbar.6",
+      "lang": "uk",
+      "value": "530× realtime, стала вартість CPU",
+      "is_html": 0,
+      "section": "trustbar"
+    },
+    {
+      "key": "tune.h",
+      "lang": "en",
+      "value": "Microtuning in plain language",
+      "is_html": 0,
+      "section": "tune"
+    },
+    {
+      "key": "tune.h",
+      "lang": "uk",
+      "value": "Мікротюнінг людською мовою",
+      "is_html": 0,
+      "section": "tune"
+    },
+    {
+      "key": "tune.kick",
+      "lang": "en",
+      "value": "Microtuning",
+      "is_html": 0,
+      "section": "tune"
+    },
+    {
+      "key": "tune.kick",
+      "lang": "uk",
+      "value": "Мікротюнінг",
+      "is_html": 0,
+      "section": "tune"
+    },
+    {
+      "key": "tune.proof",
+      "lang": "en",
+      "value": "An independent audit measured the tuning error directly: <b>from −0.0006 to +0.0003 cents in 12-TET</b>, and no more than 0.0002 cents in just intonation. The human ear notices roughly 5 cents at best; the professional tuning standard is about 1 cent. This measured <b>3–4 orders of magnitude tighter</b> than that.",
+      "is_html": 1,
+      "section": "tune"
+    },
+    {
+      "key": "tune.proof",
+      "lang": "uk",
+      "value": "Незалежний аудит виміряв похибку строю напряму: <b>від −0.0006 до +0.0003 цента в 12-TET</b> і не більше 0.0002 цента в чистій інтонації. Людське вухо в найкращому випадку розрізняє приблизно 5 центів; професійний стандарт настройки — близько 1 цент. Це <b>виміряно на 3–4 порядки точніше</b>.",
+      "is_html": 1,
+      "section": "tune"
+    },
+    {
+      "key": "why.1.h",
+      "lang": "en",
+      "value": "One knob, zero CPU tax",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.1.h",
+      "lang": "uk",
+      "value": "Одна ручка, нуль податку на CPU",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.1.p",
+      "lang": "en",
+      "value": "Brightness sweeps your tone from dark and round to bright and buzzing. Most synths get more expensive to run the richer the sound gets — Cosine <strong>doesn’t</strong>. We measured it: 530× realtime at both 3 and 1200 harmonics, under 3% spread. Stack full chords and a fat unison without the penalty.",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.1.p",
+      "lang": "uk",
+      "value": "Яскравість веде тон від темного й округлого до яскравого й дзвінкого. У більшості синтів чим багатший звук — тим важче для процесора. У Cosine <strong>ні</strong>. Ми виміряли це: 530× реального часу і на 3, і на 1200 гармоніках — розкид менше 3%. Тримай повні акорди й товстий унісон без штрафу.",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.2.h",
+      "lang": "en",
+      "value": "Chords that finally stop fighting each other",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.2.h",
+      "lang": "uk",
+      "value": "Акорди, які нарешті перестають битися",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.2.p",
+      "lang": "en",
+      "value": "Independently measured: under 0.001 cent of tuning error, in both 12-TET and just intonation. Retune the fundamental to any scale — Scala, 31-EDO, Bohlen-Pierce — and a chord actually <strong>settles</strong>. <a href=\"#tune\">How it works →</a>",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.2.p",
+      "lang": "uk",
+      "value": "Незалежно виміряно: похибка строю менше 0.001 цента, як у 12-TET, так і в чистій інтонації. Ретюнь фундаментал на будь-яку шкалу — Scala, 31-EDO, Бален-Пірс — і акорд справді <strong>заспокоюється</strong>. <a href=\"#tune\">Як це працює →</a>",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.3.h",
+      "lang": "en",
+      "value": "It warns you before your ears do",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.3.h",
+      "lang": "uk",
+      "value": "Попереджає раніше за твої вуха",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.3.p",
+      "lang": "en",
+      "value": "The built-in display draws the real shape of your patch’s tone, and an <strong>honest little meter</strong> lights up the moment a sound is about to turn harsh or digital. The audit confirmed HQ mode actually works: +3.6 dB cleaner on a driven test patch, not just a switch in a menu.",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.3.p",
+      "lang": "uk",
+      "value": "Вбудований дисплей малює справжню форму тону твого патча, а <strong>чесний індикатор</strong> загоряється в момент, коли звук ось-ось стане різким чи цифровим. Аудит підтвердив: HQ-режим реально працює — +3.6 дБ чистіше на тестовому брудному патчі, а не просто перемикає позначку в меню.",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.4.h",
+      "lang": "en",
+      "value": "Verified, not promised",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.4.h",
+      "lang": "uk",
+      "value": "Перевірено, а не обіцяно",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.4.p",
+      "lang": "en",
+      "value": "163 automated tests (120 engine + 34 plugin + 9 licensing) and two independent industry plugin validators (<code>pluginval</code>, <code>clap-validator</code>) — all freshly run, all passing.",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.4.p",
+      "lang": "uk",
+      "value": "163 автоматичні тести (120 ядра + 34 плагіна + 9 ліцензування) і два незалежні індустріальні валідатори плагінів (pluginval, clap-validator) — усі щойно запущені, і жодного провалу.",
+      "is_html": 1,
+      "section": "why"
+    },
+    {
+      "key": "why.kick",
+      "lang": "en",
+      "value": "Why musicians pick it",
+      "is_html": 0,
+      "section": "why"
+    },
+    {
+      "key": "why.kick",
+      "lang": "uk",
+      "value": "Чому музиканти обирають це",
+      "is_html": 0,
+      "section": "why"
+    }
+  ],
+  "faqs": [
+    {
+      "sort_order": 1,
+      "question_en": "Will pushing this synth choke my computer?",
+      "answer_en": "No. Turning up Brightness or stacking harmonics costs the <strong>same CPU</strong> whether the tone is a plain sine or a screaming wall of overtones — the whole harmonic stack is computed in one shot instead of one oscillator per harmonic. You’ll never hit a CPU wall just from cranking one knob.",
+      "question_uk": "Чи не задушить мій комп’ютер цей синт, якщо його викрутити на повну?",
+      "answer_uk": "Ні. Збільшення Яскравості чи гармонік коштує <strong>однаково для CPU</strong>, чи тон — простий синус, чи дзвінка стіна обертонів: уся гармонічна стопка рахується за один прохід, а не осцилятор на кожну гармоніку. Ти ніколи не впрешся в стелю CPU просто крутячи одну ручку."
+    },
+    {
+      "sort_order": 2,
+      "question_en": "Does it sound harsh or “digital” if I push it hard?",
+      "answer_en": "The clean oscillator never can — it’s mathematically incapable of that kind of digital nastiness on its own. Push Drive, Fold, FM or feedback hard enough and yes, those <em>can</em> turn gritty and harsh — that’s intentional character, the same kind PPG and DX7 fans love. The built-in meter tells you the moment it’s happening, and HQ mode cleans it up whenever you don’t want it.",
+      "question_uk": "Чи звучить різко/«цифрово», якщо викрутити на повну?",
+      "answer_uk": "Чистий осцилятор — ніколи: він математично не здатен на таку цифрову бридню сам по собі. А ось Drive, Fold, FM чи зворотний зв’язок, викручені достатньо, <em>можуть</em> стати брудними й різкими — це навмисний характер, той самий, за який люблять PPG і DX7. Вбудований індикатор скаже, коли це відбувається, а HQ-режим прибере це, коли не хочеш."
+    },
+    {
+      "sort_order": 3,
+      "question_en": "Why doesn’t HQ mode lower my CPU usage?",
+      "answer_en": "Because the oscillator was never the expensive part — HQ’s only job is to catch harshness coming from the dirt and FM stages before it reaches your ears, not to make the synth “more efficient.” Turn it on when a patch needs cleaning up, leave it off otherwise; it costs roughly the same CPU either way, plus a small fixed bit of latency while it’s on.",
+      "question_uk": "Чому HQ-режим не знижує навантаження на CPU?",
+      "answer_uk": "Бо дорогою частиною ніколи не був осцилятор — єдина робота HQ — ловити різкість від брудних стадій і FM, поки вона не дійшла до вух, а не робити синт «ефективнішим». Вмикай, коли патч треба почистити, вимикай в інших випадках; CPU коштує приблизно однаково в обох випадках, плюс невелика фіксована затримка, поки він увімкнений."
+    },
+    {
+      "sort_order": 4,
+      "question_en": "If I freeze or bounce a track, will it still sound right months later?",
+      "answer_en": "Yes, always — on this laptop, a different one, a Mac, a PC, even a different buffer size. Cosine renders the <strong>exact same audio, every single time</strong>, so a freeze from six months ago still sounds identical today. No re-rendering and hoping for the best.",
+      "question_uk": "Якщо заморозити чи звести трек, чи звучатиме він так само через кілька місяців?",
+      "answer_uk": "Так, завжди — на цьому ноутбуку, на іншому, на Mac, на PC, навіть при іншому розмірі буфера. Cosine рендерить <strong>абсолютно той самий звук щоразу</strong>, тож фриз піврічної давності звучить ідентично й сьогодні. Жодного «перерендерити й сподіватись»."
+    },
+    {
+      "sort_order": 5,
+      "question_en": "VST3 and CLAP — where’s AU / AAX?",
+      "answer_en": "VST3 + CLAP at launch. AU (for Logic users) is planned. AAX (Pro Tools) isn’t — it would require a hardware dongle, and we’re not doing that to you.",
+      "question_uk": "VST3 і CLAP — а де AU / AAX?",
+      "answer_uk": "VST3 + CLAP на старті. AU (для користувачів Logic) заплановано. AAX (Pro Tools) — ні: він вимагав би апаратного донгла, а ми цього тобі не зробимо."
+    },
+    {
+      "sort_order": 6,
+      "question_en": "Can I play in just intonation, or another tuning besides 12-TET?",
+      "answer_en": "Yes — just intonation, historical temperaments, any n-tone equal temperament, Bohlen-Pierce, or your own Scala file (<code>.scl</code>/<code>.kbm</code>). Because the engine’s harmonics sit exactly on integer multiples of the retuned fundamental, a just-intonation chord actually <strong>stops beating</strong> instead of just beating a little less. 12-TET stays the untouched default.",
+      "question_uk": "Чи можна грати в чистій інтонації або іншому строї, не тільки в 12-TET?",
+      "answer_uk": "Так — чиста інтонація, історичні темперації, будь-яка n-ступенева рівна темперація, Бален-Пірс або власний файл Scala (<code>.scl</code>/<code>.kbm</code>). Тому що гармоніки рушія стоять точно на цілих кратних ретюненого фундаментала, акорд у чистій інтонації справді <strong>перестає битися</strong>, а не просто менше фальшивить. 12-TET лишається дефолтом без жодних змін."
+    },
+    {
+      "sort_order": 7,
+      "question_en": "Where does the name come from?",
+      "answer_en": "Every note is literally built by adding up cosine waves, one per harmonic — that’s the entire trick, no secret sauce hiding underneath. The name just says what it does. The domain’s still being sorted before launch; the plugin itself is finished and already tested.",
+      "question_uk": "Звідки назва?",
+      "answer_uk": "Кожна нота буквально будується додаванням косинусних хвиль, по одній на гармоніку, — це весь фокус, ніякого прихованого соусу під цим немає. Назва просто каже, що воно робить. Домен ще узгоджується перед релізом; сам плагін уже готовий і перевірений."
+    },
+    {
+      "sort_order": 8,
+      "question_en": "Did you test these numbers yourselves, or is this just marketing copy?",
+      "answer_en": "We did, and here's exactly how: a separate script independently renders control signals through the engine's public API and analyzes them without any library from the product itself. The measurement method was validated against a mathematically exact reference tone before it was trusted on the real audio. Full methodology and source: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>.",
+      "question_uk": "Ви самі тестували ці цифри, чи вони з реклами?",
+      "answer_uk": "Самі, і показуємо, як саме: окремий скрипт незалежно рендерить контрольні сигнали через публічний API рушія й аналізує їх без жодної бібліотеки з боку продукту. Метод вимірювання спершу перевірено на математично точному еталонному сигналі, перш ніж довіряти йому на реальному звуці. Повна методика й вихідний код: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>."
+    },
+    {
+      "sort_order": 9,
+      "question_en": "Does it actually work in a real DAW, or only on paper?",
+      "answer_en": "Loaded and run live in REAPER v7.79 as both VST3 and CLAP — scans clean, opens, plays. The host itself reports 0.09–0.28% CPU per voice and a 16-sample PDC, the same latency figure the plugin’s own tests report independently. Screenshot and details: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>.",
+      "question_uk": "Це справді працює в реальному DAW, чи тільки на папері?",
+      "answer_uk": "Завантажено й запущено наживо в REAPER v7.79 як VST3, так і CLAP — чисто сканується, відкривається, грає. Сам хост показує 0.09–0.28% CPU на голос і PDC 16 семплів — те саме число затримки, яке незалежно показують власні тести плагіна. Скріншот і деталі: <a href=\"https://github.com/Gnomir/AudioSynth/blob/main/product/QA_REPORT.md\" target=\"_blank\" rel=\"noopener\">QA_REPORT.md</a>."
+    }
+  ]
+}

@@ -8,6 +8,7 @@
     "start": "node --experimental-sqlite src/server.js",
     "dev": "node --experimental-sqlite --watch src/server.js",
     "seed": "node --experimental-sqlite src/db/seed.js",
+    "export-seed": "node --experimental-sqlite src/db/export-seed-data.js",
     "test": "node --experimental-sqlite --test"
   },
   "engines": {
