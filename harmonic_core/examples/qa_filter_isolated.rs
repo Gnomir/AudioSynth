@@ -30,9 +30,9 @@ fn main() -> std::io::Result<()> {
 
         let n = FS as usize; // 1s — resonance is low, the impulse response settles well inside this
         let mut out = vec![0.0f32; n];
-        for i in 0..n {
+        for (i, sample) in out.iter_mut().enumerate() {
             let x = if i == 0 { 1.0 } else { 0.0 };
-            out[i] = f.process(x);
+            *sample = f.process(x);
         }
         write_wav_f32(name, FS as u32, &out)?;
     }
