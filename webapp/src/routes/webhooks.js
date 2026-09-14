@@ -1,24 +1,26 @@
-// Freemius webhook receiver: turns a completed sale into a signed Ed25519
+// Gumroad Ping receiver: turns a completed sale into a signed Ed25519
 // license key file, using the existing offline key-file scheme
-// (harmonic_synth/license/) instead of Freemius's own built-in license-key
-// feature — that one validates online against Freemius's server on every
+// (harmonic_synth/license/) instead of Gumroad's own built-in license-key
+// feature — that one validates online against Gumroad's server on every
 // check, which is incompatible with this product's "no dongle, no internet
-// check, no activation server" design. Freemius here is payment + webhook
+// check, no activation server" design. Gumroad here is payment + webhook
 // only; the actual license is still signed and verified entirely offline.
 //
-// Verified against Freemius's own docs (2026-09-14):
-//   - signature header: `x-signature`
-//   - algorithm: HMAC-SHA256 over the raw request body, hex digest
-//   - the event we care about: `license.created`
-// NOT verified — Freemius doesn't publish the exact field paths, and
-// guessing them wrong would silently sign a license with the wrong name/
-// email, which is worse than an obvious failure. `extractBuyer` below
-// throws instead of guessing; fix it from a real captured payload (Freemius
-// can resend/replay a webhook from its dashboard, or send a test event)
-// before this goes live. Every payload is logged raw either way.
+// Verified against Gumroad's own API docs (2026-09-14):
+//   - Ping (Settings -> Advanced -> "Ping URL") POSTs
+//     application/x-www-form-urlencoded on every sale, account-wide. Fields
+//     used here: sale_id, product_id, email, full_name, test.
+//   - Ping has NO signature, secret, or HMAC of any kind — anyone who
+//     learns the URL could POST a fake sale to it. Gumroad's own docs say
+//     the fix is to call back and confirm the sale, so that's what
+//     verifySale() does: GET /v2/sales/:id with a Bearer access token
+//     (requires the `view_sales` OAuth scope) returns the authoritative
+//     email/product_id/refunded/chargedback for that sale_id — the Ping
+//     body itself is only used to know which sale_id to look up.
+//   - GET /v2/sales/:id response shape: { success, sale: { email,
+//     product_id, refunded, chargedback, disputed, ... } }.
 'use strict';
 
-const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
@@ -30,35 +32,16 @@ const router = express.Router();
 const LICENSE_DIR = path.join(__dirname, '..', '..', 'storage', 'licenses');
 fs.mkdirSync(LICENSE_DIR, { recursive: true });
 
-function verifySignature(rawBody, signatureHex, secret) {
-  if (!secret) return false;
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-  const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(String(signatureHex || ''), 'hex');
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-
-/**
- * Pull the buyer's name/email and an order reference out of a Freemius
- * `license.created` event. Freemius's docs show the shape as
- * `fsEvent.objects.license` / `fsEvent.objects.user` but do not enumerate
- * field names — fill these in from a real payload (logged below) before
- * relying on this in production.
- */
-function extractBuyer(fsEvent) {
-  const user = fsEvent && fsEvent.objects && fsEvent.objects.user;
-  const license = fsEvent && fsEvent.objects && fsEvent.objects.license;
-  if (!user || !license) {
-    throw new Error('extractBuyer: unrecognized payload shape — see the logged raw event and fix the field paths here');
-  }
-  // TODO confirm these field names against a real webhook payload.
-  const email = user.email;
-  const name = [user.first, user.last].filter(Boolean).join(' ') || user.email;
-  const order = String(license.id || fsEvent.id || '');
-  if (!email) {
-    throw new Error('extractBuyer: no email field found at the expected path — fix from the logged raw payload');
-  }
-  return { name, email, order };
+async function verifySale(saleId, accessToken) {
+  // Read at call time, not module load — overridable so tests can point
+  // this at a local stub instead of the real Gumroad API.
+  const apiBase = process.env.GUMROAD_API_BASE || 'https://api.gumroad.com';
+  const url = `${apiBase}/v2/sales/${encodeURIComponent(saleId)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body || body.success === false || !body.sale) return null;
+  return body.sale;
 }
 
 function signLicense({ name, email, order }) {
@@ -89,37 +72,56 @@ function signLicense({ name, email, order }) {
   });
 }
 
-// Raw body needed for the HMAC check — mounted before any JSON body parser
-// would consume the stream (app.js currently has none globally, but keep
-// this route self-contained regardless).
-router.post('/freemius', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
-  const rawBody = req.body; // Buffer
-  const valid = verifySignature(rawBody, req.headers['x-signature'], process.env.FREEMIUS_WEBHOOK_SECRET);
-  if (!valid) {
-    logger.warn('freemius webhook: bad or missing signature');
-    return res.status(401).json({ error: 'invalid signature' });
+router.post('/gumroad', express.urlencoded({ extended: false }), async (req, res) => {
+  const saleId = req.body && req.body.sale_id;
+  const fullName = req.body && req.body.full_name;
+  const test = req.body && req.body.test;
+
+  if (!saleId) {
+    logger.warn('gumroad webhook: no sale_id in payload');
+    return res.status(400).json({ error: 'missing sale_id' });
   }
 
-  let fsEvent;
+  const accessToken = process.env.GUMROAD_ACCESS_TOKEN;
+  if (!accessToken) {
+    logger.error('gumroad webhook: GUMROAD_ACCESS_TOKEN is not set');
+    return res.status(500).json({ error: 'server not configured' });
+  }
+
+  logger.info('gumroad webhook received', { saleId, test });
+
+  let sale;
   try {
-    fsEvent = JSON.parse(rawBody.toString('utf8'));
-  } catch (e) {
-    logger.warn('freemius webhook: unparseable body');
-    return res.status(400).json({ error: 'invalid JSON' });
+    sale = await verifySale(saleId, accessToken);
+  } catch (err) {
+    logger.error('gumroad webhook: sale verification request failed', { message: err.message });
+    return res.status(502).json({ error: 'could not verify sale' });
   }
 
-  // Log every verified event's raw shape — this is how the exact field
-  // paths in extractBuyer get confirmed once real events start arriving.
-  logger.info('freemius webhook received', { type: fsEvent && fsEvent.type });
+  if (!sale) {
+    logger.warn('gumroad webhook: sale_id did not verify against the Gumroad API', { saleId });
+    return res.status(400).json({ error: 'sale did not verify' });
+  }
 
-  if (!fsEvent || fsEvent.type !== 'license.created') {
+  const expectedProduct = process.env.GUMROAD_PRODUCT_ID;
+  if (expectedProduct && String(sale.product_id) !== String(expectedProduct)) {
+    logger.info('gumroad webhook: sale is for a different product, ignoring', { saleId, productId: sale.product_id });
     return res.status(200).json({ ok: true, skipped: true });
   }
 
+  if (sale.refunded || sale.chargedback || sale.disputed) {
+    logger.warn('gumroad webhook: sale is refunded/disputed, not issuing a license', { saleId });
+    return res.status(200).json({ ok: true, skipped: true });
+  }
+
+  if (!sale.email) {
+    logger.error('gumroad webhook: verified sale has no email', { saleId });
+    return res.status(500).json({ error: 'no email on verified sale' });
+  }
+
   try {
-    const buyer = extractBuyer(fsEvent);
-    const keyPath = await signLicense(buyer);
-    logger.info('license signed', { email: buyer.email, order: buyer.order, keyPath });
+    const keyPath = await signLicense({ name: fullName || sale.email, email: sale.email, order: String(saleId) });
+    logger.info('license signed', { email: sale.email, order: saleId, keyPath });
     // TODO: email delivery isn't wired up — no mail provider is configured
     // in this project yet (see package.json). Until it is, the signed
     // .key file lands in storage/licenses/ for manual follow-up; wire a
@@ -127,7 +129,7 @@ router.post('/freemius', express.raw({ type: 'application/json', limit: '1mb' })
     // for real customers.
     return res.status(200).json({ ok: true });
   } catch (err) {
-    logger.error('freemius webhook: failed to sign license', { message: err.message });
+    logger.error('gumroad webhook: failed to sign license', { message: err.message });
     return res.status(500).json({ error: 'internal error' });
   }
 });

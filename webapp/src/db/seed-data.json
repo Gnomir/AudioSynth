@@ -2332,6 +2332,20 @@
       "section": "price"
     },
     {
+      "key": "price.studio.href",
+      "lang": "en",
+      "value": "#notify",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
+      "key": "price.studio.href",
+      "lang": "uk",
+      "value": "#notify",
+      "is_html": 0,
+      "section": "price"
+    },
+    {
       "key": "price.studio.cta",
       "lang": "uk",
       "value": "Дізнатись, коли вийде Studio →",

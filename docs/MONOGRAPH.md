@@ -821,7 +821,7 @@ I–VIII, XI–XII) — нижче, без змін.*
 ## 61. Потребує людини
 
 - **Б2 — подати PR у nih-plug.** Публічна дія від імені `Gnomir` на чужому репозиторії. Матеріали готові: `contrib/nih-plug-pr.md` + перевірений патч.
-- **Комерціалізація — відкриті рішення**: домен (тоді `URL`/`EMAIL`/`CLAP_ID` + заморозити `VST3_CLASS_ID`), trademark-пошук, перейменування крейта/бандла `harmonic_synth` → `cosine`, ціна ($89 Studio вже вирішено), MoR (Freemius), бойовий `LICENSE_PUBKEY`, macOS/Linux підписані білди. (Open-core ліцензія ядра — вже виконано: AGPL-3.0-only + комерційна, `LICENSE-AGPL` / `LICENSE-COMMERCIAL.md`.)
+- **Комерціалізація — відкриті рішення**: домен (тоді `URL`/`EMAIL`/`CLAP_ID` + заморозити `VST3_CLASS_ID`), trademark-пошук, перейменування крейта/бандла `harmonic_synth` → `cosine`, ціна ($89 Studio вже вирішено), MoR — Gumroad вибрано, вебхук написаний (`webapp/src/routes/webhooks.js`), продукт на Gumroad ще не створено, бойовий `LICENSE_PUBKEY`, macOS/Linux підписані білди. (Open-core ліцензія ядра — вже виконано: AGPL-3.0-only + комерційна, `LICENSE-AGPL` / `LICENSE-COMMERCIAL.md`.)
 
 ## 62. Відкладено — з причиною
 
