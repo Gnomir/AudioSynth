@@ -249,7 +249,7 @@
           <li data-i18n="price.core.4"><%= cms.en['price.core.4'] %></li>
           <li data-i18n="price.core.5"><%= cms.en['price.core.5'] %></li>
         </ul>
-        <a class="btn tier-cta" href="/demo" data-i18n="price.core.cta"><%= cms.en['price.core.cta'] %></a>
+        <a class="btn primary tier-cta" href="https://github.com/Gnomir/AudioSynth/releases/tag/v0.1.0-core" target="_blank" rel="noopener" data-i18n="price.core.cta"><%= cms.en['price.core.cta'] %></a>
       </div>
       <div class="tier hi">
         <p class="tname">Studio <span class="badge" data-i18n="price.studio.badge"><%= cms.en['price.studio.badge'] %></span></p>
@@ -343,11 +343,14 @@
   <div class="wrap narrow">
     <h2 data-i18n="final.h"><%= cms.en['final.h'] %></h2>
     <p class="sub" data-i18n="final.sub"><%= cms.en['final.sub'] %></p>
+    <p class="cta-row" style="justify-content:center">
+      <a class="btn primary" href="https://github.com/Gnomir/AudioSynth/releases/tag/v0.1.0-core" target="_blank" rel="noopener" data-i18n="final.download"><%= cms.en['final.download'] %></a>
+    </p>
+    <p class="formhint" id="notify-hint" data-i18n="final.hint" style="margin-top:1.5rem"><%= cms.en['final.hint'] %></p>
     <form class="notify" id="notify">
       <input type="email" id="notify-email" name="email" placeholder="you@studio.com" aria-label="Email address" required>
-      <button class="btn primary" type="submit" data-i18n="final.notify"><%= cms.en['final.notify'] %></button>
+      <button class="btn" type="submit" data-i18n="final.notify"><%= cms.en['final.notify'] %></button>
     </form>
-    <p class="formhint" id="notify-hint" data-i18n="final.hint"><%= cms.en['final.hint'] %></p>
     <div class="cta-row" style="margin-top:1.5rem">
       <a class="btn" href="/handbook" data-i18n="final.cta.handbook"><%= cms.en['final.cta.handbook'] %></a>
       <a class="btn" href="https://github.com/Gnomir/AudioSynth" target="_blank" rel="noopener">GitHub</a>
