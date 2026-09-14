@@ -309,22 +309,49 @@ console.log('\n=== 6) Envelope timing (A=100ms D=150ms S=50% R=300ms) ===');
     const next = Math.abs(samples[i + 1]);
     if (cur >= prev && cur >= next) env.push({ t: i / sampleRate, level: cur });
   }
-  const peakLevel = Math.max(...env.map(e => e.level));
-  const sustainWindow = env.filter(e => e.t > 0.5 && e.t < 0.79);
-  const sustainLevel = sustainWindow.reduce((a, e) => a + e.level, 0) / sustainWindow.length;
+  const meanLevel = (lo, hi) => {
+    const w = env.filter(e => e.t >= lo && e.t < hi);
+    return w.length ? w.reduce((a, e) => a + e.level, 0) / w.length : NaN;
+  };
+  const maxLevel = (lo, hi) => Math.max(...env.filter(e => e.t >= lo && e.t < hi).map(e => e.level));
 
-  const attackHit = env.find(e => e.level >= 0.9 * peakLevel);
-  const decayHit = env.find(e => e.t > (attackHit?.t ?? 0) && Math.abs(e.level - sustainLevel) <= 0.05 * peakLevel);
-  const releaseStartLevel = env.slice().reverse().find(e => e.t <= 0.8)?.level ?? sustainLevel;
+  // Ceiling for *timing* gates (attack/decay/release crossing a % of it) —
+  // a global max, same as before this fix: these care "has it gotten
+  // close enough yet", where a crest-factor spike being the ceiling is
+  // harmless (it only makes the gate slightly stricter).
+  const peakCeiling = Math.max(...env.map(e => e.level));
+  // Mean over a short window, for the *level ratio* actually reported
+  // below — comparing this to sustainLevel's own windowed mean is
+  // apples-to-apples. The original bug: sustainLevel (a windowed mean)
+  // was divided by peakCeiling (a global max) — two different statistics
+  // of a non-sinusoidal, multi-harmonic tone, whose half-cycle peaks vary
+  // a lot in height — which read as a level mismatch that isn't real.
+  const peakLevel = meanLevel(0.085, 0.099); // just before decay starts (attack = 100ms)
+  const sustainLevel = meanLevel(0.5, 0.79);
+
+  const attackHit = env.find(e => e.level >= 0.9 * peakCeiling);
+  const decayHit = env.find(e => e.t > (attackHit?.t ?? 0) && Math.abs(e.level - sustainLevel) <= 0.05 * peakCeiling);
+  // Windowed max, not a single arbitrary last-sample-before-0.8s (which on
+  // a multi-harmonic tone can land on a small crest-factor wiggle) — same
+  // "ceiling for a timing gate" role as peakCeiling above.
+  const releaseStartLevel = maxLevel(0.785, 0.8);
   const releaseTail = env.filter(e => e.t >= 0.8);
   const releaseHit = releaseTail.find(e => e.level <= 0.1 * releaseStartLevel);
   const release80dbHit = releaseTail.find(e => toDb(e.level) - toDb(releaseStartLevel) <= -80);
+  // The local-peak series runs out once the carrier's own ripple drops
+  // into the engine's Idle-threshold snap-to-silence (env.rs's ~1e-4 /
+  // -80dB cutoff) — reporting the deepest point actually reached (not
+  // just a binary "did it cross -80") tells the difference between
+  // "genuinely stalled early" and "got within a rounding error of -80dB
+  // before the engine silenced the voice", which a bare not-reached can't.
+  const deepestDb = releaseTail.reduce((min, e) => Math.min(min, toDb(e.level) - toDb(releaseStartLevel)), 0);
 
-  console.log(`peak level (post-attack): ${peakLevel.toFixed(4)}`);
+  console.log(`peak level (post-attack, 0.085-0.099s window avg): ${peakLevel.toFixed(4)}`);
   console.log(`measured sustain level (0.5-0.79s window avg): ${sustainLevel.toFixed(4)} (${(sustainLevel / peakLevel * 100).toFixed(1)}% of peak; nominal sustain = 50%)`);
   console.log(`attack: reaches 90% of peak at t=${attackHit ? attackHit.t.toFixed(4) : 'n/a'}s (nominal 0.100s, linear ramp so 90% is expected at 0.090s)`);
   console.log(`decay:  settles within 5% of sustain at t=${decayHit ? decayHit.t.toFixed(4) : 'n/a'}s (nominal attack+decay = 0.250s)`);
-  console.log(`release: -20dB (10% amplitude) at t=${releaseHit ? (releaseHit.t - 0.8).toFixed(4) : 'n/a'}s after note-off; -80dB at t=${release80dbHit ? (release80dbHit.t - 0.8).toFixed(4) : 'not reached'}s (nominal release param = time-to-~-80dB per the engine's own exp2-based coefficient, eq. c_r = 1-2^(-13.3/(r*fs)) -> designed to reach -80dB at t=r=0.300s)`);
+  const release80dbAt = release80dbHit ? `${(release80dbHit.t - 0.8).toFixed(4)}s` : 'not strictly crossed';
+  console.log(`release: -20dB (10% amplitude) at t=${releaseHit ? (releaseHit.t - 0.8).toFixed(4) : 'n/a'}s after note-off; -80dB at t=${release80dbAt}, deepest point measured: ${deepestDb.toFixed(2)}dB at t=${(releaseTail[releaseTail.length - 1]?.t - 0.8).toFixed(4)}s before the local-peak series runs out (nominal release param = time-to-~-80dB per the engine's own exp2-based coefficient, eq. c_r = 1-2^(-13.3/(r*fs)) -> designed to reach -80dB at t=r=0.300s)`);
   results.envelope = { peakLevel, sustainLevel, attackHit, decayHit, releaseHit, release80dbHit };
 }
 
@@ -350,7 +377,25 @@ console.log('\n=== 7) Filter response (LP, resonance=0.1, 55Hz fundamental, brig
     for (let i = 0; i < rows.length; i++) {
       if (rows[i].db <= -3 && rows.slice(i, i + 3).every(x => x.db <= -2)) { cross3db = rows[i].hz; break; }
     }
-    console.log(`cutoff param = ${cutoff} Hz -> measured -3dB point ≈ ${cross3db ?? 'not reached below Nyquist'} Hz`);
+    console.log(`cutoff param = ${cutoff} Hz -> measured -3dB point ≈ ${cross3db ?? 'not reached below Nyquist'} Hz (oscillator-driven — conflates the source's own spectral tilt with the filter, see §7b below)`);
+  }
+}
+
+console.log('\n=== 7b) Filter response, isolated (impulse in, no oscillator) ===');
+{
+  for (const cutoff of [500, 2000]) {
+    const { sampleRate, samples } = readWavFloat32(`${DIR}/qa_isolated_filter_lp_${cutoff}hz.wav`);
+    const dcGain = toDb(goertzelMag(samples, sampleRate, 1, 0, samples.length));
+    const rows = [];
+    for (let hz = 20; hz < sampleRate / 2 - 50; hz *= 1.05) {
+      const db = toDb(goertzelMag(samples, sampleRate, hz, 0, samples.length)) - dcGain;
+      rows.push({ hz, db });
+    }
+    let cross3db = null;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].db <= -3 && rows.slice(i, i + 3).every(x => x.db <= -2)) { cross3db = rows[i].hz; break; }
+    }
+    console.log(`cutoff param = ${cutoff} Hz -> true -3dB point (isolated) ≈ ${cross3db ? cross3db.toFixed(0) : 'not reached below Nyquist'} Hz`);
   }
 }
 
