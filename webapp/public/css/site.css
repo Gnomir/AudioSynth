@@ -382,6 +382,9 @@
 
   .listen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
   @media (max-width: 56rem) { .listen { grid-template-columns: 1fr; } }
+  /* 4 preset clips — 2 columns divides evenly, unlike 3 (which strands one). */
+  .listen.presets { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 40rem) { .listen.presets { grid-template-columns: 1fr; } }
   .listen > div {
     background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
     padding: 1.1rem 1.15rem;
