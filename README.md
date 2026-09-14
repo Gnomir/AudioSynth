@@ -92,6 +92,8 @@ nightly.
 
 ## Status
 
+Released builds and what changed in each: [`CHANGELOG.md`](CHANGELOG.md).
+
 120 `harmonic_core` tests pass (101 unit + 19 integration, 11 of them an
 adversarial RT-safety suite) plus 34 plugin tests and 9 `harmonic_license`
 tests, plus a `#[ignore]` long-run drift test; `clippy` clean on `std`,
